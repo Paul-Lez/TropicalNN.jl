@@ -16,9 +16,9 @@ There are various ways of measuring how *complicated* the function represented b
 ### Manipulating Tropical Expressions
 ```
 # Write down the tropical polynomial f = 1*X^1*Y^0 + 2*X^0*Y^1 + 3*X^1*Y^1
-f = TropicalNN.TropicalPuiseuxPoly([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
+f = TropicalPuiseuxPoly([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
 # Write down the tropical polynomial 0*X^1*Y^7 + 4*X^0*Y^1 + (-5)*X^9*Y^1
-g = TropicalNN.TropicalPuiseuxPoly([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
+g = TropicalPuiseuxPoly([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
 @show f + g # outputs the sum of f and g 
 @show f * g # outputs the product of f and g
 ```
@@ -36,8 +36,8 @@ W, b, t = random_mlp([3, 2, 2])
 
 ### Computing Linear Regions of Tropical Rational Functions
 ```
-f = TropicalNN.TropicalPuiseuxPoly([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
-g = TropicalNN.TropicalPuiseuxPoly([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
+f = TropicalPuiseuxPoly([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
+g = TropicalPuiseuxPoly([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
 # Compute the linear regions of f/g, expressed as an array containing polyhedra or arrays of polyhedra
 linear_regions = enum_linear_regions_rat(f, g)
 @show lenth(linear_regions)

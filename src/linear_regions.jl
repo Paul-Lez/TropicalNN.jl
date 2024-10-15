@@ -79,7 +79,7 @@ function n_components(V, D)
 end 
 
 @doc raw"""
-    n_components(V::Vector{T}, D::Dict{Tuple{T, T}, Bool})
+    components(V::Vector{T}, D::Dict{Tuple{T, T}, Bool})
     
 Outputs an array representing the connected components of the graph given by the vertices V and the edges D
 (more precisely, the edges are given by the keys of D whose entries are "true").
