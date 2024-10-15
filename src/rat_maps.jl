@@ -29,7 +29,7 @@ end
 
 Constructs a tropical Puiseux polynomial from a dictionary of coefficients and a vector of exponents, by first sorting the exponents lexicographically.
 """
-function TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}, sorted) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}, sorted) where T
     # first we need to order everything lexicographically
     if !sorted 
         exp = sort(exp)
@@ -62,7 +62,7 @@ end
 Outputs the constant c viewed as a tropical Puiseux polynomial in n variables, and exponents in the 
 same type as f.
 """
-function TropicalPuiseuxPoly_const(n, c, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly_const(n, c, f::TropicalPuiseuxPoly{T}) where T
     exp = [Base.zeros(T, n)]
     coeff = Dict(Base.zeros(T, n) => c)
     return TropicalPuiseuxPoly(coeff, exp)
@@ -73,7 +73,7 @@ end
 Ouputs the tropical zero viewed as a tropical Puiseux polynomial in n variables, and exponents in the
 same type as f.
 """
-function TropicalPuiseuxPoly_zero(n::Int64, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly_zero(n::Int64, f::TropicalPuiseuxPoly{T}) where T
     return TropicalPuiseuxPoly_const(n, zero(f.coeff[f.exp[1]]), f)
 end 
 
@@ -82,12 +82,12 @@ end
 Ouputs the tropical one viewed as a tropical Puiseux polynomial in n variables, and exponents in the
 same type as f.
 """
-function TropicalPuiseuxPoly_one(n::Int64, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly_one(n::Int64, f::TropicalPuiseuxPoly{T}) where T
     return TropicalPuiseuxPoly_one(n, one(f.coeff[f.exp[1]]), f)
 end 
 
 # This is deprecated and should be removed in the future
-function TropicalPuiseuxPoly_one(n::Int64, c::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly_one(n::Int64, c::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T
     return TropicalPuiseuxPoly_const(n, one(c), f)
 end
 
@@ -97,7 +97,7 @@ end
 Constructs a tropical Puiseux polynomial from a scalar c and a vector of exponents. This is a monomial whose 
 coefficient is c and exponents are given by exp.
 """
-function TropicalPuiseuxMonomial(c, exp::Vector{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxMonomial(c, exp::Vector{T}) where T
     return TropicalPuiseuxPoly([c for _ in 1:length(exp)], [exp], true)
 end
 
@@ -111,7 +111,7 @@ function TropicalPuiseuxPoly_to_rational(f)
     return TropicalPuiseuxRational(f, TropicalPuiseuxPoly_one(nvars(f), f))
 end 
 
-function TropicalPuiseuxPoly_zero(n, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxPoly_zero(n, f::TropicalPuiseuxPoly{T}) where T
     exp = [Base.zeros(T, n)]
     coeff = Dict(Base.zeros(n) => zero(f.coeff[f.exp[1]]))
     return TropicalPuiseuxPoly(coeff, exp)
@@ -159,7 +159,7 @@ end
 @doc raw"""
 Outputs zero, viewed as a tropical Puiseux rational function in n variables, and with exponents in the same type as f.
 """
-function TropicalPuiseuxRational_zero(n::Int64, f::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function TropicalPuiseuxRational_zero(n::Int64, f::TropicalPuiseuxRational{T}) where T
     return TropicalPuiseuxRational(TropicalPuiseuxPoly_zero(n, f.num), TropicalPuiseuxPoly_one(n, f.den))
 end 
 
@@ -174,7 +174,7 @@ end
 
 ####################### STRING REPRESENTATIONS ###################################
 
-function Base.string(f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.string(f::TropicalPuiseuxPoly{T}) where T
     str = ""
     for i in eachindex(f)
         # in dimension 1 we omit subscripts on the variables
@@ -217,7 +217,7 @@ end
     eval(f::TropicalPuiseuxPoly, a::Vector)
 Evaluates the tropical Puiseux polynomial f at the point a.
 """
-function eval(f::TropicalPuiseuxPoly{T}, a::Vector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function eval(f::TropicalPuiseuxPoly{T}, a::Vector) where T
     #R = tropical_semiring(max)
     ev = zero(a[1])
     for (exp, coeff) in f.coeff
@@ -234,7 +234,7 @@ end
     eval(f::TropicalPuiseuxRational{T}, a::Vector)
 Evaluates the tropical Puiseux rational function f at the point a.
 """
-function eval(f::TropicalPuiseuxRational{T}, a::Vector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function eval(f::TropicalPuiseuxRational{T}, a::Vector) where T
     n::TropicalSemiringElem{typeof(max)} = eval(f.num, a) 
     m::TropicalSemiringElem{typeof(max)} = eval(f.den, a) 
     return n / m
@@ -244,7 +244,7 @@ end
     eval(F::Vector{TropicalPuiseuxPoly{T}}, a::Vector)
 Evaluates the vector of tropical Puiseux rationals F at the point a.
 """
-function eval(F::Vector{TropicalPuiseuxRational{T}}, a::Vector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function eval(F::Vector{TropicalPuiseuxRational{T}}, a::Vector) where T
     return [eval(f, a) for f in F]
 end
 
@@ -255,14 +255,14 @@ end
 #### This section implements standard arithmetic operations for tropical 
 #### polynomials and rational functions                                  
 
-function Base.:/(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:/(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
     return TropicalPuiseuxRational(f, g)
 end 
 
 # Quicker version of addition for vectors of tropical polynomials
 # *Warning*: this doesn't sort the exponents of the resulting polynomial, so should never be used if the 
 # output is to be used in further computations that require the exponents to be sorted.
-function quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
     R = tropical_semiring(max)
     terms = reduce(vcat, [f.exp for f in F])
     h_exp::Vector{Vector{T}} = terms
@@ -279,7 +279,7 @@ end
 Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the sum with 
 lexicoraphically ordered exponents
 """
-function Base.:+(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:+(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
     lf = length(f.coeff)
     lg = length(g.coeff)
     # initialise coeffs and exponents vectors for the sum h = f + g
@@ -348,7 +348,7 @@ end
 Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the product with 
 lexicoraphically ordered exponents
 """
-function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
     prod = TropicalPuiseuxPoly_zero(nvars(f), f)
     # if f = a_0 + ... + a_n T^n and g = b_0 + ... + b_n then the product is 
     # the sum of all the b_i T^i * f
@@ -366,7 +366,7 @@ function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T<:
 end 
 
 # Multiplication of tropical polynomials with using quicksum addition.
-function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
     # if f = a_0 + ... + a_n T^n and g = b_0 + ... + b_n then the product is 
     # the sum of all the b_i T^i * f
     summands = Vector{TropicalPuiseuxPoly{T}}()
@@ -386,7 +386,7 @@ function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T})
 end 
 
 # Addition of tropical Puiseux rationals
-function Base.:+(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:+(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = f.num * g.den + f.den * g.num 
     den = f.den * g.den 
     return TropicalPuiseuxRational(num, den) 
@@ -394,14 +394,14 @@ end
 
 # Addition for tropical Puiseux rationals using quicksum addition on the numerator and denominator
 # This is an experimental feature and should be used with caution.
-function add_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function add_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = quicksum([mul_with_quicksum(f.num, g.den), mul_with_quicksum(f.den, g.num)])
     den = mul_with_quicksum(f.den, g.den) 
     return TropicalPuiseuxRational(num, den) 
 end 
 
 # Quick multiplication for rational functions
-function mul_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mul_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T
     mul = TropicalPuiseuxPuiseux_one(nvars(f), f)
     for f in F 
         mul = mul_with_quicksum(mul, f)
@@ -410,7 +410,7 @@ function mul_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union
 end 
 
 # Quick product over vector of polynomials
-function mul_with_quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mul_with_quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
     mul = TropicalPuiseuxPoly_one(nvars(F[1]), F[1])
     for f in F 
         mul = mul_with_quicksum(mul, f)
@@ -419,7 +419,7 @@ function mul_with_quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T<:Union{Osc
 end 
 
 # Quick addition for vectors of rational functions
-function quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T
     denoms = [f.den for f in F]
     den = mul_with_quicksum(denoms)
     summand = Vector{TropicalPuiseuxPoly{T}}()
@@ -431,35 +431,35 @@ function quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.sc
 end 
 
 # Usual multiplication for rational functions
-function Base.:*(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:*(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = f.num * g.num 
     den = f.den * g.den 
     return TropicalPuiseuxRational(num, den)
 end 
 
 # Quick multiplication for rational functions
-function mul_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mul_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = mul_with_quicksum(f.num, g.num) 
     den = mul_with_quicksum(f.den, g.den) 
     return TropicalPuiseuxRational(num, den)
 end 
 
 # Division for vectors of rational functions
-function Base.:/(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:/(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = f.num*g.den 
     den = f.den*g.num
     return TropicalPuiseuxRational(num, den)
 end 
 
 # Quick division for vectors of rational functions
-function div_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function div_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
     num = mul_with_quicksum(f.num, g.den) 
     den = mul_with_quicksum(f.den, g.num)
     return TropicalPuiseuxRational(num, den)
 end 
 
 # Scalar multiplication for rational functions
-function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxRational{T}) where T
     return TropicalPuiseuxRational(a*f.num, f.den)
 end 
 
@@ -499,7 +499,7 @@ function Base.:^(f::TropicalPuiseuxRational, rat::Float64)
     end 
 end 
 
-function Base.:^(f::TropicalPuiseuxPoly{T}, int::Int64) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:^(f::TropicalPuiseuxPoly{T}, int::Int64) where T
     new_f_coeff = Dict()
     new_f_exp::Vector{Vector{T}} = copy(f.exp)
     new_f_exp = int * new_f_exp 
@@ -537,7 +537,7 @@ function Base.:^(f::TropicalPuiseuxRational, int::Rational{T}) where T<:Integer
     end 
 end 
 
-function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T
     new_f_coeff = copy(f.coeff)
     new_f_exp = copy(f.exp)
     for i in eachindex(f)
@@ -550,7 +550,7 @@ end
 
 ############# CODE FOR COMPOSITION ##################################
 
-function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxPoly{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxPoly{T}}) where T
     comp = TropicalPuiseuxPoly_zero(nvars(G[1]), f)
     # evaluate monomial-wise
     for (exp, coeff) in f.coeff
@@ -564,7 +564,7 @@ function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxPoly{T}}) wher
     return comp
 end
 
-function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
     @req length(G) == nvars(f) "Incorrect number of variables"
     comp = TropicalPuiseuxRational_zero(nvars(G[1]), G[1])
     for (key, val) in f.coeff
@@ -578,7 +578,7 @@ function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) 
 end
 
 # Quick version of composition 
-function comp_with_quicksum(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp_with_quicksum(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
     @req length(G) == nvars(f) "Incorrect number of variables"
     summands = Vector{TropicalPuiseuxRational{T}}()
     sizehint!(summands, length(f.exp))
@@ -593,7 +593,7 @@ function comp_with_quicksum(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseux
     return quicksum(summands)
 end
 
-function comp(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
     num =  comp(f.num, G)
     den = comp(f.den, G)
     val = num / den 
@@ -601,19 +601,19 @@ function comp(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T
 end 
 
 # Quick version of composition 
-function comp_with_quicksum(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp_with_quicksum(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
     num =  comp_with_quicksum(f.num, G)
     den = comp_with_quicksum(f.den, G)
     val = div_with_quicksum(num, den) 
     return val 
 end 
 
-function comp(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T
     return [comp(f, G) for f in F]
 end 
 
 # Quick version of composition 
-function comp_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function comp_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T
     return [comp_with_quicksum(f, G) for f in F]
 end
 
@@ -621,7 +621,7 @@ end
 # Helper functions 
 
 # remove all zero monomials from the expression of f
-function dedup_monomials(f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function dedup_monomials(f::TropicalPuiseuxPoly{T}) where T
     new_exp::Vector{Vector{T}} = []
     new_coeff=Dict()
     tropical_zero = zero(f.coeff[f.exp[1]])
@@ -636,25 +636,25 @@ function dedup_monomials(f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_
     return TropicalPuiseuxPoly(new_coeff, new_exp)
 end 
 
-function dedup_monomials(f::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function dedup_monomials(f::TropicalPuiseuxRational{T}) where T
     return TropicalPuiseuxRational(dedup_monomials(f.num), dedup_monomials(f.den))
 end 
 
-function dedup_monomials(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function dedup_monomials(F::Vector{TropicalPuiseuxRational{T}}) where T
     return [dedup_monomials(f) for f in F]
 end 
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_count(f::TropicalPuiseuxPoly{T}) where T
     return length(f.exp)
 end 
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(f::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_count(f::TropicalPuiseuxRational{T}) where T
     return monomial_count(f.num) + monomial_count(f.den)
 end 
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_count(F::Vector{TropicalPuiseuxRational{T}}) where T
     return sum([monomial_count(f) for f in F])
 end
