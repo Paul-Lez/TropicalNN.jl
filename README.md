@@ -43,7 +43,7 @@ linear_regions = enum_linear_regions_rat(f, g)
 @show lenth(linear_regions)
 ```
 
-If this code was useful, please consider citing [https://arxiv.org/abs/2405.20174](this paper), using
+If this code was useful, please consider citing [this paper](https://arxiv.org/abs/2405.20174), using
 ```
 @article{lezeau2024tropical,
   title={Tropical Expressivity of Neural Networks},
@@ -54,4 +54,4 @@ If this code was useful, please consider citing [https://arxiv.org/abs/2405.2017
 ```
 
 ## References
-[1] [https://arxiv.org/pdf/1805.07091](*Tropical Geometry of Deep Neural Networks*), Liwen Zhang, Gregory Naitzat and Lek-Heng Lim.
+[1] [*Tropical Geometry of Deep Neural Networks*](https://arxiv.org/pdf/1805.07091), Liwen Zhang, Gregory Naitzat and Lek-Heng Lim.
