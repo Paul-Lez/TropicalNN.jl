@@ -6,7 +6,7 @@
 This library implements some basic symbolic tropical geometric tools for computing with neural networks in Julia. 
 
 ### Tropical Expressions of Neural Networks
-Every fully connected multilayer perceptron (MLP) with ReLU activation can be written in terms of tropical algebra [1]. More precisely, any such MLP can be expressed as a *tropical Rational function*, if one allows the exponents appearing in such expressions to be non-integral (e.g. rational or real numbers). We provide tools for symbolically manipulating such objects, and for finding the tropical expression of arbitrary MLPs with ReLU activation. 
+Every fully connected multilayer perceptron (MLP) with ReLU activation can be written in terms of tropical algebra [1]. More precisely, any such MLP can be expressed as a *tropical rational function*, if one allows the exponents appearing in such expressions to be non-integral (e.g. rational or real numbers). We provide tools for symbolically manipulating such objects, and for finding the tropical expression of arbitrary MLPs with ReLU activation. 
 
 ### Tropical Measures of Expressivity of Neural Networks
 There are various ways of measuring how *complicated* the function represented by a given neural network is. A large body of litterature has formed around using the number of *linear regions* of a neural network as such a measure. This library provides tools for computing this quantity, analysing the geometry of these linear regions, and studying another algebraic measure of expressivity, namely the number of irredundant monomials that appear in the tropical expression of a neural network. 
@@ -43,10 +43,7 @@ linear_regions = enum_linear_regions_rat(f, g)
 @show lenth(linear_regions)
 ```
 
-
-
-
-If this code was useful, please consider citing 
+If this code was useful, please consider citing [https://arxiv.org/abs/2405.20174](this paper), using
 ```
 @article{lezeau2024tropical,
   title={Tropical Expressivity of Neural Networks},
@@ -56,5 +53,5 @@ If this code was useful, please consider citing
 }
 ```
 
-
 ## References
+[1] [https://arxiv.org/pdf/1805.07091](*Tropical Geometry of Deep Neural Networks*), Liwen Zhang, Gregory Naitzat and Lek-Heng Lim.
