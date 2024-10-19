@@ -17,11 +17,11 @@ Polyhedron in ambient dimension 2 with Float64 type coefficients
 ```
 """
 function polyhedron(f::TropicalPuiseuxPoly, i)
-    # take A to be the matrix as in the overleaf document
+    # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
     A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
-    # and ditto for b. First however we need to convert elements of b to rationals since they are elements are the tropical semiring.
+    # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i. 
     b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
-    # return the corresponding linear region
+    # The polyhedron is then the set of points x such that Ax ≤ b.
     return Oscar.polyhedron(A, b)
 end 
 
@@ -48,6 +48,7 @@ function enum_linear_regions(f::TropicalPuiseuxPoly)
     for i in eachindex(f)
         poly = polyhedron(f, i)
         # add the polyhedron to the list plus a bool saying whether the polyhedron is non-empty
+        # TODO: this should be replaced by a check that the polyhedron is full dimensional for performance.
         push!(linear_regions, (poly, Oscar.is_feasible(poly)))
     end 
     return linear_regions
@@ -101,11 +102,12 @@ function components(V, D)
     for v in V
         visited[v] = false
     end
-    # depth first search. We pass a component array to store the components of the graph, and a root node to store the root of the component, i.e. where we started the search on the component.
+    # depth first search. We pass a component array as a parameter to store the components of the graph as we go along.
     function depth_first_search(k, component_arr)
         visited[k] = true
         push!(component_arr, k)
         for p in V
+            # We need to check that the edge exists. D might be missing some keys so we need to check for that first.
             if !visited[p] && ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
                 depth_first_search(p, component_arr)
             end
@@ -145,7 +147,9 @@ julia> enum_linear_regions_rat(f, g)
  Polyhedron in ambient dimension 2 with Float64 type coefficients
 ```
 """
-function enum_linear_regions_rat(f::TropicalPuiseuxPoly, g::TropicalPuiseuxPoly)
+function enum_linear_regions_rat(q::TropicalPuiseuxRational)
+    f = q.num 
+    g = q.den
     # first, compute the linear regions of f and g. 
     lin_f = enum_linear_regions(f)
     lin_g = enum_linear_regions(g)
