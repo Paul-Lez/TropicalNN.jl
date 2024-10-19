@@ -546,6 +546,10 @@ function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T
     return TropicalPuiseuxPoly(new_f_coeff, new_f_exp, true)
 end
 
+function Base.:(==)(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
+    return f.coeff == g.coeff && f.exp == g.exp
+end
+
 ####################################################################
 
 ############# CODE FOR COMPOSITION ##################################

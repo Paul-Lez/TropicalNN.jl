@@ -6,7 +6,7 @@
     inputs: f: an object of type TropicalPuiseuxPolynomial.
     outputs: an object of type TropicalPuiseuxPolynomial.
 """
-function monomial_strong_elim(f::TropicalPuiseuxPoly{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_strong_elim(f::TropicalPuiseuxPoly{T}) where T
     new_exp = Vector{Vector{T}}()
     sizehint!(new_exp, length(f.exp))
     new_coeff = Dict()
@@ -29,7 +29,7 @@ end
     inputs: f: an object of type TropicalPuiseuxRational.
     outputs: an object of type TropicalPuiseuxRational.
 """
-function monomial_strong_elim(f::TropicalPuiseuxRational{T}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_strong_elim(f::TropicalPuiseuxRational{T}) where T
     return TropicalPuiseuxRational(monomial_strong_elim(f.num), monomial_strong_elim(f.den))
 end
 
@@ -39,7 +39,7 @@ end
     inputs: f: an object of type TropicalPuiseuxRational.
     outputs: an object of type TropicalPuiseuxRational.
 """
-function monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}) where T
     return [monomial_strong_elim(f) for f in F]
 end
 
@@ -74,7 +74,6 @@ function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thre
             # compose this with the output of the previous layer
             output = comp(ith_tropical, output)
             output = monomial_strong_elim(output)
-            #output = dedup_monomials(output)
         end 
     end 
     return output
