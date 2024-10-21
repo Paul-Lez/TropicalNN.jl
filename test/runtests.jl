@@ -60,9 +60,9 @@ using Oscar
     @test linear_maps==[Any[0//1, Rational{BigInt}[1]], Any[0//1, Rational{BigInt}[2]], Any[-1//1, Rational{BigInt}[3]]]
 
     polys=polyhedra_from_reps(reps)
-    linear_regions=get_linear_regions(linear_maps,polys)
-    level_sets=get_level_set(1.0,polys,linear_maps)
-    @test level_sets==Any[Any[BigFloat[0.5], BigFloat[0.5]]]
+    linear_regions=get_linear_regions(polys,linear_maps)
+    level_set_component=get_level_set_component(linear_regions[Any[0//1, Rational{BigInt}[2]]]["polyhedra"][1],Any[0//1, Rational{BigInt}[2]],1.0)
+    @test level_set_component==Any[BigFloat[0.5], BigFloat[0.5]]
     
     surface=get_surface_points(linear_regions[[-1//1, Rational{BigInt}[3]]]["polyhedra"][1],[-1//1, Rational{BigInt}[3]])
     @test surface==(Vector{Rational{BigInt}}[[1, 2]], Rational{BigInt}[2, 5])

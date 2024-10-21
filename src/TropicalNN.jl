@@ -55,7 +55,7 @@ module TropicalNN
         update_bounding_box,
         get_full_bounding_box,
         apply_linear_map,
-        get_level_set,
+        get_level_set_component,
         get_surface_points,
         get_linear_maps,
         get_linear_regions,
