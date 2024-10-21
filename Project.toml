@@ -1,17 +1,27 @@
 name = "TropicalNN"
 uuid = "45302f6a-f5d4-4eaf-9bda-c9ca7b62f2bc"
 authors = ["Paul Lezeau"]
-version = "0.1"
+version = "0.1.0"
 
 [deps]
+CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Oscar = "f1435218-dba5-11e9-1e4d-f1a5fab5fc13"
+Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
 
 [compat]
+CDDLib = "0.9.4"
+ColorSchemes = "3.26.0"
 Combinatorics = "1.0.2"
 Distributions = "0.25.108"
+GLMakie = "0.10.14"
+LinearAlgebra = "1.11.0"
 Oscar = "1.0.2"
+Polyhedra = "0.7.8"
 julia = "1.6.7"
 
 [extras]

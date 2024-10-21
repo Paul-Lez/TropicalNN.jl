@@ -3,6 +3,13 @@ module TropicalNN
     using Oscar
     using Combinatorics
     using Distributions
+
+    using Polyhedra
+    using CDDLib
+    using ColorSchemes
+    # using LinearAlgebra
+    using GLMakie
+
     import Base: string, +, *, /
 
     export 
@@ -42,10 +49,37 @@ module TropicalNN
         enum_linear_regions,
         n_components, 
         components, 
-        enum_linear_regions_rat
+        enum_linear_regions_rat,
+
+        random_pmap,
+        update_bounding_box,
+        get_full_bounding_box,
+        apply_linear_map,
+        get_level_set,
+        get_surface_points,
+        get_linear_maps,
+        get_linear_regions,
+        
+        pmap_reps,
+        bound_reps,
+        project_reps,
+        intersect_reps,
+        m_reps,
+        polyhedra_from_reps,
+
+        plotpoly,
+        plotsurface,
+        plotlevelset,
+        plot_linear_regions,
+        plot_linear_maps
+
 
     include("rat_maps.jl")
     include("linear_regions.jl")
     include("mlp_to_trop.jl")
     include("mlp_to_trop_with_elim.jl")
+
+    include("vis_utilities.jl")
+    include("vis_representations.jl")
+    include("vis_plotting.jl")
 end
