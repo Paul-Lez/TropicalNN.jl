@@ -81,4 +81,33 @@ using Oscar
     pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0.5,1,0.1]),[Rational{BigInt}.([0,1,1]),Rational{BigInt}.([0.5,0.5,0.5]),Rational{BigInt}.([1,0,0]),Rational{BigInt}.([0.5,0.5,1])],false)
     reps=m_reps(pmap)
     @test reps["m_reps"]==Vector{Array{Float64}}[[[0.0 0.0 0.0; 0.5 -0.5 -0.5; 0.5 -0.5 0.0; 1.0 -1.0 -1.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [0.0, -0.5, -0.1, -1.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], [[-0.5 0.5 0.0; 0.0 0.0 -0.5; 0.0 0.0 0.0; 0.5 -0.5 -1.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [0.1, -0.4, 0.0, -0.9, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], [[-1.0 1.0 1.0; -0.5 0.5 0.5; -0.5 0.5 1.0; 0.0 0.0 0.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [1.0, 0.5, 0.9, 0.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]]]
+
+    # Hoffman tests
+
+    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1]),digits=2)==1.0
+    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1;-1 -1 -1]),digits=2)==3.0
+    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1;-1 0 0;0 -1 0;0 0 -1]),digits=2)==1.0
+
+    mat=rand(3,3)
+    h_exact=mat_exact_hoff(mat)
+    h_upper=mat_upper_hoff(mat)
+    h_lower=mat_lower_hoff(mat)
+    @test h_exact<=h_upper
+    @test h_exact>=h_lower
+
+    pmap=random_pmap(3,3)
+    h_exact=map_exact_hoff(pmap)
+    h_upper=map_upper_hoff(pmap)
+    h_lower=map_lower_hoff(pmap)
+    @test h_exact<=h_upper
+    @test h_exact>=h_lower
+
+    w,b,t=random_mlp([2,2,1])
+    rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+    h_exact=map_exact_hoff(rmap)
+    h_upper=map_upper_hoff(rmap)
+    h_lower=map_lower_hoff(rmap)
+    @test h_exact<=h_upper
+    @test h_exact>=h_lower
+
 end

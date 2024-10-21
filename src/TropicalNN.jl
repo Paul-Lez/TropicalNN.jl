@@ -7,8 +7,11 @@ module TropicalNN
     using Polyhedra
     using CDDLib
     using ColorSchemes
-    # using LinearAlgebra
     using GLMakie
+
+    using JuMP
+    using GLPK
+    using LinearAlgebra
 
     import Base: string, +, *, /
 
@@ -71,8 +74,17 @@ module TropicalNN
         plotsurface,
         plotlevelset,
         plot_linear_regions,
-        plot_linear_maps
+        plot_linear_maps,
 
+        pmap_exponent_matrix,
+        get_tilde_matrices,
+        surjectivity_test,
+        mat_exact_hoff,
+        mat_upper_hoff,
+        mat_lower_hoff,
+        map_exact_hoff,
+        map_upper_hoff,
+        map_lower_hoff
 
     include("rat_maps.jl")
     include("linear_regions.jl")
@@ -82,4 +94,6 @@ module TropicalNN
     include("vis_utilities.jl")
     include("vis_representations.jl")
     include("vis_plotting.jl")
+
+    include("hoffman.jl")
 end

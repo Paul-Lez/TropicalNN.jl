@@ -6,7 +6,7 @@
 
 Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
 """
-function random_pmap(n_vars,n_mons)
+function random_pmap(n_vars,n_mons) # move to main package
     return TropicalPuiseuxPoly(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
 end
 
