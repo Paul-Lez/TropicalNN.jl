@@ -1,16 +1,16 @@
-# This file contains the code necessary to obtain the Hoffman constant, with upper and lower bound, for 
-# matrices, tropical polynomials and tropical rational functions.
+############### Utilities ###############
 
 @doc"""
-    pmap_exponent_matrix(f)
+    linearmap_matrices(f::TropicalPuiseuxPoly)
 
-Returns the matrix of coefficients of the linear maps operating on the polyhedra of the tropical polynomial or tropical rational map.
+Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
-function pmap_exponent_matrix(f)
+function linearmap_matrices(f::TropicalPuiseuxPoly)
     linear_maps=[]
-    linearmap_coefficients=[]
-    for i in TropicalNN.eachindex(f)
-        A=mapreduce(permutedims,vcat,[Float64.(f.exp[j])-Float64.(f.exp[i]) for j in TropicalNN.eachindex(f)])
+    exponents=[]
+    coefficients=[]
+    for i in eachindex(f)
+        A=mapreduce(permutedims,vcat,[Float64.(f.exp[j])-Float64.(f.exp[i]) for j in eachindex(f)])
         b=[Float64(Rational(f.coeff[f.exp[i]]))-Float64(Rational(f.coeff[j])) for j in f.exp]
         p=Oscar.polyhedron(A,b)
         # we only want the linear map that are realised
@@ -18,49 +18,82 @@ function pmap_exponent_matrix(f)
             linear_map=[Rational(f.coeff[f.exp[i]]),f.exp[i]]
             # we are only interested in the unique linear map
             if !(linear_map in linear_maps)
-                push!(linearmap_coefficients,linear_map[2])
+                push!(exponents,linear_map[2])
+                push!(coefficients,linear_map[1])
                 push!(linear_maps,linear_map)
             end
         end
     end
-    A=mapreduce(permutedims, vcat, [Float64.(row) for row in linearmap_coefficients])
-    return A
+    A=mapreduce(permutedims, vcat, [Float64.(row) for row in exponents])
+    b=vec(coefficients)
+    return A,b
 end
 
 @doc"""
-    get_tilde_matrices(f)
+    linearmap_matrices(f::TropicalPuiseuxRational)
 
-Finds the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical polynomial or tropical rational map.
+Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical rational map.
 """
-function get_tilde_matrices(f)
-    function tilde_matrix(A,row)
-        return A-ones(size(A)[1],1)*reshape(A[row,:],(1,size(A)[2]))
-    end
-    if typeof(f) <: TropicalPuiseuxPoly{Rational{BigInt}}
-        A=pmap_exponent_matrix(f)
-        tilde_matrices=[tilde_matrix(A,row) for row in 1:size(A)[1]]
-    elseif typeof(f) <: TropicalNN.TropicalPuiseuxRational{Rational{BigInt}}
-        A_num=pmap_exponent_matrix(f.num)
-        A_den=pmap_exponent_matrix(f.den)
-        # we consider each of the possible intersections of polyhedra
-        tilde_matrices=[vcat(tilde_matrix(A_num,row_num),tilde_matrix(A_den,row_den)) for row_den in 1:size(A_den)[1], row_num in size(A_num)[1]]
-    else
-        error("Provide a tropical polynomial or a tropical rational map.")
-    end
-    return tilde_matrices
+function linearmap_matrices(f::TropicalPuiseuxRational)
+    Anum,bnum=linearmap_matrices(f.num)
+    Aden,bden=linearmap_matrices(f.den)
+    return (Anum,Aden),(bnum,bden)
 end
+
+@doc"""
+    tilde_matrices(A::Matrix)
+
+Finds all of the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical polynomial.
+"""
+function tilde_matrices(A::Matrix)
+    m,n=size(A)
+    ones_vector=ones(m,1)
+    return [A-ones_vector*reshape(A[row,:],(1,n)) for row in 1:m]
+end
+
+@doc"""
+    tilde_matrices(As::Tuple{Matrix, Matrix})
+
+Finds all of the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical rational map.
+"""
+function tilde_matrices(As::Tuple{Matrix, Matrix})
+    m_1,n=size(As[1])
+    m_2=size(As[2])[1]
+    ones_matrix=ones(m_1+m_2,2)
+    return [vcat(As[1],As[2])-ones_matrix*vcat(As[1][row_num:row_num,:],As[2][row_den:row_den,:]) for row_den in 1:m_2, row_num in 1:m_1]
+end
+
+@doc"""
+    tilde_vectors(b::Vector)
+
+Find the transformed vectors used to determine the effective radius of a tropical polynomial
+"""
+function tilde_vectors(b::Vector)
+    return [b-b[row]*ones(length(b)) for row in 1:length(b)]
+end
+
+@doc"""
+    positive_component(b::Vector)
+
+Returns the vector with its negative entries set to zero.
+"""
+function positive_component(b::Vector)
+    return vec([max(0,entry) for entry in b])
+end
+
+############### Hoffman Algorithms ###############
 
 @doc"""
     surjectivity_test(A)
 
 Solves the optimisation problem which determines whether the matrix has surjectivity with respect to the matrix from which it was sampled.
 """
-function surjectivity_test(A)
+function surjectivity_test(A::Matrix)
     n = size(A, 2)
     m = size(A, 1)
 
     # setting up the model
-    model = Model(GLPK.Optimizer)
+    model=Model(GLPK.Optimizer)
     @variable(model,x[1:m]>=0)
     @variable(model,t)
     @objective(model,Min,t)
@@ -81,13 +114,13 @@ function surjectivity_test(A)
 end
 
 @doc"""
-    mat_exact_hoff(A)
+    exact_hoff(A::Matrix)
 
 Computes the Hoffman constant of the matrix `A` using a brute force approach.
 """
-function mat_exact_hoff(A)
-    m = size(A, 1)
-    H = 0.0
+function exact_hoff(A::Matrix)
+    m=size(A, 1)
+    H=0.0
     # iterating over sub-matrices of A
     for j in 1:m
         subsets = collect(combinations(1:m, j))
@@ -95,9 +128,9 @@ function mat_exact_hoff(A)
             AA=A[subset,:]
             # solving the optimisation problem
             y,t=surjectivity_test(AA) 
-            if t > 0
+            if t>0
                 # in this case the subset is A-surjective
-                H = max(H, 1/t)
+                H=max(H,1/t)
             end
         end
     end
@@ -105,11 +138,11 @@ function mat_exact_hoff(A)
 end
 
 @doc"""
-    mat_upper_hoff(A)
+    upper_hoff(A::Matrix)
 
 Computes an upper bound on Hoffman constant of the matrix `A` by using the lowest singular value as a proxy for the optimal value of the optimisation problem for A-surjectivity.
 """
-function mat_upper_hoff(A)
+function upper_hoff(A::Matrix)
     m,n=size(A)
     HU=0.0
     # iterating over sub-matrices of A
@@ -131,17 +164,17 @@ function mat_upper_hoff(A)
 end
 
 @doc"""
-    mat_lower_hoff(A,B=10)
+    lower_hoff(A::Matrix,num_samples::Int=10)
 
 Computes a lower bound on Hoffman constant of the matrix `A` by only considering a fixed number of random sub-matrices of A.
 """
-function mat_lower_hoff(A,num_samples=10)
+function lower_hoff(A::Matrix,num_samples::Int=10)
     m,n=size(A)
     HL=0.0
     # if the number of sub-matrices we are considering exceeds the total number of sub-matrices in A
     # we can just use the exact method with no additional computational resources
     if num_samples>=2^m
-        HL=mat_exact_hoff(A)
+        HL=exact_hoff(A)
     else
         for i in 1:num_samples
             # consider random sub-matrices
@@ -157,44 +190,104 @@ function mat_lower_hoff(A,num_samples=10)
     return HL
 end
 
+
 @doc"""
-    map_exact_hoff(f)
+    exact_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
 
 Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function map_exact_hoff(f)
+function exact_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
     hoff_const=0
-    for tilde_matrix in get_tilde_matrices(f)
+    A,b=linearmap_matrices(f)
+    for tilde_matrix in tilde_matrices(A)
         # constant is taken to be the maximum over each of the tilde matrices
-        hoff_const=max(hoff_const,mat_exact_hoff(tilde_matrix))
+        hoff_const=max(hoff_const,exact_hoff(tilde_matrix))
     end
-    return hoff_const
+    if return_matrices
+        return hoff_const,A,b
+    else
+        return hoff_const
+    end
 end
 
 @doc"""
-    map_upper_hoff(f)
+    upper_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
 
 Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function map_upper_hoff(f)
+function upper_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
     hoff_upper=0
-    for tilde_matrix in get_tilde_matrices(f)
+    A,b=linearmap_matrices(f)
+    for tilde_matrix in tilde_matrices(A)
         # to ensure we have an upper bound we need to take the maximum across all upper bounds
-        hoff_upper=max(hoff_upper,mat_exact_hoff(tilde_matrix))
+        hoff_upper=max(hoff_upper,upper_hoff(tilde_matrix))
     end
-    return hoff_upper
+    if return_matrices
+        return hoff_upper,A,b
+    else
+        return hoff_upper
+    end
 end
 
 @doc"""
-    map_upper_hoff(f)
+    lower_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},num_samples::Int=10)
 
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function map_lower_hoff(f,num_samples=10)
+function lower_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},num_samples::Int=10;return_matrices::Bool=false)
     hoff_lower=Inf
-    for tilde_matrix in get_tilde_matrices(f)
+    A,b=linearmap_matrices(f)
+    for tilde_matrix in tilde_matrices(A)
         # to ensure we have a lower bound we must take the minimum over all lower bounds
-        hoff_lower=min(hoff_lower,mat_lower_hoff(tilde_matrix,num_samples))
+        hoff_lower=min(hoff_lower,lower_hoff(tilde_matrix,num_samples))
     end
-    return hoff_lower
+    if return_matrices
+        return hoff_lower,A,b
+    else
+        return hoff_lower
+    end
+end
+
+############### Effective Radius ###############
+
+@doc"""
+    exact_er(f::TropicalPuiseuxPoly)
+
+Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
+"""
+function exact_er(f::TropicalPuiseuxPoly)
+    hoff_const,A,b=exact_hoff(f,return_matrices=true)
+    tilde_bs=tilde_vectors(b)
+    return hoff_const*maximum([norm(positive_component(tilde_b),Inf) for tilde_b in tilde_bs])
+end
+
+@doc"""
+    upper_er(f::TropicalPuiseuxPoly)
+
+Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
+"""
+function upper_er(f::TropicalPuiseuxPoly)
+    hoff_upper,A,b=upper_hoff(f,return_matrices=true)
+    tilde_bs=tilde_vectors(b)
+    return hoff_upper*maximum([norm(positive_component(tilde_b),Inf) for tilde_b in tilde_bs])
+end
+
+@doc"""
+    exact_er(f::TropicalPuiseuxRational)
+
+Provides an upper bound on the effective radius of a tropical rational map using exact Hoffman constant computations.
+"""
+function exact_er(f::TropicalPuiseuxRational)
+    hoff_const,A,b=exact_hoff(f,return_matrices=true)
+    return hoff_const*max(maximum(b[1])-minimum(b[1]),maximum(b[2])-minimum(b[2]))
+end
+
+@doc"""
+    upper_er(f::TropicalPuiseuxRational)
+
+Provides an upper bound on the effective radius of a tropical rational map using upper bound approximations of the Hoffman constant.
+"""
+function upper_er(f::TropicalPuiseuxRational)
+    hoff_upper,A,b=upper_hoff(f,return_matrices=true)
+    return hoff_upper*max(maximum(b[1])-minimum(b[1]),maximum(b[2])-minimum(b[2]))
 end

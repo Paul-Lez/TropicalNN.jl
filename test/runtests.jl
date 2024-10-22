@@ -47,7 +47,7 @@ using Oscar
     # one-dimensional pmap 0*T^1 + 0*T^2 + -1*T^3
     pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2]),Rational{BigInt}.([3])],false)
 
-    reps=pmap_reps(pmap)
+    reps=m_reps(pmap)
     @test reps==Dict{String, Vector{Any}}("m_reps" => [Array{Float64}[[0.0; 1.0; 2.0;;], [0.0, 0.0, 1.0]], Array{Float64}[[-1.0; 0.0; 1.0;;], [0.0, 0.0, 1.0]], Array{Float64}[[-2.0; -1.0; 0.0;;], [-1.0, -1.0, 0.0]]], "f_indices" => [1, 2, 3])
 
     bounding_box=get_full_bounding_box(pmap,reps)
@@ -70,7 +70,7 @@ using Oscar
     # one-dimensional rational map (0*T^0 + 0*T^3) / (0*T^1 + -1*T^2)
     pmap=TropicalNN.TropicalPuiseuxRational(TropicalPuiseuxPoly(Rational{BigInt}.([0,0]),[Rational{BigInt}.([3]),Rational{BigInt}.([0])],false),TropicalPuiseuxPoly(Rational{BigInt}.([0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2])],false))
 
-    reps=m_reps(pmap)
+    reps=formatted_reps(pmap)
     @test reps==Dict{String, Vector}("m_reps" => Vector{Array{Float64}}[[[0.0; 3.0; 0.0; 1.0; 1.0; -1.0;;], [0.0, 0.0, 0.0, 1.0, 2.0, 1.0]], [[-3.0; 0.0; 0.0; 1.0; 1.0; -1.0;;], [0.0, 0.0, 0.0, 1.0, 2.0, 1.0]], [[-3.0; 0.0; -1.0; 0.0; 1.0; -1.0;;], [0.0, 0.0, -1.0, 0.0, 2.0, 1.0]]], "f_indices" => Any[[1, 1], [2, 1], [2, 2]])
 
     linear_maps=get_linear_maps(pmap,reps["f_indices"])
@@ -79,35 +79,48 @@ using Oscar
     # projecting representations
 
     pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0.5,1,0.1]),[Rational{BigInt}.([0,1,1]),Rational{BigInt}.([0.5,0.5,0.5]),Rational{BigInt}.([1,0,0]),Rational{BigInt}.([0.5,0.5,1])],false)
-    reps=m_reps(pmap)
-    @test reps["m_reps"]==Vector{Array{Float64}}[[[0.0 0.0 0.0; 0.5 -0.5 -0.5; 0.5 -0.5 0.0; 1.0 -1.0 -1.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [0.0, -0.5, -0.1, -1.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], [[-0.5 0.5 0.0; 0.0 0.0 -0.5; 0.0 0.0 0.0; 0.5 -0.5 -1.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [0.1, -0.4, 0.0, -0.9, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], [[-1.0 1.0 1.0; -0.5 0.5 0.5; -0.5 0.5 1.0; 0.0 0.0 0.0; 1.0 0.0 0.0; -1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 -1.0 0.0; 0.0 0.0 1.0; 0.0 0.0 -1.0], [1.0, 0.5, 0.9, 0.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]]]
+    reps=formatted_reps(pmap,rot_matrix=[1 0 0;0 1 0;0 0 1])
+    @test reps["m_reps"]==Any[Array{Float64}[[0.0 0.0; 0.5 -0.5; 0.5 -0.5; 1.0 -1.0; 1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0; 0.0 0.0; 0.0 0.0], [0.0, -0.5, -0.1, -1.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], Array{Float64}[[-1.0 1.0; -0.5 0.5; -0.5 0.5; 0.0 0.0; 1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0; 0.0 0.0; 0.0 0.0], [1.0, 0.5, 0.9, 0.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]]]
 
     # Hoffman tests
 
-    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1]),digits=2)==1.0
-    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1;-1 -1 -1]),digits=2)==3.0
-    @test round(mat_exact_hoff([1 0 0;0 1 0;0 0 1;-1 0 0;0 -1 0;0 0 -1]),digits=2)==1.0
+    @test round(exact_hoff([1 0 0;0 1 0;0 0 1]),digits=2)==1.0
+    @test round(exact_hoff([1 0 0;0 1 0;0 0 1;-1 -1 -1]),digits=2)==3.0
+    @test round(exact_hoff([1 0 0;0 1 0;0 0 1;-1 0 0;0 -1 0;0 0 -1]),digits=2)==1.0
 
     mat=rand(3,3)
-    h_exact=mat_exact_hoff(mat)
-    h_upper=mat_upper_hoff(mat)
-    h_lower=mat_lower_hoff(mat)
+    h_exact=exact_hoff(mat)
+    h_upper=upper_hoff(mat)
+    h_lower=lower_hoff(mat)
     @test h_exact<=h_upper
     @test h_exact>=h_lower
 
     pmap=random_pmap(3,3)
-    h_exact=map_exact_hoff(pmap)
-    h_upper=map_upper_hoff(pmap)
-    h_lower=map_lower_hoff(pmap)
+    h_exact=exact_hoff(pmap)
+    h_upper=upper_hoff(pmap)
+    h_lower=lower_hoff(pmap)
     @test h_exact<=h_upper
     @test h_exact>=h_lower
 
     w,b,t=random_mlp([2,2,1])
     rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
-    h_exact=map_exact_hoff(rmap)
-    h_upper=map_upper_hoff(rmap)
-    h_lower=map_lower_hoff(rmap)
+    h_exact=exact_hoff(rmap)
+    h_upper=upper_hoff(rmap)
+    h_lower=lower_hoff(rmap)
     @test h_exact<=h_upper
     @test h_exact>=h_lower
+
+    # effective radius tests
+
+    pmap=random_pmap(3,3)
+    er_exact=exact_er(pmap)
+    er_upper=upper_er(pmap)
+    @test er_exact<=er_upper
+
+    w,b,t=random_mlp([2,2,1])
+    rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+    er_exact=exact_er(rmap)
+    er_upper=upper_er(rmap)
+    @test er_exact<=er_upper
 
 end

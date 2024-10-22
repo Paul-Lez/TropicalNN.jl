@@ -62,38 +62,35 @@ module TropicalNN
         get_surface_points,
         get_linear_maps,
         get_linear_regions,
-        
-        pmap_reps,
         bound_reps,
         project_reps,
         intersect_reps,
         m_reps,
+        formatted_reps,
         polyhedra_from_reps,
-
         plotpoly,
         plotsurface,
         plotlevelset,
         plot_linear_regions,
         plot_linear_maps,
 
-        pmap_exponent_matrix,
-        get_tilde_matrices,
+        linearmap_matrices,
+        tilde_matrices,
+        tilde_vectors,
+        positive_component,
         surjectivity_test,
-        mat_exact_hoff,
-        mat_upper_hoff,
-        mat_lower_hoff,
-        map_exact_hoff,
-        map_upper_hoff,
-        map_lower_hoff
+        exact_hoff,
+        upper_hoff,
+        lower_hoff,
+        exact_er,
+        upper_er
 
     include("rat_maps.jl")
     include("linear_regions.jl")
     include("mlp_to_trop.jl")
     include("mlp_to_trop_with_elim.jl")
 
-    include("vis_utilities.jl")
-    include("vis_representations.jl")
-    include("vis_plotting.jl")
+    include("visualise.jl")
 
     include("hoffman.jl")
 end
