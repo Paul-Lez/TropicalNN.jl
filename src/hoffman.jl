@@ -235,11 +235,22 @@ end
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
 function lower_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},num_samples::Int=10;return_matrices::Bool=false)
-    hoff_lower=Inf
     A,b=linearmap_matrices(f)
-    for tilde_matrix in tilde_matrices(A)
-        # to ensure we have a lower bound we must take the minimum over all lower bounds
-        hoff_lower=min(hoff_lower,lower_hoff(tilde_matrix,num_samples))
+    t_matrices=tilde_matrices(A)
+    # if we are taking more samples than there are submatrices we are using exact
+    # computations so we can take a maximum over the Hoffman constants
+    if num_samples>=2^(size(t_matrices[1])[1])
+        hoff_lower=0.0
+        for tilde_matrix in t_matrices
+            hoff_lower=max(hoff_lower,lower_hoff(tilde_matrix,num_samples))
+        end
+    # otherwise, to ensure we have a lower bound we must take the minimum 
+    # over all lower bounds
+    else
+        hoff_lower=Inf
+        for tilde_matrix in t_matrices
+            hoff_lower=min(hoff_lower,lower_hoff(tilde_matrix,num_samples))
+        end
     end
     if return_matrices
         return hoff_lower,A,b

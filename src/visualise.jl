@@ -79,16 +79,19 @@ function get_level_set_component(poly,linear_map,value)
         # level set is crossed
         if (values[1]-value)*(values[2]-value)<0
             push!(component,vertexs[1]+(vertexs[2]-vertexs[1])*(value-values[1])/(values[2]-values[1]))
-        elseif (values[1]-value)*(values[2]-value)==0
+        elseif (values[1]-value)*(values[2]-value)==0 && value!=0
             # in this case the entire edge is on the level set so we add the vertex such that
             # the edges are connected in the plot
             push!(component,vertexs[1])
+        # we deal with the case when the value is zero as the above condition could be acheived
+        # when either one of values is zero, rather than both
+        elseif value==0 
+            if values[1]==0
+                push!(component,vertexs[1])
+            elseif values[2]==0
+                push!(component,vertexs[2])
+            end
         end
-    end
-    if length(component)>0
-        # connecting the components, such that if an edge lies on the level then the
-        # edge is highlighted in the plot
-        push!(component,component[1])
     end
     return component
 end
@@ -134,7 +137,7 @@ For each unique linear map, the polyhedra that are acted on by this linear map a
 function get_linear_regions(polyhedra,linear_maps)
     num_distinct_linear_maps=length(Set(linear_maps))
     # color coding each distinct linear map
-    colors=[ColorSchemes.get(ColorSchemes.Paired_8,rand()) for _ in 1:num_distinct_linear_maps]
+    colors=[ColorSchemes.get(ColorSchemes.Paired_8,(i-1)/(num_distinct_linear_maps-1)) for i in 1:num_distinct_linear_maps]
     linear_regions=Dict()
     relative_index=1
     for (linear_map,poly) in zip(linear_maps,polyhedra)
@@ -158,10 +161,10 @@ end
 Takes as input a set of matrix representations for polyhedra, and bounds them in a box determined by `bounding_box`.
 """
 function bound_reps(reps,bounding_box)
-    function bound_rep(rep,bounding_box)
-        n=length(collect(keys(bounding_box)))
-        A,b=rep[1],rep[2]
-        # bound representations by introducing half spaces to the matrix representation
+    n=length(collect(keys(bounding_box)))
+    bounded_reps=Dict("m_reps" => [], "f_indices" => [])
+    for (m_rep,f_idx) in zip(reps["m_reps"],reps["f_indices"])
+        A,b=m_rep[1],m_rep[2]
         for k in 1:n
             # adding the upper bound
             A=vcat(A,[j==k ? 1 : 0 for j in 1:n]')
@@ -170,9 +173,12 @@ function bound_reps(reps,bounding_box)
             A=vcat(A,[j==k ? -1 : 0 for j in 1:n]')
             push!(b,-bounding_box[k][1])
         end
-        return [A,b]
+        if Oscar.is_feasible(Oscar.polyhedron(A,b))
+            push!(bounded_reps["m_reps"],[A,b])
+            push!(bounded_reps["f_indices"],f_idx)
+        end
     end
-    return Dict("m_reps" => [bound_rep(m_rep,bounding_box) for m_rep in reps["m_reps"]], "f_indices" => reps["f_indices"])
+    return bounded_reps
 end
 
 @doc""""
@@ -214,8 +220,8 @@ Computes the matrix representation of the polyhedron corresponding to each monom
 """
 function m_reps(f::TropicalPuiseuxPoly)
     reps=Dict("m_reps" => [], "f_indices" => [])
-    for i in TropicalNN.eachindex(f)
-        A=mapreduce(permutedims,vcat,[Float64.(f.exp[j])-Float64.(f.exp[i]) for j in TropicalNN.eachindex(f)])
+    for i in eachindex(f)
+        A=mapreduce(permutedims,vcat,[Float64.(f.exp[j])-Float64.(f.exp[i]) for j in eachindex(f)])
         b=[Float64(Rational(f.coeff[f.exp[i]]))-Float64(Rational(f.coeff[j])) for j in f.exp]
 
         p_oscar=Oscar.polyhedron(A,b)
@@ -330,7 +336,7 @@ end
 Given a polyhedron, its corresponding linear map, and a the level set of focus, this function plots the region on the polyhedron where the level set is attained. 
 """
 function plotlevelset(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},poly,linear_map,level_set_value,ax)
-    component=get_level_set_component(polyhedra,linear_map,level_set_value)
+    component=get_level_set_component(poly,linear_map,level_set_value)
     # if component is empty then the level set does not cross f in the region poly
     if length(component)>0
         if nvars(f)==1
@@ -353,7 +359,7 @@ function plot_linear_regions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRationa
     fig=GLMakie.Figure()
     ax=GLMakie.Axis(fig[1,1])
 
-    reps=formatted_reps(f,bounding_box,rot_matrix)
+    reps=formatted_reps(f,bounding_box=bounding_box,rot_matrix=rot_matrix)
     polys=polyhedra_from_reps(reps)
     linear_maps=get_linear_maps(f,reps["f_indices"])
     linear_regions=get_linear_regions(polys,linear_maps)
@@ -388,7 +394,7 @@ function plot_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};
         error("Only supported for rational maps with at most two input dimensions")
     end
 
-    reps=formatted_reps(f,bounding_box,rot_matrix)
+    reps=formatted_reps(f,bounding_box=bounding_box)
     polys=polyhedra_from_reps(reps)
     linear_maps=get_linear_maps(f,reps["f_indices"])
     linear_regions=get_linear_regions(polys,linear_maps)
