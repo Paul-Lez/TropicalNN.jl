@@ -130,14 +130,14 @@ function get_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},f
 end
 
 @doc"""
-    get_linear_regions(polyhedra,linear_maps)
+    get_linear_regions(polyhedra,linear_maps,with_colors::Bool=true)
 
 For each unique linear map, the polyhedra that are acted on by this linear map are identified. Moreover, a color is attributed to each unique linear map such that they can be distinguished in the visualisations.
 """
 function get_linear_regions(polyhedra,linear_maps)
-    num_distinct_linear_maps=length(Set(linear_maps))
     # color coding each distinct linear map
-    colors=[ColorSchemes.get(ColorSchemes.Paired_8,(i-1)/(num_distinct_linear_maps-1)) for i in 1:num_distinct_linear_maps]
+    num_distinct_linear_maps=length(Set(linear_maps))
+    colors=shuffle([ColorSchemes.get(ColorSchemes.Paired_8,(i-1)/(max(1,num_distinct_linear_maps-1))) for i in 1:num_distinct_linear_maps])
     linear_regions=Dict()
     relative_index=1
     for (linear_map,poly) in zip(linear_maps,polyhedra)
@@ -191,12 +191,13 @@ function project_reps(reps,rot_matrix)
     projected_reps=Dict("m_reps" => [], "f_indices" => [])
     for (m_rep,f_idx) in zip(reps["m_reps"],reps["f_indices"])
         # rotate the coordinates
-        A=m_rep[1]*inv_rot_matrix
+        A=Float64.(m_rep[1])*inv_rot_matrix
+        b=Float64.(m_rep[2])
         # equivalent to setting the higher dimensions to zero, so that we obtain
         # the polyhedron obtained on the two-dimensional plane of the first two dimensions.
-        p_oscar=Oscar.polyhedron(A[:,1:2],m_rep[2])
+        p_oscar=Oscar.polyhedron(A[:,1:2],b)
         if Oscar.is_feasible(p_oscar)
-            push!(projected_reps["m_reps"],[A[:,1:2],m_rep[2]])
+            push!(projected_reps["m_reps"],[A[:,1:2],b])
             push!(projected_reps["f_indices"],f_idx)
         end
     end
@@ -221,8 +222,8 @@ Computes the matrix representation of the polyhedron corresponding to each monom
 function m_reps(f::TropicalPuiseuxPoly)
     reps=Dict("m_reps" => [], "f_indices" => [])
     for i in eachindex(f)
-        A=mapreduce(permutedims,vcat,[Float64.(f.exp[j])-Float64.(f.exp[i]) for j in eachindex(f)])
-        b=[Float64(Rational(f.coeff[f.exp[i]]))-Float64(Rational(f.coeff[j])) for j in f.exp]
+        A=mapreduce(permutedims,vcat,[f.exp[j]-f.exp[i] for j in eachindex(f)])
+        b=[Rational(f.coeff[f.exp[i]])-Rational(f.coeff[j]) for j in f.exp]
 
         p_oscar=Oscar.polyhedron(A,b)
         # Only full dimensional polyhedra will be relevant to the plots
@@ -282,12 +283,16 @@ function formatted_reps(f;bounding_box=nothing,rot_matrix=nothing)
 end
 
 @doc""""
-    polyhedra_from_reps(reps)
+    polyhedra_from_reps(reps,oscar::Bool=false)
 
-Given a set of matrix representations of polyhedra, returned are the `Polyhedra.jl` polyhedron representations.
+Given a set of matrix representations of polyhedra, returned by default are the `Polyhedra.jl` polyhedron representations, otherwise the `Oscar.jl` polyhedron representations can be returned.
 """
-function polyhedra_from_reps(reps)
-    return [Polyhedra.polyhedron(Polyhedra.hrep(m_rep[1],m_rep[2]),CDDLib.Library(:exact)) for m_rep in reps["m_reps"]]
+function polyhedra_from_reps(reps,oscar::Bool=false)
+    if oscar
+        return [Oscar.polyhedron(m_rep[1],m_rep[2]) for m_rep in reps["m_reps"]]
+    else
+        return [Polyhedra.polyhedron(Polyhedra.hrep(m_rep[1],m_rep[2]),CDDLib.Library(:exact)) for m_rep in reps["m_reps"]]
+    end
 end
 
 ####################### Plotting Functions ##################################

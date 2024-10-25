@@ -8,4 +8,6 @@ using Test
 
     include("./UnitTests/hoffman.jl")
 
+    include("./UnitTests/statistics.jl")
+
 end

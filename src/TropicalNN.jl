@@ -8,10 +8,13 @@ module TropicalNN
     using CDDLib
     using ColorSchemes
     using GLMakie
+    using Random
 
     using JuMP
     using GLPK
     using LinearAlgebra
+
+    using Graphs
 
     import Base: string, +, *, /
 
@@ -83,7 +86,18 @@ module TropicalNN
         upper_hoff,
         lower_hoff,
         exact_er,
-        upper_er
+        upper_er,
+
+        separate_components,
+        get_statistic,
+        region_bounds,
+        region_volumes,
+        region_polyhedron_counts,
+        get_graph,
+        edge_count,
+        edge_gradients,
+        vertex_collection,
+        vertex_count
 
     include("rat_maps.jl")
     include("linear_regions.jl")
@@ -93,4 +107,6 @@ module TropicalNN
     include("visualise.jl")
 
     include("hoffman.jl")
+
+    include("statistics.jl")
 end
