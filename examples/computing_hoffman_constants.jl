@@ -2,8 +2,7 @@
 # tropical rational maps. Moreover, we obtain lower and upper bounds on these values
 # and compare the time taken to get these values
 
-using TropicalNN
-using Random
+using TropicalNN, Random
 
 # Computing the Hoffman constant of a matrix, a tropical polynomial 
 # or a tropical rational map works all in the same way
