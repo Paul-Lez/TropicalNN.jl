@@ -2,8 +2,7 @@
 # The effective radius of a tropical polynomial is determined from its Hoffman constant.
 # It represents a radius, under the infinity norm, in which all the linear regions enter. 
 
-using TropicalNN
-using GLMakie
+using TropicalNN, GLMakie
 
 # Generate a random tropical polynomial in two variables with four monomials
 pmap=random_pmap(2,4)
