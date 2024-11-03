@@ -52,7 +52,8 @@ function interior_point(polys::Array)
     component_interiors=[]
     for poly in polys
         # Obtain an interior point for each polyhedron in the collection
-        push!(component_interiors,Oscar.relative_interior_point(poly))
+        vertices=Oscar.vertices(poly)
+        push!(component_interiors,sum(vertices)/length(vertices))
     end
     # Compute the average of the interior, with the intention of obtaining an interior point of their union
     return [Float64(sum([point[k] for point in component_interiors])/length(polys)) for k in 1:length(component_interiors[1])]
@@ -248,7 +249,7 @@ function get_graph(linear_regions::Dict)
     for k in 1:num_regions
         # Populate the node data with an interior point 
         # and the volume of the corresponding region
-        g[k]=Dict("interior_point"=>interior_point(region_polys[k]),"volume"=>volumes(region_polys[k]))
+        g[k]=Dict("interior_point"=>interior_point(region_polys[k]),"volume"=>sum(volumes(region_polys[k])))
     end
     # Add the edges between regions that are connected
     for k in 1:(num_regions-1)

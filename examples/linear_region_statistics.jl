@@ -19,19 +19,19 @@ linear_regions=separate_components(get_linear_regions(polys,linear_maps))
 
 # Using the Oscar library we can obtain a few statistics on the geometry of these linear regions
 # We can determine whether regions are bounded
-bounds=region_bounds(linear_regions)
+bds=bounds(linear_regions)
 println("Region Bounds:")
-for (key,value) in bounds
+for (key,value) in bds
     println(string(value))
 end
 # We can determine the volume of these regions
-volumes=region_volumes(linear_regions)
+vols=volumes(linear_regions)
 println("Region Volumes:")
-for (key,value) in volumes
+for (key,value) in vols
     println(string(value))
 end
 # We can determine how many polyhedra contribute to each linear region
-counts=region_polyhedron_counts(linear_regions)
+counts=polyhedron_counts(linear_regions)
 println("Region Polyhedra Counts:")
 for (key,value) in counts
     println(string(value))
@@ -39,14 +39,19 @@ end
 
 # We can also leverage the tropical representation to construct a graph on thte input space of this neural network.
 # Namely, we take each linear region to be a node and add an edge between nodes when the linear regions are connected along a face.
-G,edge_attributes=get_graph(f)
+G=get_graph(f)
 # We can visualise this graph and compare it to the visualisation of the neural networks linear regions.
 fig=GLMakie.Figure()
 ax=Axis(fig[1,1])
 graphplot!(ax,G)
-GLMakie.save("./package/examples/outputs/statistics_graph.png",fig)
+GLMakie.save("./examples/outputs/statistics_graph.png",fig)
 fig,ax=plot_linear_regions(f)
-GLMakie.save("./package/examples/outputs/statistics_linear_regions.png",fig)
+GLMakie.save("./examples/outputs/statistics_linear_regions.png",fig)
+
+# We can also verify that the node data collected in the graph makes sense
+scatter!(ax,[G[v]["interior_point"][1] for v in labels(G)],[G[v]["interior_point"][2] for v in labels(G)],color=:red)
+text!(ax,[G[v]["interior_point"][1] for v in labels(G)],[G[v]["interior_point"][2] for v in labels(G)],text=[string(G[v]["volume"]) for v in labels(G)])
+GLMakie.save("./examples/outputs/statistics_linear_regions_with_data.png",fig)
 
 # We use Graphs.jl to construct this graph and hence we can leverage its functionality to explore the properties of this graph.
 # Some measures of interest may include the following.
