@@ -15,6 +15,7 @@ module TropicalNN
     using LinearAlgebra
 
     using Graphs
+    using MetaGraphsNext
 
     import Base: string, +, *, /
 
@@ -89,10 +90,10 @@ module TropicalNN
         upper_er,
 
         separate_components,
-        get_statistic,
-        region_bounds,
-        region_volumes,
-        region_polyhedron_counts,
+        map_statistic,
+        bounds,
+        volumes,
+        polyhedron_counts,
         get_graph,
         edge_count,
         edge_gradients,
