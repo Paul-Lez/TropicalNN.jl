@@ -96,6 +96,8 @@ module TropicalNN
         polyhedron_counts,
         get_graph,
         edge_count,
+        edge_lengths,
+        edge_directions,
         edge_gradients,
         vertex_collection,
         vertex_count

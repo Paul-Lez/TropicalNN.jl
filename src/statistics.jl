@@ -357,6 +357,115 @@ function edge_gradients(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     return edge_gradients(get_graph(f))
 end
 
+# Edge lengths
+
+@doc"""
+    edge_lengths(g::MetaGraph)
+
+Calculate the lengths of the edges at the intersection of linear regions. Only returns the lengths of finite edges.
+"""
+function edge_lengths(g::MetaGraph)
+    function add_l(ls,vertex,len)
+        if haskey(ls,vertex)
+            push!(ls[vertex],len)
+        else
+            ls[vertex]=[len]
+        end
+        return ls
+    end
+    # We want to obtain the lengths of the linear regions as a collective
+    ls_full=[]
+    # We want to collect the lengths of the outgoing edges for each node separately
+    ls_with_source=Dict()
+    for e in collect(edge_labels(g))
+        e_int=g[e[1],e[2]]["intersection"]
+        vs=Oscar.vertices(e_int)
+        if length(vs)!=1 # We only want to consider finite edges
+            len=sqrt(Float64((vs[1][1]-vs[2][1])^2+(vs[1][2]-vs[2][2])^2))
+            # We add the edge to each node
+            ls_with_source=add_l(ls_with_source,vs[1],len)
+            ls_with_source=add_l(ls_with_source,vs[2],len)
+            push!(ls_full,len)
+        end
+    end
+    ls_with_source["full"]=ls_full
+    return ls_with_source
+end
+
+@doc"""
+    edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+
+Calculates the lengths of the edges eminating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
+"""
+function edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    # For one-dimensional polyhedra, there is no concept of
+    # gradient for the intersection
+    if nvars(f)==1
+        error("Not supported for univariate tropical polynomials or tropical rational maps.")
+    end
+    return edge_lengths(get_graph(f))
+end
+
+# Edge directions
+
+@doc"""
+    edge_directions(g::MetaGraph)
+
+Calculate the direction vector of the edges at the intersection of linear regions.
+"""
+function edge_directions(g::MetaGraph)
+    function add_d(ds,vertex,d)
+        if haskey(ds,vertex)
+            push!(ds[vertex],d)
+        else
+            ds[vertex]=[d]
+        end
+        return ds
+    end
+    # We want to obtain the directions of the edges of the linear regions as a collective
+    # We canonically choose the vector representation that is positive in the first component
+    ds_full=[]
+    # We want to collect the directions of the outgoing edges for each node separately.
+    # We canonically choose the vector representation as the normalised direction vector from the
+    # source node to the destination node.
+    ds_with_source=Dict()
+    for e in collect(edge_labels(g))
+        e_int=g[e[1],e[2]]["intersection"]
+        vs=Oscar.vertices(e_int)
+        if length(vs)==1 # In this case the edge is an infinite ray
+            ray=Float64.(Oscar.rays(e_int)[1])
+            d=[ray[1],ray[2]]
+            d=d./(sqrt(d[1]^2+d[2]^2))
+            # We add the edge to the singular source node
+            ds_with_source=add_d(ds_with_source,vs[1],d)
+            push!(ds_full,d.*(abs(d[1])/d[1]))
+        else # In this case the edge is bounded by vertices
+            # We add the edge to each node
+            d1=Float64.([vs[2][1]-vs[1][1],vs[2][2]-vs[1][2]])
+            d2=Float64.([vs[1][1]-vs[2][1],vs[1][2]-vs[2][2]])
+            ds_with_source=add_d(ds_with_source,vs[1],d1./sqrt(d1[1]^2+d1[2]^2))
+            ds_with_source=add_d(ds_with_source,vs[2],d2./sqrt(d2[1]^2+d2[2]^2))
+            push!(ds_full,d1.*(abs(d1[1])/d1[1]))
+        end
+    end
+    ds_with_source["full"]=ds_full
+    return ds_with_source
+end
+
+@doc"""
+    edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+
+Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
+"""
+function edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    # For one-dimensional polyhedra, there is no concept of
+    # a direction for the intersection
+    if nvars(f)==1
+        error("Not supported for univariate tropical polynomials or tropical rational maps.")
+    end
+    return edge_directions(get_graph(f))
+end
+
 # Collect vertices
 
 @doc"""
