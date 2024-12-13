@@ -91,6 +91,7 @@ module TropicalNN
 
         separate_components,
         map_statistic,
+        interior_points,
         bounds,
         volumes,
         polyhedron_counts,

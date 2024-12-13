@@ -44,33 +44,32 @@ end
 # Interior point
 
 @doc"""
-    interior_point(polys::Array)
+    interior_points(polys::Array)
 
-Returns the average of interior points for a collection of polyhedron. Note that the returned point is only guaranteed to be an interior point if the union of the convex polyhedra is convex.
+Returns interior points for each polyhedron in the collection.
 """
-function interior_point(polys::Array)
+function interior_points(polys::Array)
     component_interiors=[]
     for poly in polys
         # Obtain an interior point for each polyhedron in the collection
         vertices=Oscar.vertices(poly)
         push!(component_interiors,sum(vertices)/length(vertices))
     end
-    # Compute the average of the interior, with the intention of obtaining an interior point of their union
-    return [Float64(sum([point[k] for point in component_interiors])/length(polys)) for k in 1:length(component_interiors[1])]
+    return component_interiors
 end
 
 @doc"""
-    interior_point(linear_regions::Dict)
+    interior_points(linear_regions::Dict)
 
-Returns the average of interior points for the collection of polyhedron comprising linear regions. Note that the returned point is only guaranteed to be an interior point if the union of the convex polyhedra forming a linear region is convex.
+Returns interior points for the collection of polyhedron comprising linear regions.
 """
-function interior_point(linear_regions::Dict)
+function interior_points(linear_regions::Dict)
     interior_points=Dict()
     # Iterate through each linear region and identify interior points
     for (linear_map,components) in linear_regions
         components_interiors=[]
         for polys in components
-            push!(components_interior,interior_point(polys))
+            push!(components_interior,interior_points(polys))
         end
         interior_points[linear_map]=components_interiors
     end
@@ -78,12 +77,12 @@ function interior_point(linear_regions::Dict)
 end
 
 @doc"""
-    interior_point(linear_regions::Dict)
+    interior_points(linear_regions::Dict)
 
-Returns the average of interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map. Note that the returned point is only guaranteed to be an interior point if the union of the convex polyhedra forming a linear region is convex.
+Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function interior_point(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
-    return map_statistic(interior_point,f)
+function interior_points(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    return map_statistic(interior_points,f)
 end
 
 # Bounded
@@ -249,7 +248,7 @@ function get_graph(linear_regions::Dict)
     for k in 1:num_regions
         # Populate the node data with an interior point 
         # and the volume of the corresponding region
-        g[k]=Dict("interior_point"=>interior_point(region_polys[k]),"volume"=>sum(volumes(region_polys[k])))
+        g[k]=Dict("interior_point"=>interior_points(region_polys[k]),"volume"=>volumes(region_polys[k]))
     end
     # Add the edges between regions that are connected
     for k in 1:(num_regions-1)

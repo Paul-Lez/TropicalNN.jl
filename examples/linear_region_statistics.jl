@@ -49,9 +49,9 @@ fig,ax=plot_linear_regions(f)
 GLMakie.save("./examples/outputs/statistics_linear_regions.png",fig)
 
 # We can also verify that the node data collected in the graph makes sense
-scatter!(ax,[G[v]["interior_point"][1] for v in labels(G)],[G[v]["interior_point"][2] for v in labels(G)],color=:red)
-text!(ax,[G[v]["interior_point"][1] for v in labels(G)],[G[v]["interior_point"][2] for v in labels(G)],text=[string(G[v]["volume"]) for v in labels(G)])
-GLMakie.save("./examples/outputs/statistics_linear_regions_with_data.png",fig)
+scatter!(ax,reduce(vcat,[[Float64(p[1]) for p in G[v]["interior_point"]] for v in labels(G)]),reduce(vcat,[[Float64(p[2]) for p in G[v]["interior_point"]] for v in labels(G)]),color=:red)
+text!(ax,reduce(vcat,[[Float64(p[1]) for p in G[v]["interior_point"]] for v in labels(G)]),reduce(vcat,[[Float64(p[2]) for p in G[v]["interior_point"]] for v in labels(G)]),text=reduce(vcat,[[string(vol) for vol in G[v]["volume"]] for v in labels(G)]))
+GLMakie.save("./package/examples/outputs/statistics_linear_regions_with_data.png",fig)
 
 # We use Graphs.jl to construct this graph and hence we can leverage its functionality to explore the properties of this graph.
 # Some measures of interest may include the following.
