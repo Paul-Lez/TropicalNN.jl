@@ -1,4 +1,5 @@
-using Test, TropicalNN, Oscar, GLMakie
+#using Test, TropicalNN, Oscar, GLMakie
+using Test, TropicalNN, Oscar, CairoMakie
 
 @testset "Visualise" begin
 

@@ -1,4 +1,4 @@
-using TropicalNN, GraphMakie, GLMakie, Graphs
+using TropicalNN, GraphMakie, CairoMakie, Graphs
 
 # Generate a random neural network and obtain its tropical representation
 w,b,t=random_mlp([2,4,1])

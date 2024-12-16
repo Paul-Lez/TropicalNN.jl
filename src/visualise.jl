@@ -291,18 +291,18 @@ end
 @doc raw"""
     plotpoly(polyhedron,color,ax)
 
-Plots a polyhedorn in a certain color on a given GLMakie axis.
+Plots a polyhedorn in a certain color on a given Makie axis.
 """
 function plotpoly(poly,color,ax)
     if Polyhedra.fulldim(poly)==1
         # one-dimensional polyhedron are just lines
         vertices=[point[1] for point in collect(Polyhedra.points(poly))]
-        GLMakie.lines!(ax,vertices,zeros(length(vertices)),color=color,linewidth=2)
+        CairoMakie.lines!(ax,vertices,zeros(length(vertices)),color=color,linewidth=2)
     else
         # higher (two) dimensional polyhedra
         m=Polyhedra.Mesh(poly)
         try
-            GLMakie.mesh!(ax,m,color=color,alpha=0.5)
+            CairoMakie.mesh!(ax,m,color=color,alpha=0.5)
         catch
         end
     end
@@ -316,12 +316,12 @@ Given a polyhedron and its corresponding linear map, this function plots that th
 function plotsurface(poly,linear_map,color,ax)
     input_vertices,output_vertices=get_surface_points(poly,linear_map)
     if length(input_vertices)==1
-        GLMakie.lines!(ax,input_vertices[1],output_vertices,color=color,linewidth=2)
+        CairoMakie.lines!(ax,input_vertices[1],output_vertices,color=color,linewidth=2)
     else
         xs,ys=input_vertices[1],input_vertices[2]
         # the polyhedron is convex so we can plot the triangles formed by its vertices
         for triangle in Combinatorics.combinations(range(1,length(xs)),3)
-            GLMakie.mesh!(ax,xs[triangle],ys[triangle],output_vertices[triangle],color=(color,0.9),overdraw=true,shading=NoShading)
+            CairoMakie.mesh!(ax,xs[triangle],ys[triangle],output_vertices[triangle],color=(color,0.9),overdraw=true,shading=NoShading)
         end
     end
 end
@@ -336,9 +336,9 @@ function plotlevelset(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},poly
     # if component is empty then the level set does not cross f in the region poly
     if length(component)>0
         if nvars(f)==1
-            GLMakie.scatter!(ax,[point[1] for point in component],zeros(length(component)),color=:red)
+            CairoMakie.scatter!(ax,[point[1] for point in component],zeros(length(component)),color=:red)
         else
-            GLMakie.lines!(ax,[point[1] for point in component],[point[2] for point in component],color=:red,linewidth=2)
+            CairoMakie.lines!(ax,[point[1] for point in component],[point[2] for point in component],color=:red,linewidth=2)
         end
     end
 end
@@ -352,8 +352,8 @@ function plot_linear_regions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRationa
     if nvars(f)>2 && rot_matrix==nothing
         error("Please supply a rotation matrix, even if it is the identity, when there are more than two input dimensions.")
     end
-    fig=GLMakie.Figure()
-    ax=GLMakie.Axis(fig[1,1])
+    fig=CairoMakie.Figure()
+    ax=CairoMakie.Axis(fig[1,1])
 
     reps=formatted_reps(f,bounding_box=bounding_box,rot_matrix=rot_matrix)
     polys=polyhedra_from_reps(reps)
@@ -395,11 +395,11 @@ function plot_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};
     linear_maps=get_linear_maps(f,reps["f_indices"])
     linear_regions=get_linear_regions(polys,linear_maps)
 
-    fig=GLMakie.Figure()
+    fig=CairoMakie.Figure()
     if nvars(f)==1
-        ax=GLMakie.Axis(fig[1,1])
+        ax=CairoMakie.Axis(fig[1,1])
     else
-        ax=GLMakie.Axis3(fig[1,1],xreversed=xreversed,yreversed=yreversed)
+        ax=CairoMakie.Axis3(fig[1,1],xreversed=xreversed,yreversed=yreversed)
     end
 
     # plot the polyhedra for each linear region

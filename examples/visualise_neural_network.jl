@@ -1,6 +1,6 @@
 # In this file we visualise the linear regions of a neural network
 
-using TropicalNN, GLMakie
+using TropicalNN, CairoMakie
 
 # A neural network is just a tropical rational map. 
 # For simplicitly we will consider a neural network with architecture [2,4,1]
@@ -14,8 +14,8 @@ f=mlp_to_trop_with_quicksum_with_strong_elim(weights,biases,thresholds)[1]
 
 # Plot the linear regions
 fig,ax=plot_linear_regions(f)
-GLMakie.save("./examples/outputs/neural_network_linear_regions.png",fig)
+CairoMakie.save("./examples/outputs/neural_network_linear_regions.png",fig)
 
 # Plot the linear maps
 fig,ax=plot_linear_maps(f)
-GLMakie.save("./examples/outputs/neural_network_linear_maps.png",fig)
+CairoMakie.save("./examples/outputs/neural_network_linear_maps.png",fig)
