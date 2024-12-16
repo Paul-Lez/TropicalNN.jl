@@ -23,7 +23,6 @@ using Test, TropicalNN, Oscar, CairoMakie
     pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2]),Rational{BigInt}.([3])],false)
 
     reps=m_reps(pmap)
-    println([vec.(v) for v in reps["m_reps"]])
     @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[[[0, 1, 2], [0, 0, 1]], [[-1, 0, 1], [0, 0, 1]], [[-2, -1, 0], [-1, -1, 0]]]
 
     bounding_box=get_full_bounding_box(pmap,reps)
