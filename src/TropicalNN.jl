@@ -7,7 +7,6 @@ module TropicalNN
     using Polyhedra
     using CDDLib
     using ColorSchemes
-    # using GLMakie
     using CairoMakie
     using Random
 

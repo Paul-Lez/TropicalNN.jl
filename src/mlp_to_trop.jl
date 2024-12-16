@@ -167,7 +167,7 @@ function random_mlp(dims, random_thresholds=false, symbolic=true)
     return (weights, biases, thresholds)
 end 
 
-@doc"""
+@doc raw"""
     random_pmap(n_vars,n_mons)
 
 Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.

@@ -1,6 +1,6 @@
 ############### Utilities ###############
 
-@doc"""
+@doc raw"""
     separate_components(linear_regions::Dict)
 
 Separates linear regions into its disjoint components.
@@ -21,7 +21,7 @@ function separate_components(linear_regions::Dict)
     return region_components
 end
 
-@doc"""
+@doc raw"""
     map_statistic(statistic,f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},oscar::Bool=false)
 
 Applies a statistic function to a tropical polynomial or tropical rational map by calling the statistic on the corresponding linear regions.
@@ -43,7 +43,7 @@ end
 
 # Interior point
 
-@doc"""
+@doc raw"""
     interior_points(polys::Array)
 
 Returns interior points for each polyhedron in the collection.
@@ -58,7 +58,7 @@ function interior_points(polys::Array)
     return component_interiors
 end
 
-@doc"""
+@doc raw"""
     interior_points(linear_regions::Dict)
 
 Returns interior points for the collection of polyhedron comprising linear regions.
@@ -76,7 +76,7 @@ function interior_points(linear_regions::Dict)
     return interior_points
 end
 
-@doc"""
+@doc raw"""
     interior_points(linear_regions::Dict)
 
 Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
@@ -87,7 +87,7 @@ end
 
 # Bounded
 
-@doc"""
+@doc raw"""
     bounds(polys::Array)
 
 Determines whether the polyhedra in a collection are bounded.
@@ -105,7 +105,7 @@ function bounds(polys::Array)
     return component_bounded
 end
 
-@doc"""
+@doc raw"""
     bounds(linear_regions::Dict)
 
 Determines whether the polyhedra constituting linear regions are bounded.
@@ -123,7 +123,7 @@ function bounds(linear_regions::Dict)
     return bounded
 end
 
-@doc"""
+@doc raw"""
     bounds(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Determines whether the polyhedra constituting the linear region of a tropical polynomial or a tropical rational map are bounded.
@@ -134,7 +134,7 @@ end
 
 # Volumes of regions
 
-@doc"""
+@doc raw"""
     volumes(polys::Array)
 
 Finds the volumes of the polyhedra in a collection.
@@ -154,7 +154,7 @@ function volumes(polys::Array)
     return vols
 end
 
-@doc"""
+@doc raw"""
     volumes(linear_regions::Dict)
 
 Finds the volumes of the linear regions.
@@ -175,7 +175,7 @@ function volumes(linear_regions::Dict)
     return vols
 end
 
-@doc"""
+@doc raw"""
     volumes(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Finds the volumes of the linear regions corresponding to the tropical polynomial or tropical rational map.
@@ -186,7 +186,7 @@ end
 
 # Number faces contributing to a linear region
 
-@doc"""
+@doc raw"""
     polyhedron_counts(linear_regions::Dict)
 
 Returns the number of polyhedra in each linear region.
@@ -197,7 +197,7 @@ function polyhedron_counts(linear_regions::Dict)
     return poly_counts
 end
 
-@doc"""
+@doc raw"""
     polyhedron_counts(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Returns the number of polyhedra in each linear region of the tropical polynomial or tropical rational map.
@@ -208,7 +208,7 @@ end
 
 # Construct graph
 
-@doc"""
+@doc raw"""
     get_graph(linear_regions::Dict)
 
 Constructs a graph from linear regions, where linear regions are connected if they share an edge.
@@ -264,7 +264,7 @@ function get_graph(linear_regions::Dict)
     return g
 end
 
-@doc"""
+@doc raw"""
     get_graph(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Constructs a graph of linear regions corresponding to the tropical polynomial or tropical rational map.
@@ -275,7 +275,7 @@ end
 
 # Count edges
 
-@doc"""
+@doc raw"""
     edge_count(g::MetaGraph)
 
 Counts the number of edges in a graph.
@@ -284,7 +284,7 @@ function edge_count(g::MetaGraph)
     return Graphs.ne(g)
 end
 
-@doc"""
+@doc raw"""
     edge_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
@@ -300,7 +300,7 @@ end
 
 # Get edge gradients
 
-@doc"""
+@doc raw"""
     edge_gradients(edge_attributes::Dict)
 
 Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge.
@@ -342,7 +342,7 @@ function edge_gradients(g::MetaGraph)
     return gs_with_source
 end
 
-@doc"""
+@doc raw"""
     edge_gradients(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
@@ -358,7 +358,7 @@ end
 
 # Edge lengths
 
-@doc"""
+@doc raw"""
     edge_lengths(g::MetaGraph)
 
 Calculate the lengths of the edges at the intersection of linear regions. Only returns the lengths of finite edges.
@@ -391,7 +391,7 @@ function edge_lengths(g::MetaGraph)
     return ls_with_source
 end
 
-@doc"""
+@doc raw"""
     edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Calculates the lengths of the edges eminating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
@@ -407,7 +407,7 @@ end
 
 # Edge directions
 
-@doc"""
+@doc raw"""
     edge_directions(g::MetaGraph)
 
 Calculate the direction vector of the edges at the intersection of linear regions.
@@ -451,7 +451,7 @@ function edge_directions(g::MetaGraph)
     return ds_with_source
 end
 
-@doc"""
+@doc raw"""
     edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
@@ -467,7 +467,7 @@ end
 
 # Collect vertices
 
-@doc"""
+@doc raw"""
     vertex_collection(g::MetaGraph)
 
 Collects the vertices of the linear regions, along with their multiplicities, that is, how many regions share that vertex. 
@@ -487,7 +487,7 @@ function vertex_collection(g::MetaGraph)
     return vs_with_mult
 end
 
-@doc"""
+@doc raw"""
     vertex_collection(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Collects the vertices of the linear regions corresponding to the tropical polynomial or tropical rational map, along with their multiplicities, that is, how many regions share that vertex. 
@@ -498,7 +498,7 @@ end
 
 # Count vertices
 
-@doc"""
+@doc raw"""
     vertex_count(g::MetaGraph)
 
 Counts the number of vertices in the linear regions from which the graph was obtained.
@@ -507,7 +507,7 @@ function vertex_count(g::MetaGraph)
     return length(collect(keys(vertex_collection(g))))
 end
 
-@doc"""
+@doc raw"""
     vertex_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
 
 Counts the number of vertices in the linear regions corresponding to the tropical polynomial or tropical rational map.

@@ -3,7 +3,7 @@
 
 ####################### Utility Functions ##################################
 
-@doc"""
+@doc raw"""
     update_bounding_box(bounding_box,p)
 
 Expands the bounding box to contain the vertices of the polyhedron `p`.
@@ -20,7 +20,7 @@ function update_bounding_box(bounding_box,p)
     return bounding_box
 end
 
-@doc"""
+@doc raw"""
     get_full_bounding_box(f,reps)
 
 Computes the bounding box containing all intersection between the polyhedra of a tropical polynomial or tropical rational map.
@@ -45,7 +45,7 @@ function get_full_bounding_box(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRatio
     return bounding_box
 end
 
-@doc"""
+@doc raw"""
     apply_linear_map(point,linear_map)
 
 Returns the output of `linear_map` at `point`.
@@ -54,7 +54,7 @@ function apply_linear_map(point,linear_map)
     return sum([linear_map[2][j]*point[j] for j in 1:length(point)])+linear_map[1]
 end
 
-@doc"""
+@doc raw"""
     get_level_set_component(poly,linear_map,value)
 
 Returns components of points along the vertices and edges of `poly` that form the level set of value `value` for the map `linear_map`.
@@ -87,7 +87,7 @@ function get_level_set_component(poly,linear_map,value)
     return component
 end
 
-@doc"""
+@doc raw"""
     get_surface_points(poly,linear_map)
 
 Returns the coordinates of the vertices of `poly` and the output of `linear_map` applied to those points, such that the action of `linear_map` on `poly` can be visualised.
@@ -102,7 +102,7 @@ function get_surface_points(poly,linear_map)
     return input_vertices,output_vertices
 end
 
-@doc"""
+@doc raw"""
     get_linear_maps(f,f_indices)
 
 Comptues the linear maps corresponding to the monomials with indices `f_indices` in `f`.
@@ -120,7 +120,7 @@ function get_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},f
     return linear_maps
 end
 
-@doc"""
+@doc raw"""
     get_linear_regions(polyhedra,linear_maps,with_colors::Bool=true)
 
 For each unique linear map, the polyhedra that are acted on by this linear map are identified. Moreover, a color is attributed to each unique linear map such that they can be distinguished in the visualisations.
@@ -146,7 +146,7 @@ end
 
 ####################### Representation Functions ##################################
 
-@doc""""
+@doc raw""""
     bound_reps(reps,bounding_box)
 
 Takes as input a set of matrix representations for polyhedra, and bounds them in a box determined by `bounding_box`.
@@ -172,7 +172,7 @@ function bound_reps(reps,bounding_box)
     return bounded_reps
 end
 
-@doc""""
+@doc raw""""
     bound_reps(reps,rot_matrix)
 
 Identifies the polyhedra, as given by their matrix representations, that intersect the plane defined by the first two-coordinates and rotated according to `rot_matrix`. Returned are the matrix reprsentations of the two-dimensional polyhedra obtained on this intersecting plane.
@@ -195,7 +195,7 @@ function project_reps(reps,rot_matrix)
     return projected_reps
 end
 
-@doc""""
+@doc raw""""
     intersect_reps(rep_1,rep_2)
 
 Returns the matrix representation of a polyhedron obtained by intersecting the polyhedra given by the matrix representations `rep_1` and `rep_2`.
@@ -205,7 +205,7 @@ function intersect_reps(rep_1,rep_2)
     return [vcat(rep_1[1],rep_2[1]),vcat(rep_1[2],rep_2[2])]
 end
 
-@doc"""
+@doc raw"""
     m_reps(f::TropicalPuiseuxPoly)
 
 Computes the matrix representation of the polyhedron corresponding to each monomial in a tropical polynomial.
@@ -226,7 +226,7 @@ function m_reps(f::TropicalPuiseuxPoly)
     return reps
 end
 
-@doc"""
+@doc raw"""
     m_reps(f::TropicalPuiseuxPoly)
 
 Computes the matrix representation of the polyhedron corresponding to each monomial in a tropical rational map.
@@ -252,7 +252,7 @@ function m_reps(f::TropicalPuiseuxRational)
     return reps
 end
 
-@doc""""
+@doc raw""""
     format_reps(reps,bounding_box=nothing,rot_matrix=nothing)
 
 Returned are the matrix representations, and the corresponding index of the monomial, of the polyhedron formatted according to a bounding box and a rotation matrix. If bounding box is not provided, then the polyhedra are bounded by a region that encompases all the intersections between the polyhedra. If `f` has more than two variables, then a rotation matrix should be supplied so that the returned representations are two-dimensional.
@@ -273,7 +273,7 @@ function formatted_reps(f;bounding_box=nothing,rot_matrix=nothing)
     return reps
 end
 
-@doc""""
+@doc raw""""
     polyhedra_from_reps(reps,oscar::Bool=false)
 
 Given a set of matrix representations of polyhedra, returned by default are the `Polyhedra.jl` polyhedron representations, otherwise the `Oscar.jl` polyhedron representations can be returned.
