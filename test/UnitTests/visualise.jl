@@ -29,7 +29,6 @@ using Test, TropicalNN, Oscar, CairoMakie
     @test bounding_box==Dict(1 => [-1.0, 2.0])
 
     reps=bound_reps(reps,bounding_box)
-    println(reps)
     @test reps==Dict{String, Vector{Any}}("m_reps" => [Array{Rational{BigInt}}[[0; 1; 2; 1; -1;;], [0, 0, 1, 2, 1]], Array{Rational{BigInt}}[[-1; 0; 1; 1; -1;;], [0, 0, 1, 2, 1]], Array{Rational{BigInt}}[[-2; -1; 0; 1; -1;;], [-1, -1, 0, 2, 1]]], "f_indices" => [1, 2, 3])
 
     linear_maps=get_linear_maps(pmap,reps["f_indices"])
