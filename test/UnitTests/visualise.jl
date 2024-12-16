@@ -23,13 +23,14 @@ using Test, TropicalNN, Oscar, CairoMakie
     pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2]),Rational{BigInt}.([3])],false)
 
     reps=m_reps(pmap)
-    @test reps==Dict{String, Vector{Any}}("m_reps" => [Array{Float64}[[0.0; 1.0; 2.0;;], [0.0, 0.0, 1.0]], Array{Float64}[[-1.0; 0.0; 1.0;;], [0.0, 0.0, 1.0]], Array{Float64}[[-2.0; -1.0; 0.0;;], [-1.0, -1.0, 0.0]]], "f_indices" => [1, 2, 3])
+    @test reps==Dict{String, Vector{Any}}("m_reps" => [Array{Rational{BigInt}}[[0; 1; 2;;], [0, 0, 1]], Array{Rational{BigInt}}[[-1; 0; 1;;], [0, 0, 1]], Array{Rational{BigInt}}[[-2; -1; 0;;], [-1, -1, 0]]], "f_indices" => [1, 2, 3])
 
     bounding_box=get_full_bounding_box(pmap,reps)
     @test bounding_box==Dict(1 => [-1.0, 2.0])
 
     reps=bound_reps(reps,bounding_box)
-    @test reps==Dict{String, Vector}("m_reps" => Vector{Array{Float64}}[[[0.0; 1.0; 2.0; 1.0; -1.0;;], [0.0, 0.0, 1.0, 2.0, 1.0]], [[-1.0; 0.0; 1.0; 1.0; -1.0;;], [0.0, 0.0, 1.0, 2.0, 1.0]], [[-2.0; -1.0; 0.0; 1.0; -1.0;;], [-1.0, -1.0, 0.0, 2.0, 1.0]]], "f_indices" => Any[1, 2, 3])
+    println(reps)
+    @test reps==Dict{String, Vector{Any}}("m_reps" => [Array{Rational{BigInt}}[[0; 1; 2; 1; -1;;], [0, 0, 1, 2, 1]], Array{Rational{BigInt}}[[-1; 0; 1; 1; -1;;], [0, 0, 1, 2, 1]], Array{Rational{BigInt}}[[-2; -1; 0; 1; -1;;], [-1, -1, 0, 2, 1]]], "f_indices" => [1, 2, 3])
 
     linear_maps=get_linear_maps(pmap,reps["f_indices"])
     @test linear_maps==[Any[0//1, Rational{BigInt}[1]], Any[0//1, Rational{BigInt}[2]], Any[-1//1, Rational{BigInt}[3]]]
