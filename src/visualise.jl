@@ -63,7 +63,7 @@ function get_level_set_component(poly,linear_map,value)
     component=[]
     vertices=collect(Polyhedra.points(poly))
     functional_values=[apply_linear_map(vertex,linear_map) for vertex in vertices]
-    for pair in Combinatorics.combinations(range(1,length(functional_values)),2)
+    for pair in Combinatorics.combinations(range(1,length(functional_values),step=1),2)
         values=functional_values[pair]
         vertexs=vertices[pair]
         # using the continuity of the linear map over the one-dimensional edges to note when the
