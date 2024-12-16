@@ -46,7 +46,7 @@ using Test, TropicalNN, Oscar, CairoMakie
     pmap=TropicalNN.TropicalPuiseuxRational(TropicalPuiseuxPoly(Rational{BigInt}.([0,0]),[Rational{BigInt}.([3]),Rational{BigInt}.([0])],false),TropicalPuiseuxPoly(Rational{BigInt}.([0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2])],false))
 
     reps=formatted_reps(pmap)
-    @test reps==Dict{String, Vector}("m_reps" => Vector{Array{Float64}}[[[0.0; 3.0; 0.0; 1.0; 1.0; -1.0;;], [0.0, 0.0, 0.0, 1.0, 2.0, 1.0]], [[-3.0; 0.0; 0.0; 1.0; 1.0; -1.0;;], [0.0, 0.0, 0.0, 1.0, 2.0, 1.0]], [[-3.0; 0.0; -1.0; 0.0; 1.0; -1.0;;], [0.0, 0.0, -1.0, 0.0, 2.0, 1.0]]], "f_indices" => Any[[1, 1], [2, 1], [2, 2]])
+    @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[[[0, 3, 0, 1, 1, -1], [0, 0, 0, 1, 2, 1]], [[-3, 0, 0, 1, 1, -1], [0, 0, 0, 1, 2, 1]], [[-3, 0, -1, 0, 1, -1], [0, 0, -1, 0, 2, 1]]]
 
     linear_maps=get_linear_maps(pmap,reps["f_indices"])
     @test linear_maps==[Any[0//1, Rational{BigInt}[-1]], Any[0//1, Rational{BigInt}[2]], Any[1//1, Rational{BigInt}[1]]]
