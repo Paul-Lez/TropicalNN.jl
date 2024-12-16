@@ -320,7 +320,7 @@ function plotsurface(poly,linear_map,color,ax)
     else
         xs,ys=input_vertices[1],input_vertices[2]
         # the polyhedron is convex so we can plot the triangles formed by its vertices
-        for triangle in Combinatorics.combinations(range(1,length(xs),step=1),3)
+        for triangle in Combinatorics.combinations(range(1,length(xs)),3)
             CairoMakie.mesh!(ax,xs[triangle],ys[triangle],output_vertices[triangle],color=(color,0.9),overdraw=true,shading=NoShading)
         end
     end
