@@ -1,18 +1,38 @@
 name = "TropicalNN"
 uuid = "45302f6a-f5d4-4eaf-9bda-c9ca7b62f2bc"
 authors = ["Paul Lezeau"]
-version = "0.1"
+version = "0.1.0"
 
 [deps]
+CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 Oscar = "f1435218-dba5-11e9-1e4d-f1a5fab5fc13"
+Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
+CDDLib = "0.9.4"
+CairoMakie = "0.12.18"
+ColorSchemes = "3.27.1"
 Combinatorics = "1.0.2"
 Distributions = "0.25.108"
+GLPK = "1.2.1"
+Graphs = "1.12.0"
+JuMP = "1.23.5"
+LinearAlgebra = "<1.11.1"
+MetaGraphsNext = "0.7.1"
 Oscar = "1.0.2"
-julia = "1.6.7"
+Polyhedra = "0.7.8"
+Random = "<1.11.1"
+julia = "1.10.0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

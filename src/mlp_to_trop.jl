@@ -167,6 +167,15 @@ function random_mlp(dims, random_thresholds=false, symbolic=true)
     return (weights, biases, thresholds)
 end 
 
+@doc raw"""
+    random_pmap(n_vars,n_mons)
+
+Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
+"""
+function random_pmap(n_vars,n_mons)
+    return TropicalPuiseuxPoly(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
+end
+
 function mlp_to_trop_with_dedup(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     """
     mlp_to_trop(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron. Runs a deduplication function to remove duplicate monomials at each layer.

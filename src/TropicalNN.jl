@@ -3,6 +3,20 @@ module TropicalNN
     using Oscar
     using Combinatorics
     using Distributions
+
+    using Polyhedra
+    using CDDLib
+    using ColorSchemes
+    using CairoMakie
+    using Random
+
+    using JuMP
+    using GLPK
+    using LinearAlgebra
+
+    using Graphs
+    using MetaGraphsNext
+
     import Base: string, +, *, /
 
     export 
@@ -42,10 +56,61 @@ module TropicalNN
         enum_linear_regions,
         n_components, 
         components, 
-        enum_linear_regions_rat
+        enum_linear_regions_rat,
+
+        random_pmap,
+        update_bounding_box,
+        get_full_bounding_box,
+        apply_linear_map,
+        get_level_set_component,
+        get_surface_points,
+        get_linear_maps,
+        get_linear_regions,
+        bound_reps,
+        project_reps,
+        intersect_reps,
+        m_reps,
+        formatted_reps,
+        polyhedra_from_reps,
+        plotpoly,
+        plotsurface,
+        plotlevelset,
+        plot_linear_regions,
+        plot_linear_maps,
+
+        linearmap_matrices,
+        tilde_matrices,
+        tilde_vectors,
+        positive_component,
+        surjectivity_test,
+        exact_hoff,
+        upper_hoff,
+        lower_hoff,
+        exact_er,
+        upper_er,
+
+        separate_components,
+        map_statistic,
+        interior_points,
+        bounds,
+        volumes,
+        polyhedron_counts,
+        get_graph,
+        edge_count,
+        edge_lengths,
+        edge_directions,
+        edge_gradients,
+        vertex_collection,
+        vertex_count
 
     include("rat_maps.jl")
     include("linear_regions.jl")
     include("mlp_to_trop.jl")
     include("mlp_to_trop_with_elim.jl")
+
+    include("visualise.jl")
+
+    include("hoffman.jl")
+
+    include("statistics.jl")
 end
