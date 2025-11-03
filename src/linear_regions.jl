@@ -23,7 +23,7 @@ function polyhedron(f::TropicalPuiseuxPoly, i)
     b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return Oscar.polyhedron(A, b)
-end 
+end
 
 @doc raw"""
     enum_linear_regions(f::TropicalPuiseuxPoly) 
@@ -50,34 +50,34 @@ function enum_linear_regions(f::TropicalPuiseuxPoly)
         # add the polyhedron to the list plus a bool saying whether the polyhedron is non-empty
         # TODO: this should be replaced by a check that the polyhedron is full dimensional for performance.
         push!(linear_regions, (poly, Oscar.is_feasible(poly)))
-    end 
+    end
     return linear_regions
-end 
+end
 
 # Computes the number of equivalence classes of the transitive closure of a 
 # relation by running depth first search
 function n_components(V, D)
     count = 0
     visited = Dict()
-    for v in V 
+    for v in V
         visited[v] = false
-    end 
+    end
     function depth_first_search(k)
         visited[k] = true
         for p in V
             if !visited[p] && ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
                 depth_first_search(p)
-            end 
-        end 
-    end 
+            end
+        end
+    end
     for p in V
         if !visited[p]
             depth_first_search(p)
             count += 1
-        end 
-    end 
+        end
+    end
     return count
-end 
+end
 
 @doc raw"""
     components(V::Vector{T}, D::Dict{Tuple{T, T}, Bool})
@@ -148,7 +148,7 @@ julia> enum_linear_regions_rat(f, g)
 ```
 """
 function enum_linear_regions_rat(q::TropicalPuiseuxRational)
-    f = q.num 
+    f = q.num
     g = q.den
     # first, compute the linear regions of f and g. 
     lin_f = enum_linear_regions(f)
@@ -175,7 +175,7 @@ function enum_linear_regions_rat(q::TropicalPuiseuxRational)
         linear_map_unique = unique([l for (key, l) in linear_map])
         if length(linear_map) == length(linear_map_unique)
             return linear_map, [], false
-        else 
+        else
             # compute indices of repetitions for each linear map
             reps = [(l, Base.findall(x -> x == l, linear_map)) for l in linear_map_unique]
             return linear_map, reps, true
@@ -185,7 +185,7 @@ function enum_linear_regions_rat(q::TropicalPuiseuxRational)
     # if there are no repetitions, then the linear regions are just the non-empty intersections of linear regions of f and linear regions of g
     if !exists_reps
         lin_regions = collect(keys(linear_map))
-    # if there are repetitions then we will need to find connected components of the union of the polytopes on which repetitions occur.
+        # if there are repetitions then we will need to find connected components of the union of the polytopes on which repetitions occur.
     else
         # Initialise the array lin_regions. This will contain the true linear regions of f/g
         lin_regions = []
@@ -198,7 +198,7 @@ function enum_linear_regions_rat(q::TropicalPuiseuxRational)
                 # otherwise, we check for intersections in the set of linear regions with a given map
                 has_intersect = Dict()
                 # iterate over unordered pairs of (distinct) elements of vals
-                for (poly1, poly2) in combinations(vals, 2)
+                for (poly1, poly2) in Combinatorics.combinations(vals, 2)
                     # intersect the two polyhedra
                     intesection = Oscar.intersect(poly1, poly2)
                     # add true to the dictionary if the intersection is nonemtpy and false otherwise
@@ -211,4 +211,4 @@ function enum_linear_regions_rat(q::TropicalPuiseuxRational)
         end
     end
     return lin_regions
-end 
+end
