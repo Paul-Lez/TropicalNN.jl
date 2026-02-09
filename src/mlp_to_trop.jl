@@ -1,14 +1,29 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function
 
-function single_to_trop(A::Matrix{T}, b, t) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
 """
-Inputs: weight matrix A, bias term b and activation threshold t
-Outputs: vector of tropical Puiseux rational functions that express the function max(Ax+b, t) as a tropical Puiseux rational function.
-""" 
+    single_to_trop(A, b, t)
+
+Convert a single ReLU layer to tropical Puiseux rational functions.
+
+# Arguments
+- `A::Matrix{T}`: Weight matrix
+- `b::AbstractVector`: Bias vector
+- `t::AbstractVector`: Activation threshold vector
+
+# Returns
+- `Vector{TropicalPuiseuxRational{T}}`: Tropical representation of max(Ax+b, t)
+
+# Throws
+- `DimensionMismatch`: If dimensions don't match (A has size(A,1) rows, b and t must have the same length)
+"""
+function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     G = Vector{TropicalPuiseuxRational{T}}()
-    if size(A, 1) != length(b) || size(A, 1) != length(t) 
-        println("Dimensions of matrix don't agree with constant term or threshold")
-        return false
+
+    # Check dimensions match
+    if size(A, 1) != length(b) || size(A, 1) != length(t)
+        throw(DimensionMismatch(
+            "Dimension mismatch: A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
+        ))
     end 
     R = tropical_semiring(max)
     # first make sure that the entries of b are elements of the tropical semiring
@@ -35,115 +50,158 @@ Outputs: vector of tropical Puiseux rational functions that express the function
     return G
 end     
 
-function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
 """
-mlp_to_trop(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron.
+    mlp_to_trop(linear_maps, bias, thresholds; quicksum=false, strong_elim=false, dedup=false)
 
-inputs: linear maps: an array containing the weight matrices of the neural network. 
-        bias: an array containing the biases at each layer
-        thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-        the form x => max(x,t).
-outputs: an object of type TropicalPuiseuxRational.
+Convert a ReLU multilayer perceptron to a tropical Puiseux rational function.
+
+This function converts a neural network with ReLU-like activation functions (max(x,t))
+into an exact tropical geometric representation, enabling analysis of linear regions
+and network expressivity.
+
+# Arguments
+- `linear_maps::Vector{Matrix{T}}`: Weight matrices for each layer
+- `bias`: Bias vectors for each layer
+- `thresholds`: Activation threshold vectors for each layer (standard ReLU uses zeros)
+
+where `T<:Union{Oscar.scalar_types, Rational{BigInt}}`
+
+# Keyword Arguments
+- `quicksum::Bool=false`: Use faster but less accurate quicksum operations for composition
+- `strong_elim::Bool=false`: Apply monomial elimination to remove non-full-dimensional polyhedra at each layer
+- `dedup::Bool=false`: Apply deduplication to remove duplicate monomials at each layer
+
+# Returns
+- `Vector{TropicalPuiseuxRational{T}}`: Tropical rational functions representing the MLP outputs
+
+# Throws
+- `DimensionMismatch`: If matrix/vector dimensions don't match at any layer
+
+# Performance Notes
+- `quicksum=true`: Faster for large networks (>3 layers, >10 neurons), defers sorting
+- `strong_elim=true`: Reduces complexity by removing redundant monomials, but adds computational overhead
+- `dedup=true`: Removes duplicate monomials, useful when composition creates duplicates
+
+# Examples
+```julia
+# Convert a random 2-3-1 MLP (standard)
+W, b, t = random_mlp([2, 3, 1])
+f = mlp_to_trop(W, b, t)
+
+# Convert with quicksum for better performance
+f_fast = mlp_to_trop(W, b, t, quicksum=true)
+
+# Convert with monomial elimination for reduced complexity
+f_reduced = mlp_to_trop(W, b, t, strong_elim=true)
+
+# Combine options for large networks
+f_optimized = mlp_to_trop(W, b, t, quicksum=true, strong_elim=true)
+
+# Analyze linear regions
+regions = enum_linear_regions_rat(f[1])
+```
+
+# See Also
+- `single_to_trop`: Convert a single layer
+- `comp`, `comp_with_quicksum`: Composition functions
+- `monomial_strong_elim`, `dedup_monomials`: Simplification functions
 """
+function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
+                      quicksum::Bool=false, strong_elim::Bool=false, dedup::Bool=false) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     R = tropical_semiring(max)
-    # initialisation: the first vector of tropical rational functions is just the identity function
+
+    # Initialisation: the first vector of tropical rational functions
     output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-    # iterate through the layers and compose variable output with the current layer at each step
+
+    # Apply initial simplification if requested
+    if dedup
+        output = dedup_monomials(output)
+    end
+
+    # Iterate through the layers and compose variable output with the current layer at each step
     for i in Base.eachindex(linear_maps)
         A = linear_maps[i]
         b = bias[i]
         t = thresholds[i]
-        #check sizes agree
-        if size(A, 1) != length(b) || size(A, 1) != length(t) 
-            # stricly speaking this should be implemented as an exception
-            println("Dimensions of matrix don't agree with constant term or threshold")
-        end 
+
+        # Check dimensions match
+        if size(A, 1) != length(b) || size(A, 1) != length(t)
+            throw(DimensionMismatch(
+                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
+            ))
+        end
+
         if i != 1
-            # compute the vector of tropical rational functions corresponding to the function 
-            # max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
+            # Compute the vector of tropical rational functions corresponding to max(Ax+b, t)
             ith_tropical = single_to_trop(A, b, t)
-            # compose this with the output of the previous layer
-            output = comp(ith_tropical, output)
-        end 
-    end 
+
+            # Compose with the output of the previous layer
+            output = quicksum ? comp_with_quicksum(ith_tropical, output) : comp(ith_tropical, output)
+
+            # Apply simplification if requested
+            if strong_elim
+                output = monomial_strong_elim(output)
+            end
+            if dedup
+                output = dedup_monomials(output)
+            end
+        end
+    end
+
     return output
 end 
 
-@doc raw"""
-    mlp_to_trop_with_quicksum(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron. Uses quicksum operations for tropical objects.
-    
-    inputs: linear maps: an array containing the weight matrices of the neural network. 
-            bias: an array containing the biases at each layer
-            thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-            the form x => max(x,t).
-    outputs: an object of type TropicalPuiseuxRational.
+"""
+    mlp_to_trop_with_quicksum(linear_maps, bias, thresholds)
+
+**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)` instead.
+
+Computes the tropical Puiseux rational function associated to a multilayer perceptron
+using quicksum operations for tropical objects.
 """
 function mlp_to_trop_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-        # initialisation: the first vector of tropical rational functions is just the identity function
-        output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-        # iterate through the layers and compose variable output with the current layer at each step
-        for i in Base.eachindex(linear_maps)
-            A = linear_maps[i]
-            b = bias[i]
-            t = thresholds[i]
-            #check sizes agree
-            if size(A, 1) != length(b) || size(A, 1) != length(t) 
-                # stricly speaking this should be implemented as an exception
-                println("Dimensions of matrix don't agree with constant term or threshold")
-            end 
-            if i != 1
-                # compute the vector of tropical rational functions corresponding to the function 
-                # max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
-                ith_tropical = single_to_trop(A, b, t)
-                # compose this with the output of the previous layer
-                output = comp_with_quicksum(ith_tropical, output)
-            end 
-        end 
-    return output
+    @warn "mlp_to_trop_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)
 end 
 
+"""
+    mlp_to_trop_with_mul_with_quicksum(linear_maps, bias, thresholds)
+
+**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)` instead.
+
+Computes the tropical Puiseux rational function associated to a multilayer perceptron
+using mul_with_quicksum version of multiplication for tropical objects.
+"""
 function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-    """
-    mlp_to_trop(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron. Uses mul_with_quicksum version of multiplication for tropical objects.
-    
-    inputs: linear maps: an array containing the weight matrices of the neural network. 
-            bias: an array containing the biases at each layer
-            thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-            the form x => max(x,t).
-    outputs: an object of type TropicalPuiseuxRational.
-    """
-        R = tropical_semiring(max)
-        # initialisation: the first vector of tropical rational functions is just the identity function
-        output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-        # iterate through the layers and compose variable output with the current layer at each step
-        for i in Base.eachindex(linear_maps)
-            A = linear_maps[i]
-            b = bias[i]
-            t = thresholds[i]
-            #check sizes agree
-            if size(A, 1) != length(b) || size(A, 1) != length(t) 
-                # stricly speaking this should be implemented as an exception
-                println("Dimensions of matrix don't agree with constant term or threshold")
-            end 
-            if i != 1
-                # compute the vector of tropical rational functions corresponding to the function 
-                # max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
-                ith_tropical = single_to_trop(A, b, t)
-                # compose this with the output of the previous layer
-                output = comp_with_quicksum(ith_tropical, output)
-            end 
-        end 
-    return output
+    @warn "mlp_to_trop_with_mul_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)
 end 
 
-function random_mlp(dims, random_thresholds=false, symbolic=true)
-    """
-    random_mlp(dims, random_thresholds) returns a multilayer perceptron with architecture specified by the array dims and random weights.
-    
-    inputs: dims: array of integers specifying the width of each layer
-            random_thresholds: boolean. If set to true, the threshold of the activation function at each layer is chosen at random. Otherwise 
-                the thresholds are all set to 0, i.e. all the activation functions are the ReLU function. Default value is false.
-    """
+"""
+    random_mlp(dims; random_thresholds=false, symbolic=true)
+
+Generate a random multilayer perceptron with specified architecture.
+
+# Arguments
+- `dims::AbstractVector{<:Integer}`: Array of integers specifying the width of each layer (e.g., [2, 3, 1] for 2 inputs, 3 hidden neurons, 1 output)
+
+# Keyword Arguments
+- `random_thresholds::Bool=false`: If true, activation thresholds are chosen randomly. If false, all thresholds are 0 (standard ReLU)
+- `symbolic::Bool=true`: If true, use exact rational arithmetic (Rational{BigInt}). If false, use floating point
+
+# Returns
+- `Tuple{Vector{Matrix}, Vector{Vector}, Vector{Vector}}`: (weights, biases, thresholds) for the MLP
+
+# Examples
+```julia
+# Create a 2-3-1 MLP with ReLU activations
+W, b, t = random_mlp([2, 3, 1])
+
+# Create with random thresholds using floating point
+W, b, t = random_mlp([2, 4, 1], random_thresholds=true, symbolic=false)
+```
+"""
+function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=false, symbolic::Bool=true)
     # if symbolic is set to true then we work with symbolic fractions. 
     if symbolic 
         # Use He initialisation, i.e. we sample weights with distribution N(0, sqrt(2/n))
@@ -176,38 +234,15 @@ function random_pmap(n_vars,n_mons)
     return TropicalPuiseuxPoly(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
 end
 
+"""
+    mlp_to_trop_with_dedup(linear_maps, bias, thresholds)
+
+**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, dedup=true)` instead.
+
+Computes the tropical Puiseux rational function associated to a multilayer perceptron.
+Runs a deduplication function to remove duplicate monomials at each layer.
+"""
 function mlp_to_trop_with_dedup(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-    """
-    mlp_to_trop(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron. Runs a deduplication function to remove duplicate monomials at each layer.
-    
-    inputs: linear maps: an array containing the weight matrices of the neural network. 
-            bias: an array containing the biases at each layer
-            thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-            the form x => max(x,t).
-    outputs: an object of type TropicalPuiseuxRational.
-    """
-    R = tropical_semiring(max)
-    # initialisation: the first vector of tropical rational functions is just the identity function
-    output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-    output = dedup_monomials(output)
-    # iterate through the layers and compose variable output with the current layer at each step
-    for i in Base.eachindex(linear_maps)
-        A = linear_maps[i]
-        b = bias[i]
-        t = thresholds[i]
-        #check sizes agree
-        if size(A, 1) != length(b) || size(A, 1) != length(t) 
-            # stricly speaking this should be implemented as an exception
-            println("Dimensions of matrix don't agree with constant term or threshold")
-        end 
-        if i != 1
-            # compute the vector of tropical rational functions corresponding to the function 
-            # max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
-            ith_tropical = single_to_trop(A, b, t)
-            # compose this with the output of the previous layer
-            output = comp(ith_tropical, output)
-            output = dedup_monomials(output)
-        end 
-    end 
-    return output
+    @warn "mlp_to_trop_with_dedup is deprecated, use mlp_to_trop(..., dedup=true) instead" maxlog=1
+    return mlp_to_trop(linear_maps, bias, thresholds, dedup=true)
 end 

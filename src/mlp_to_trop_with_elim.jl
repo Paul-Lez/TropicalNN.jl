@@ -1,114 +1,125 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
 
 @doc raw"""
-    monomial_strong_elim(f::TropicalPuiseuxPoly{T}) removes redundant monomials from a tropical Puiseux polynomial f.
-    
-    inputs: f: an object of type TropicalPuiseuxPolynomial.
-    outputs: an object of type TropicalPuiseuxPolynomial.
+    monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true)
+
+Removes redundant monomials from a tropical Puiseux polynomial f.
+
+A monomial is considered redundant if its corresponding polyhedron (the region
+where that monomial dominates) is not full-dimensional.
+
+When `parallel=true` (default), uses multithreading to parallelize the
+full-dimensionality checks, which can provide significant speedup for
+polynomials with many monomials.
+
+# Arguments
+- `f::TropicalPuiseuxPoly{T}`: The polynomial to simplify
+- `parallel::Bool=true`: Whether to use parallel computation
+
+# Returns
+- `TropicalPuiseuxPoly{T}`: A new polynomial with redundant monomials removed
+
+# Note
+The parallel version requires Julia to be started with multiple threads
+(e.g., `julia -t auto` or `JULIA_NUM_THREADS=4 julia`).
 """
-function monomial_strong_elim(f::TropicalPuiseuxPoly{T}) where T
-    new_exp = Vector{Vector{T}}()
-    sizehint!(new_exp, length(f.exp))
-    new_coeff = Dict()
-    # iterate through the monomials and removes the redundant ones, i.e. the ones 
-    # whose corresponding polyhedron is not full-dimensional
-    for i in Base.eachindex(f.exp)
-        poly = polyhedron(f, i)
-        if Oscar.is_fulldimensional(poly)
-            e = f.exp[i] 
-            push!(new_exp, e)
-            new_coeff[e] = f.coeff[e]
-        end 
-    end 
-    return TropicalPuiseuxPoly(new_coeff, new_exp)
+function monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true) where T
+    n = length(f.exp)
+
+    if parallel && Threads.nthreads() > 1 && n > 1
+        # Parallel version: check full-dimensionality for all monomials in parallel
+        keep = Vector{Bool}(undef, n)
+
+        Threads.@threads for i in 1:n
+            poly = polyhedron(f, i)
+            keep[i] = Oscar.is_fulldimensional(poly)
+        end
+
+        # Collect results based on keep vector
+        new_exp = Vector{Vector{T}}()
+        sizehint!(new_exp, count(keep))
+        new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+
+        for i in 1:n
+            if keep[i]
+                e = f.exp[i]
+                push!(new_exp, e)
+                new_coeff[e] = f.coeff[e]
+            end
+        end
+
+        return TropicalPuiseuxPoly(new_coeff, new_exp)
+    else
+        # Sequential version (original algorithm)
+        new_exp = Vector{Vector{T}}()
+        sizehint!(new_exp, n)
+        new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+
+        for i in Base.eachindex(f.exp)
+            poly = polyhedron(f, i)
+            if Oscar.is_fulldimensional(poly)
+                e = f.exp[i]
+                push!(new_exp, e)
+                new_coeff[e] = f.coeff[e]
+            end
+        end
+
+        return TropicalPuiseuxPoly(new_coeff, new_exp)
+    end
 end 
 
 @doc raw"""
-    monomial_strong_elim(f::TropicalPuiseuxRational{T}) removes redundant monomials from a tropical Puiseux rational function f.
-    
-    inputs: f: an object of type TropicalPuiseuxRational.
-    outputs: an object of type TropicalPuiseuxRational.
+    monomial_strong_elim(f::TropicalPuiseuxRational{T}; parallel::Bool=true)
+
+Removes redundant monomials from both numerator and denominator of a tropical
+Puiseux rational function.
+
+# Arguments
+- `f::TropicalPuiseuxRational{T}`: The rational function to simplify
+- `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(f::TropicalPuiseuxRational{T}) where T
-    return TropicalPuiseuxRational(monomial_strong_elim(f.num), monomial_strong_elim(f.den))
+function monomial_strong_elim(f::TropicalPuiseuxRational{T}; parallel::Bool=true) where T
+    return TropicalPuiseuxRational(
+        monomial_strong_elim(f.num; parallel=parallel),
+        monomial_strong_elim(f.den; parallel=parallel)
+    )
 end
 
 @doc raw"""
-    monomial_strong_elim(f::Vector{TropicalPuiseuxRational{T}}) removes redundant monomials from a vector of tropical Puiseux rational functions F.
-    
-    inputs: f: an object of type TropicalPuiseuxRational.
-    outputs: an object of type TropicalPuiseuxRational.
+    monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}; parallel::Bool=true)
+
+Removes redundant monomials from a vector of tropical Puiseux rational functions.
+
+# Arguments
+- `F::Vector{TropicalPuiseuxRational{T}}`: The vector of rational functions to simplify
+- `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}) where T
-    return [monomial_strong_elim(f) for f in F]
+function monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}; parallel::Bool=true) where T
+    return [monomial_strong_elim(f; parallel=parallel) for f in F]
 end
 
-@doc raw"""
-    mlp_to_trop_with_strong_elim(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron, and runs monomial_strong_elim at each layer to remove redundant monomials.
+"""
+    mlp_to_trop_with_strong_elim(linear_maps, bias, thresholds)
 
-    inputs: linear maps: an array containing the weight matrices of the neural network. 
-            bias: an array containing the biases at each layer
-            thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-            the form x => max(x,t).
-    outputs: an object of type TropicalPuiseuxRational.
+**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)` instead.
+
+Computes the tropical Puiseux rational function associated to a multilayer perceptron,
+and runs monomial_strong_elim at each layer to remove redundant monomials.
 """
 function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-    R = tropical_semiring(max)
-    # initialisation: the first vector of tropical rational functions is just the identity function
-    output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-    output = dedup_monomials(output)
-    # iterate through the layers and compose variable output with the current layer at each step
-    for i in Base.eachindex(linear_maps)
-        A = linear_maps[i]
-        b = bias[i]
-        t = thresholds[i]
-        #check sizes agree
-        if size(A, 1) != length(b) || size(A, 1) != length(t) 
-            # stricly speaking this should be implemented as an exception
-            println("Dimensions of matrix don't agree with constant term or threshold")
-        end 
-        if i != 1
-            # compute the vector of tropical rational functions corresponding to the function 
-            # max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
-            ith_tropical = single_to_trop(A, b, t)
-            # compose this with the output of the previous layer
-            output = comp(ith_tropical, output)
-            output = monomial_strong_elim(output)
-        end 
-    end 
-    return output
+    @warn "mlp_to_trop_with_strong_elim is deprecated, use mlp_to_trop(..., strong_elim=true, dedup=true) instead" maxlog=1
+    return mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)
 end 
 
-@doc raw"""
-    mlp_to_trop_with_quicksum_with_strong_elim(linear_maps, bias, thresholds) computes the tropical Puiseux rational function associated to a multilayer perceptron. Runs monomial_strong_elim at each layer, and uses quicksum operations for tropical objects.
-    
-    inputs: linear maps: an array containing the weight matrices of the neural network. 
-            bias: an array containing the biases at each layer
-            thresholds: an array containing the threshold of the activation function at each layer, i.e. the number t such that the activation is of
-            the form x => max(x,t).
-    outputs: an object of type TropicalPuiseuxRational.
+"""
+    mlp_to_trop_with_quicksum_with_strong_elim(linear_maps, bias, thresholds)
+
+**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)` instead.
+
+Computes the tropical Puiseux rational function associated to a multilayer perceptron.
+Runs monomial_strong_elim at each layer, and uses quicksum operations for tropical objects.
 """
 function mlp_to_trop_with_quicksum_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-        R = tropical_semiring(max)
-        # initialisation: the first vector of tropical rational functions is just the identity function
-        output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-        # iterate through the layers and compose variable output with the current layer at each step
-        for i in Base.eachindex(linear_maps)
-            A = linear_maps[i]
-            b = bias[i]
-            t = thresholds[i]
-            #check sizes agree
-            if size(A, 1) != length(b) || size(A, 1) != length(t) 
-                # stricly speaking this should be implemented as an exception
-            end 
-            if i != 1
-                # compute the vector of tropical rational functions corresponding to the function 
-                # x => max(Ax+b, t) where A = linear_maps[i], b = bias[i] and t = thresholds[i]
-                ith_tropical = single_to_trop(A, b, t)
-                # compose this with the output of the previous layer
-                output = comp_with_quicksum(ith_tropical, output)
-                output = monomial_strong_elim(output)
-            end 
-        end 
-    return output
+    @warn "mlp_to_trop_with_quicksum_with_strong_elim is deprecated, use mlp_to_trop(..., quicksum=true, strong_elim=true) instead" maxlog=1
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)
 end

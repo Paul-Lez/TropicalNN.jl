@@ -19,16 +19,30 @@ module TropicalNN
 
     import Base: string, +, *, /
 
-    export 
+    export
         TropicalPuiseuxPoly,
+        TropicalPuiseuxRational,
         TropicalPuiseuxPoly_const,
-        TropicalPuiseuxPoly_zero, 
+        TropicalPuiseuxPoly_zero,
         TropicalPuiseuxPoly_one,
         TropicalPuiseuxMonomial,
         TropicalPuiseuxPoly_to_rational,
         TropicalPuiseuxRational_identity,
         TropicalPuiseuxRational_zero,
         TropicalPuiseuxRational_one,
+        StandardizedTropicalPoly,
+        StandardizedTropicalPoly_const,
+        StandardizedTropicalPoly_zero,
+        StandardizedTropicalPoly_one,
+        StandardizedTropicalMonomial,
+        standardize,
+        destandardize,
+        convert_denominator,
+        eval_horner,
+        eval_horner_univariate,
+        eval_horner_multivariate,
+        power_standardized,
+        scalar_mult_standardized,
         string,
         eval,
         +,

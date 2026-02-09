@@ -350,7 +350,7 @@ Plots the linear regions of a tropical polynomial or tropical rational map, with
 """
 function plot_linear_regions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};bounding_box=nothing,rot_matrix=nothing,level_set_value=nothing)
     if nvars(f)>2 && rot_matrix==nothing
-        error("Please supply a rotation matrix, even if it is the identity, when there are more than two input dimensions.")
+        throw(ArgumentError("Please supply a rotation matrix, even if it is the identity, when there are more than two input dimensions."))
     end
     fig=CairoMakie.Figure()
     ax=CairoMakie.Axis(fig[1,1])
@@ -387,7 +387,7 @@ Plots the functional value of a tropical polynomial or tropical rational map, wi
 """
 function plot_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};bounding_box=nothing,xreversed=false,yreversed=false)
     if nvars(f)>2
-        error("Only supported for rational maps with at most two input dimensions")
+        throw(ArgumentError("Only supported for rational maps with at most two input dimensions"))
     end
 
     reps=formatted_reps(f,bounding_box=bounding_box)
