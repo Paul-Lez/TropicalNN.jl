@@ -17,4 +17,6 @@ using Test
 
     include("./UnitTests/statistics.jl")
 
+    include("./UnitTests/linear_regions_highs.jl")
+
 end
