@@ -39,9 +39,9 @@ using CUDA
 
 if CUDA.functional()
     println("✓ CUDA is functional!")
-    println("  CUDA version: ", CUDA.version())
+    println("  CUDA runtime version: ", CUDA.runtime_version())
     println("  GPU device: ", CUDA.name(CUDA.device()))
-    println("  GPU memory: ", CUDA.totalmem(CUDA.device()) / 1024^3, " GB")
+    println("  GPU memory: ", round(CUDA.totalmem(CUDA.device()) / 1024^3, digits=2), " GB")
 else
     println("✗ CUDA is not functional")
     println("  Make sure you have:")
