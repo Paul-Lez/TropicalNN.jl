@@ -8,7 +8,9 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "mlp_to_trop - Basic Conversion" begin
         # Test 1: Simple 2-layer network
-        W = [Rational{BigInt}.([1 0; 0 1; -1 -1]), Rational{BigInt}.([1 1 1]')]
+        # Layer 1: 2 inputs -> 3 outputs (3x2 matrix)
+        # Layer 2: 3 inputs -> 1 output (1x3 matrix)
+        W = [Rational{BigInt}.([1 0; 0 1; -1 -1]), Rational{BigInt}.([1 1 1])]
         b = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
         t = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
         result = mlp_to_trop(W, b, t)
