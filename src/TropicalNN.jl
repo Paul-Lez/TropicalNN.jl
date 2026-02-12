@@ -12,6 +12,7 @@ module TropicalNN
 
     using JuMP
     using GLPK
+    using HiGHS
     using LinearAlgebra
 
     using Graphs
@@ -67,11 +68,14 @@ module TropicalNN
         monomial_strong_elim, 
         mlp_to_trop_with_strong_elim, 
         mlp_to_trop_with_quicksum_with_strong_elim, 
-        polyhedron, 
+        polyhedron,
         enum_linear_regions,
-        n_components, 
-        components, 
+        n_components,
+        components,
         enum_linear_regions_rat,
+        polyhedron_highs,
+        enum_linear_regions_highs,
+        enum_linear_regions_rat_highs,
 
         random_pmap,
         update_bounding_box,
@@ -120,6 +124,7 @@ module TropicalNN
 
     include("rat_maps.jl")
     include("linear_regions.jl")
+    include("linear_regions_highs.jl")
     include("mlp_to_trop.jl")
     include("mlp_to_trop_with_elim.jl")
 

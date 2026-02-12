@@ -22,11 +22,18 @@ function separate_components(linear_regions::Dict)
 end
 
 @doc raw"""
-    map_statistic(statistic,f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},oscar::Bool=false)
+    map_statistic(statistic, f)
 
 Applies a statistic function to a tropical polynomial or tropical rational map by calling the statistic on the corresponding linear regions.
+
+# Arguments
+- `statistic::Function`: Function to apply to linear regions (e.g., `length` to count regions)
+- `f::Union{TropicalPuiseuxPoly, TropicalPuiseuxRational}`: The tropical function to analyze
+
+# Returns
+- Result of applying `statistic` to the identified linear regions
 """
-function map_statistic(statistic, f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function map_statistic(statistic::Function, f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     # Obtain the unbounded matrix representations
     reps = m_reps(f)
     # Obtain the corresponding polyhedron representations
@@ -293,7 +300,7 @@ function edge_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
-        error("For univariate tropical polynomials or tropical rational maps use the vertex functions instead.")
+        throw(ArgumentError("For univariate tropical polynomials or tropical rational maps use the vertex functions instead."))
     end
     return Graphs.ne(get_graph(f))
 end
@@ -351,7 +358,7 @@ function edge_gradients(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
-        error("Not supported for univariate tropical polynomials or tropical rational maps.")
+        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
     end
     return edge_gradients(get_graph(f))
 end
@@ -400,7 +407,7 @@ function edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
-        error("Not supported for univariate tropical polynomials or tropical rational maps.")
+        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
     end
     return edge_lengths(get_graph(f))
 end
@@ -460,7 +467,7 @@ function edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
     # For one-dimensional polyhedra, there is no concept of
     # a direction for the intersection
     if nvars(f) == 1
-        error("Not supported for univariate tropical polynomials or tropical rational maps.")
+        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
     end
     return edge_directions(get_graph(f))
 end
