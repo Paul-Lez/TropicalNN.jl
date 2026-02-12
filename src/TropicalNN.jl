@@ -115,7 +115,11 @@ module TropicalNN
         edge_directions,
         edge_gradients,
         vertex_collection,
-        vertex_count
+        vertex_count,
+
+        # GPU functions
+        cuda_available,
+        batch_feasibility_cupdlp
 
     include("rat_maps.jl")
     include("linear_regions.jl")
@@ -127,4 +131,7 @@ module TropicalNN
     include("hoffman.jl")
 
     include("statistics.jl")
+
+    # GPU support (stubs, actual implementation in extension)
+    include("gpu/cupdlp_wrapper.jl")
 end

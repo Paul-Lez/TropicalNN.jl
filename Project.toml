@@ -36,6 +36,13 @@ Polyhedra = "0.7.8"
 Random = "<0.0.1, 1"
 julia = "1.10"
 
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+cuPDLP = "022e608e-4ac1-42ca-9f47-88de5af8f9e6"
+
+[extensions]
+TropicalNNCUDAExt = ["CUDA", "cuPDLP"]
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
