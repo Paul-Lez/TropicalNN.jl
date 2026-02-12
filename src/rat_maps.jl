@@ -1,20 +1,34 @@
 ####################### BASIC CONSTRUCTIONS ##################################
 
 """
-Represents a tropical Puiseux polynomial, i.e. a tropical polynomial in several variables, whose 
+Represents a tropical Puiseux polynomial, i.e. a tropical polynomial in several variables, whose
 exponents might be rational numbers (i.e. we use this structure when T is a subtype of the rational numbers).
 The coefficients are elements of the tropical semiring.
 
-# Example 
+# Example
 
 julia> f = TropicalPuiseuxPoly(Dict([1, 2] => 1, [2, 1] => 2), [[1, 2], [2, 1]])
   TropicalPuiseuxPoly{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
 
 """
 struct TropicalPuiseuxPoly{T}
-    coeff::Dict
+    coeff::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}
     exp::Vector{Vector{T}}
-end 
+
+    # Inner constructor to handle type conversion
+    function TropicalPuiseuxPoly{T}(coeff::Dict, exp::Vector{Vector{T}}) where T
+        typed_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}(coeff)
+        new{T}(typed_coeff, exp)
+    end
+
+    # Direct constructor for already-typed dicts
+    function TropicalPuiseuxPoly{T}(coeff::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}, exp::Vector{Vector{T}}) where T
+        new{T}(coeff, exp)
+    end
+end
+
+# Outer constructor
+TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}) where T = TropicalPuiseuxPoly{T}(coeff, exp) 
 
 """
 Represents a quotient of tropical Puiseux polynomials.
@@ -109,13 +123,7 @@ by setting the denominator to be the tropical one.
 """
 function TropicalPuiseuxPoly_to_rational(f)
     return TropicalPuiseuxRational(f, TropicalPuiseuxPoly_one(nvars(f), f))
-end 
-
-function TropicalPuiseuxPoly_zero(n, f::TropicalPuiseuxPoly{T}) where T
-    exp = [Base.zeros(T, n)]
-    coeff = Dict(Base.zeros(n) => zero(f.coeff[f.exp[1]]))
-    return TropicalPuiseuxPoly(coeff, exp)
-end 
+end
 
 @doc raw"""
 The identity function viewed as a tropical Puiseux rational function in n variables.
@@ -260,129 +268,193 @@ function Base.:/(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
 end 
 
 # Quicker version of addition for vectors of tropical polynomials
-# *Warning*: this doesn't sort the exponents of the resulting polynomial, so should never be used if the 
+# *Warning*: this doesn't sort the exponents of the resulting polynomial, so should never be used if the
 # output is to be used in further computations that require the exponents to be sorted.
 function quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
-    R = tropical_semiring(max)
-    terms = reduce(vcat, [f.exp for f in F])
-    h_exp::Vector{Vector{T}} = terms
-    #terms = unique(flatview(VectorOfArray([f.exp for f in F])))
-    #sort!(terms)
-    h_coeff = Dict()
-    for exp in terms
-        h_coeff[exp] = sum([f.coeff[exp] for f in F if haskey(f.coeff, exp)])
+    # Estimate total number of terms
+    total_terms = sum(length(f.exp) for f in F)
+
+    # Pre-allocate with proper types
+    h_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    sizehint!(h_coeff, total_terms)
+    h_exp = Vector{Vector{T}}()
+    sizehint!(h_exp, total_terms)
+
+    # Collect all exponents
+    @inbounds for f in F
+        for exp in f.exp
+            push!(h_exp, exp)
+        end
     end
+
+    # Sum coefficients for each unique exponent
+    @inbounds for exp in h_exp
+        if !haskey(h_coeff, exp)
+            # First time seeing this exponent, sum from all polynomials
+            coeff_sum = zero(F[1].coeff[F[1].exp[1]])
+            for f in F
+                if haskey(f.coeff, exp)
+                    coeff_sum += f.coeff[exp]
+                end
+            end
+            h_coeff[exp] = coeff_sum
+        end
+    end
+
     return TropicalPuiseuxPoly(h_coeff, h_exp, true)
 end
 
 """
-Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the sum with 
+Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the sum with
 lexicoraphically ordered exponents
 """
 function Base.:+(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
-    lf = length(f.coeff)
-    lg = length(g.coeff)
-    # initialise coeffs and exponents vectors for the sum h = f + g
-    h_coeff = Dict()
+    lf = length(f.exp)
+    lg = length(g.exp)
+
+    # Pre-allocate result storage
+    h_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    sizehint!(h_coeff, lf + lg)
     h_exp = Vector{Vector{T}}()
-    # initialise indexing variable for loops below
-    j=1
-    # at each term of g, check if there is a term of f with matching exponents
-    for i in eachindex(g)
-        c = g.exp[i] 
+    sizehint!(h_exp, lf + lg)
+
+    # Cache zero for comparison
+    trop_zero = zero(first(values(f.coeff)))
+
+    # Merge the two sorted exponent lists
+    j = 1
+    @inbounds for i in 1:lg
+        c = g.exp[i]
+        g_coeff_c = g.coeff[c]
         added = false
-        # loop through terms of f ordered lexicographically, until we reach a term with a larger power 
+
+        # Process f terms that come before c
         while j <= lf
             d = f.exp[j]
-            if d > c 
-                if g.coeff[c] != zero(g.coeff[c])
-                    # if c > d then we have reached the first exponent of f larger than c so we can stop here, and add the i-th 
-                    # term of g to h.
-                    h_coeff[c] = g.coeff[c]
+            if d > c
+                # c < d, add g term if non-zero
+                if g_coeff_c != trop_zero
+                    h_coeff[c] = g_coeff_c
                     push!(h_exp, c)
                     added = true
-                end 
+                end
                 break
-            elseif c == d 
-                if g.coeff[c] != zero(g.coeff[c]) || f.coeff[c] != zero(g.coeff[c])
-                    # if we reach an equal exponent, both get added simultaneously to the sum.
-                    h_coeff[c] = f.coeff[c]+g.coeff[c]
+            elseif c == d
+                # Equal exponents, add both
+                f_coeff_d = f.coeff[d]
+                sum_coeff = f_coeff_d + g_coeff_c
+                if sum_coeff != trop_zero
+                    h_coeff[c] = sum_coeff
                     push!(h_exp, c)
                     added = true
-                end 
-                # update j for the iteration with the next i
-                j+=1
+                end
+                j += 1
                 break
-            else 
-                if f.coeff[d] != zero(f.coeff[d])
-                    # if d < c then we can add that exponent of f to the sum
-                    h_coeff[d] = f.coeff[d]
+            else  # d < c
+                # Add f term if non-zero
+                f_coeff_d = f.coeff[d]
+                if f_coeff_d != trop_zero
+                    h_coeff[d] = f_coeff_d
                     push!(h_exp, d)
-                end 
-                j+=1
-            end 
-            # Note about the indexing variable j:
-            # Since a iteration i, we stop when we have either reached a j whose corresponding exponent is too large, or 
-            # equal to that of i, we can start the iteration of i+1 at the j at which the previous iteration stopped.
-        end 
-        # if we have exchausted all terms of f then we need to add all the remaining terms of g
-        if !added && j > lf && g.coeff[c] != zero(g.coeff[c])
-            h_coeff[c] = g.coeff[c]
+                end
+                j += 1
+            end
+        end
+
+        # If we exhausted f terms, add remaining g term
+        if !added && j > lf && g_coeff_c != trop_zero
+            h_coeff[c] = g_coeff_c
             push!(h_exp, c)
-        end 
-    end 
-    # once we have exhausted all terms of g, we need to check for remaining terms of f
-    while j <= lf 
+        end
+    end
+
+    # Add remaining f terms
+    @inbounds while j <= lf
         d = f.exp[j]
-        if f.coeff[d] != zero(f.coeff[d])
-            h_coeff[d] = f.coeff[d]
+        f_coeff_d = f.coeff[d]
+        if f_coeff_d != trop_zero
+            h_coeff[d] = f_coeff_d
             push!(h_exp, d)
-        end 
-        j+=1
-    end 
-    h = TropicalPuiseuxPoly(h_coeff, h_exp, true)
-    return h
+        end
+        j += 1
+    end
+
+    return TropicalPuiseuxPoly(h_coeff, h_exp, true)
 end 
 
 """
-Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the product with 
+Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the product with
 lexicoraphically ordered exponents
 """
 function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
-    prod = TropicalPuiseuxPoly_zero(nvars(f), f)
-    # if f = a_0 + ... + a_n T^n and g = b_0 + ... + b_n then the product is 
-    # the sum of all the b_i T^i * f
-    for i in eachindex(g)
-        term_coeff = Dict()
-        # compute the coefficients of b_i T^i * f
-        for (key, elem) in f.coeff
-            term_coeff[key+g.exp[i]] = g.coeff[g.exp[i]] * elem
-        end 
-        # compute the exponenets of b_i T^i * f
-        term_exp = [g.exp[i] + f.exp[j] for j in eachindex(f)]
-        prod += TropicalPuiseuxPoly(term_coeff, term_exp, true)
-    end 
-    return prod 
+    # Pre-allocate result storage
+    n_f = length(f.exp)
+    n_g = length(g.exp)
+    max_terms = n_f * n_g
+
+    result_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    sizehint!(result_coeff, max_terms)
+
+    # Compute all products directly
+    @inbounds for i in 1:n_g
+        g_exp_i = g.exp[i]
+        g_coeff_i = g.coeff[g_exp_i]
+        for j in 1:n_f
+            f_exp_j = f.exp[j]
+            f_coeff_j = f.coeff[f_exp_j]
+
+            # Compute new exponent
+            new_exp = g_exp_i .+ f_exp_j
+
+            # Add or update coefficient (tropical addition is max)
+            if haskey(result_coeff, new_exp)
+                result_coeff[new_exp] += g_coeff_i * f_coeff_j
+            else
+                result_coeff[new_exp] = g_coeff_i * f_coeff_j
+            end
+        end
+    end
+
+    # Sort exponents lexicographically
+    result_exp = sort(collect(keys(result_coeff)))
+
+    return TropicalPuiseuxPoly(result_coeff, result_exp, true)
 end 
 
 # Multiplication of tropical polynomials with using quicksum addition.
+# This version defers sorting and deduplication until the end
 function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
-    # if f = a_0 + ... + a_n T^n and g = b_0 + ... + b_n then the product is 
-    # the sum of all the b_i T^i * f
-    summands = Vector{TropicalPuiseuxPoly{T}}()
-    sizehint!(summands, length(g.exp))
-    for i in eachindex(g)
-        term_coeff = Dict()
-        # compute the coefficients of b_i T^i * f
-        for (key, elem) in f.coeff
-            #println(nvars(f), " ", nvars(g))
-            term_coeff[key+g.exp[i]] = g.coeff[g.exp[i]] * elem
-        end 
-        # compute the exponenets of b_i T^i * f
-        term_exp = [g.exp[i] + f.exp[j] for j in eachindex(f)]
-        push!(summands, TropicalPuiseuxPoly(term_coeff, term_exp, true))
-    end 
-    return quicksum(summands)
+    n_f = length(f.exp)
+    n_g = length(g.exp)
+    max_terms = n_f * n_g
+
+    result_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    sizehint!(result_coeff, max_terms)
+    result_exp = Vector{Vector{T}}()
+    sizehint!(result_exp, max_terms)
+
+    # Compute all products, allowing duplicates
+    @inbounds for i in 1:n_g
+        g_exp_i = g.exp[i]
+        g_coeff_i = g.coeff[g_exp_i]
+        for j in 1:n_f
+            f_exp_j = f.exp[j]
+            f_coeff_j = f.coeff[f_exp_j]
+
+            # Compute new exponent
+            new_exp = g_exp_i .+ f_exp_j
+            new_coeff = g_coeff_i * f_coeff_j
+
+            push!(result_exp, new_exp)
+            if haskey(result_coeff, new_exp)
+                result_coeff[new_exp] += new_coeff
+            else
+                result_coeff[new_exp] = new_coeff
+            end
+        end
+    end
+
+    return TropicalPuiseuxPoly(result_coeff, result_exp, true)
 end 
 
 # Addition of tropical Puiseux rationals
@@ -402,8 +474,8 @@ end
 
 # Quick multiplication for rational functions
 function mul_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T
-    mul = TropicalPuiseuxPuiseux_one(nvars(f), f)
-    for f in F 
+    mul = TropicalPuiseuxRational_one(nvars(F[1]), F[1])
+    for f in F
         mul = mul_with_quicksum(mul, f)
     end
     return mul
@@ -470,9 +542,16 @@ function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::TropicalSemiringElem{t
 end 
 
 # Exponentiation of element of tropical semiring by rational number.
-function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Rational{T}) where T<:Integer 
+function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Rational{T}) where T<:Integer
     R = tropical_semiring(max)
     return R(Rational(a)*b)
+end
+
+# Exponentiation of element of tropical semiring by float
+function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Float64)
+    R = tropical_semiring(max)
+    result_val = Float64(Rational(a)) * b
+    return R(rationalize(result_val))
 end
 
 # exponentiation of a tropical Puiseux polynomial by a positive rational
@@ -633,10 +712,8 @@ function dedup_monomials(f::TropicalPuiseuxPoly{T}) where T
         if i != tropical_zero
             push!(new_exp, i)
             new_coeff[i] = f.coeff[i]
-        else 
-            println("found a zero")
         end
-    end 
+    end
     return TropicalPuiseuxPoly(new_coeff, new_exp)
 end 
 

@@ -10,8 +10,8 @@ using Test, TropicalNN, Oscar
     g = TropicalPuiseuxPoly([R(0), R(4), R(-5)], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]], false) 
 
     # test addition and multiplication
-    @test f + g == TropicalPuiseuxPoly{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[1, 1] => (3), Rational{Int64}[1, 0] => (1), Rational{Int64}[1, 7] => (0), Rational{Int64}[9, 1] => (-5), Rational{Int64}[0, 1] => (4)), Vector{Rational{Int64}}[[0, 1], [1, 0], [1, 1], [1, 7], [9, 1]]) 
-    @test f * g == TropicalPuiseuxPoly{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[2, 8] => (3), Rational{Int64}[9, 2] => (-3), Rational{Int64}[1, 8] => (2), Rational{Int64}[10, 1] => (-4), Rational{Int64}[0, 2] => (6), Rational{Int64}[1, 1] => (5), Rational{Int64}[10, 2] => (-2), Rational{Int64}[2, 7] => (1), Rational{Int64}[1, 2] => (7)), Vector{Rational{Int64}}[[0, 2], [1, 1], [1, 2], [1, 8], [2, 7], [2, 8], [9, 2], [10, 1], [10, 2]])
+    @test f + g == TropicalPuiseuxPoly{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[1, 1] => R(3), Rational{Int64}[1, 0] => R(1), Rational{Int64}[1, 7] => R(0), Rational{Int64}[9, 1] => R(-5), Rational{Int64}[0, 1] => R(4)), Vector{Rational{Int64}}[[0, 1], [1, 0], [1, 1], [1, 7], [9, 1]])
+    @test f * g == TropicalPuiseuxPoly{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[2, 8] => R(3), Rational{Int64}[9, 2] => R(-3), Rational{Int64}[1, 8] => R(2), Rational{Int64}[10, 1] => R(-4), Rational{Int64}[0, 2] => R(6), Rational{Int64}[1, 1] => R(5), Rational{Int64}[10, 2] => R(-2), Rational{Int64}[2, 7] => R(1), Rational{Int64}[1, 2] => R(7)), Vector{Rational{Int64}}[[0, 2], [1, 1], [1, 2], [1, 8], [2, 7], [2, 8], [9, 2], [10, 1], [10, 2]])
 
 
     # test components

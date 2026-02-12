@@ -4,6 +4,7 @@ authors = ["Paul Lezeau"]
 version = "0.1.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -17,6 +18,7 @@ MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 Oscar = "f1435218-dba5-11e9-1e4d-f1a5fab5fc13"
 Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 CDDLib = "0.9.4"
@@ -27,12 +29,13 @@ Distributions = "0.25.108"
 GLPK = "1.2.1"
 Graphs = "1.12.0"
 JuMP = "1.23.5"
-LinearAlgebra = "<1.11.1"
+LinearAlgebra = "<0.0.1, 1"
 MetaGraphsNext = "0.7.1"
 Oscar = "1.0.2"
 Polyhedra = "0.7.8"
-Random = "<1.11.1"
-julia = "1.10.0"
+Random = "<0.0.1, 1"
+StaticArrays = "1"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
