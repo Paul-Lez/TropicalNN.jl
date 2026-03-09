@@ -1,7 +1,7 @@
 name = "TropicalNN"
 uuid = "45302f6a-f5d4-4eaf-9bda-c9ca7b62f2bc"
 authors = ["Paul Lezeau"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
