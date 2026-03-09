@@ -159,7 +159,7 @@ using Test, TropicalNN, Oscar
         # Test 1: Basic evaluation with Rational
         f = TropicalPuiseuxPoly([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]], false)
         point = [R(2), R(3)]
-        result = TropicalNN.eval(f, point)
+        result = TropicalNN.evaluate(f, point)
         @test result isa Oscar.TropicalSemiringElem
 
         # Note: Float64 exponent evaluation not tested due to power operation issues

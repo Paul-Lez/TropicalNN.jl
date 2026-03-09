@@ -222,10 +222,10 @@ end
 #### This section defines API to evaluate Tropical Puiseux Polynomials ####
 
 @doc raw"""
-    eval(f::TropicalPuiseuxPoly, a::Vector)
+    evaluate(f::TropicalPuiseuxPoly, a::Vector)
 Evaluates the tropical Puiseux polynomial f at the point a.
 """
-function eval(f::TropicalPuiseuxPoly{T}, a::Vector) where T
+function evaluate(f::TropicalPuiseuxPoly{T}, a::Vector) where T
     #R = tropical_semiring(max)
     ev = zero(a[1])
     for (exp, coeff) in f.coeff
@@ -234,26 +234,26 @@ function eval(f::TropicalPuiseuxPoly{T}, a::Vector) where T
             term *= a[i]^exp[i]
         end
         ev += coeff * term
-    end 
+    end
     return ev
 end
 
 @doc raw"""
-    eval(f::TropicalPuiseuxRational{T}, a::Vector)
+    evaluate(f::TropicalPuiseuxRational{T}, a::Vector)
 Evaluates the tropical Puiseux rational function f at the point a.
 """
-function eval(f::TropicalPuiseuxRational{T}, a::Vector) where T
-    n::TropicalSemiringElem{typeof(max)} = eval(f.num, a) 
-    m::TropicalSemiringElem{typeof(max)} = eval(f.den, a) 
+function evaluate(f::TropicalPuiseuxRational{T}, a::Vector) where T
+    n::TropicalSemiringElem{typeof(max)} = evaluate(f.num, a)
+    m::TropicalSemiringElem{typeof(max)} = evaluate(f.den, a)
     return n / m
-end 
+end
 
 @doc raw"""
-    eval(F::Vector{TropicalPuiseuxPoly{T}}, a::Vector)
+    evaluate(F::Vector{TropicalPuiseuxRational{T}}, a::Vector)
 Evaluates the vector of tropical Puiseux rationals F at the point a.
 """
-function eval(F::Vector{TropicalPuiseuxRational{T}}, a::Vector) where T
-    return [eval(f, a) for f in F]
+function evaluate(F::Vector{TropicalPuiseuxRational{T}}, a::Vector) where T
+    return [evaluate(f, a) for f in F]
 end
 
 ######################################################################

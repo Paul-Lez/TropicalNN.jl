@@ -43,7 +43,7 @@ module TropicalNN
         # power_standardized,
         # scalar_mult_standardized,
         string,
-        eval,
+        evaluate,
         +,
         /,
         *,
