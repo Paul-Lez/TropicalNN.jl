@@ -1,7 +1,7 @@
 module TropicalNN
 
     using Oscar
-    using Combinatorics
+    import Combinatorics
     using Distributions
 
     using Polyhedra
