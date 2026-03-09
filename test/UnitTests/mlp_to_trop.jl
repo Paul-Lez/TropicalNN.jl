@@ -140,12 +140,12 @@ using Test, TropicalNN, Oscar
 
         # Test 1: Standard composition
         composed = comp(layer2, layer1)
-        @test composed isa Vector{TropicalPuiseuxRational}
+        @test composed isa Vector{<:TropicalPuiseuxRational}
         @test length(composed) == 2
 
         # Test 2: Quicksum composition
         composed_qs = comp_with_quicksum(layer2, layer1)
-        @test composed_qs isa Vector{TropicalPuiseuxRational}
+        @test composed_qs isa Vector{<:TropicalPuiseuxRational}
         @test length(composed_qs) == 2
 
         # Both methods should produce valid results
@@ -201,20 +201,20 @@ using Test, TropicalNN, Oscar
         dims_1d = [1, 2, 1]
         W, b, t = random_mlp(dims_1d)
         result = mlp_to_trop(W, b, t)
-        @test result isa Vector{TropicalPuiseuxRational}
+        @test result isa Vector{<:TropicalPuiseuxRational}
         @test length(result) == 1
 
         # Test 2: Wide hidden layer
         dims_wide = [2, 10, 1]
         W2, b2, t2 = random_mlp(dims_wide)
         result2 = mlp_to_trop(W2, b2, t2)
-        @test result2 isa Vector{TropicalPuiseuxRational}
+        @test result2 isa Vector{<:TropicalPuiseuxRational}
 
         # Test 3: Deep network
         dims_deep = [2, 3, 3, 3, 1]
         W3, b3, t3 = random_mlp(dims_deep)
         result3 = mlp_to_trop(W3, b3, t3)
-        @test result3 isa Vector{TropicalPuiseuxRational}
+        @test result3 isa Vector{<:TropicalPuiseuxRational}
         @test length(result3) == 1
 
         # Test 4: Network with all zero weights (degenerate case)
@@ -222,7 +222,7 @@ using Test, TropicalNN, Oscar
         b_zero = [Rational{BigInt}.([1, 1])]
         t_zero = [Rational{BigInt}.([0, 0])]
         result_zero = mlp_to_trop(W_zero, b_zero, t_zero)
-        @test result_zero isa Vector{TropicalPuiseuxRational}
+        @test result_zero isa Vector{<:TropicalPuiseuxRational}
     end
 
     #==========================================================================
@@ -250,8 +250,8 @@ using Test, TropicalNN, Oscar
         without_elim = mlp_to_trop(W3, b3, t3)
         with_elim = mlp_to_trop_with_strong_elim(W3, b3, t3)
         # Both should produce valid results
-        @test without_elim isa Vector{TropicalPuiseuxRational}
-        @test with_elim isa Vector{TropicalPuiseuxRational}
+        @test without_elim isa Vector{<:TropicalPuiseuxRational}
+        @test with_elim isa Vector{<:TropicalPuiseuxRational}
         # Elimination version should have same or fewer monomials
         @test length(with_elim[1].num.exp) <= length(without_elim[1].num.exp)
     end
@@ -266,10 +266,10 @@ using Test, TropicalNN, Oscar
         W, b, t = random_mlp(dims)
 
         # All variants should complete successfully
-        @test mlp_to_trop(W, b, t) isa Vector{TropicalPuiseuxRational}
-        @test mlp_to_trop_with_quicksum(W, b, t) isa Vector{TropicalPuiseuxRational}
-        @test mlp_to_trop_with_strong_elim(W, b, t) isa Vector{TropicalPuiseuxRational}
-        @test mlp_to_trop_with_quicksum_with_strong_elim(W, b, t) isa Vector{TropicalPuiseuxRational}
-        @test mlp_to_trop_with_dedup(W, b, t) isa Vector{TropicalPuiseuxRational}
+        @test mlp_to_trop(W, b, t) isa Vector{<:TropicalPuiseuxRational}
+        @test mlp_to_trop_with_quicksum(W, b, t) isa Vector{<:TropicalPuiseuxRational}
+        @test mlp_to_trop_with_strong_elim(W, b, t) isa Vector{<:TropicalPuiseuxRational}
+        @test mlp_to_trop_with_quicksum_with_strong_elim(W, b, t) isa Vector{<:TropicalPuiseuxRational}
+        @test mlp_to_trop_with_dedup(W, b, t) isa Vector{<:TropicalPuiseuxRational}
     end
 end
