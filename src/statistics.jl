@@ -1,3 +1,73 @@
+############### Geometry Helpers (formerly visualise.jl) ###############
+
+function intersect_reps(rep_1, rep_2)
+    return [vcat(rep_1[1], rep_2[1]), vcat(rep_1[2], rep_2[2])]
+end
+
+function m_reps(f::TropicalPuiseuxPoly)
+    reps = Dict("m_reps" => [], "f_indices" => [])
+    for i in eachindex(f)
+        A = mapreduce(permutedims, vcat, [f.exp[j] - f.exp[i] for j in eachindex(f)])
+        b = [Rational(f.coeff[f.exp[i]]) - Rational(f.coeff[j]) for j in f.exp]
+        p_oscar = Oscar.polyhedron(A, b)
+        if Oscar.is_fulldimensional(p_oscar)
+            push!(reps["m_reps"], [A, b])
+            push!(reps["f_indices"], i)
+        end
+    end
+    return reps
+end
+
+function m_reps(f::TropicalPuiseuxRational)
+    n_reps = m_reps(f.num)
+    d_reps = m_reps(f.den)
+    reps = Dict("m_reps" => [], "f_indices" => [])
+    for (n_m_rep, n_f_idx) in zip(n_reps["m_reps"], n_reps["f_indices"])
+        for (d_m_rep, d_f_idx) in zip(d_reps["m_reps"], d_reps["f_indices"])
+            int_rep = intersect_reps(n_m_rep, d_m_rep)
+            p_oscar = Oscar.polyhedron(int_rep[1], int_rep[2])
+            if Oscar.is_fulldimensional(p_oscar)
+                push!(reps["m_reps"], [int_rep[1], int_rep[2]])
+                push!(reps["f_indices"], [n_f_idx, d_f_idx])
+            end
+        end
+    end
+    return reps
+end
+
+function polyhedra_from_reps(reps, oscar::Bool=false)
+    if oscar
+        return [Oscar.polyhedron(m_rep[1], m_rep[2]) for m_rep in reps["m_reps"]]
+    else
+        return [Polyhedra.polyhedron(Polyhedra.hrep(m_rep[1], m_rep[2]), CDDLib.Library(:exact)) for m_rep in reps["m_reps"]]
+    end
+end
+
+function get_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}, f_indices)
+    linear_maps = []
+    for f_idx in f_indices
+        if length(f_idx) == 1
+            push!(linear_maps, [Rational(f.coeff[f.exp[f_idx]]), f.exp[f_idx]])
+        else
+            numr, denr = f.num, f.den
+            push!(linear_maps, [Rational(numr.coeff[numr.exp[f_idx[1]]]) - Rational(denr.coeff[denr.exp[f_idx[2]]]), numr.exp[f_idx[1]] - denr.exp[f_idx[2]]])
+        end
+    end
+    return linear_maps
+end
+
+function get_linear_regions(polyhedra, linear_maps)
+    linear_regions = Dict()
+    for (linear_map, poly) in zip(linear_maps, polyhedra)
+        if !haskey(linear_regions, linear_map)
+            linear_regions[linear_map] = Dict("polyhedra" => [poly])
+        else
+            push!(linear_regions[linear_map]["polyhedra"], poly)
+        end
+    end
+    return linear_regions
+end
+
 ############### Utilities ###############
 
 @doc raw"""

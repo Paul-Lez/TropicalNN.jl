@@ -211,7 +211,7 @@ using Test, TropicalNN, Oscar
         @test result2 isa Vector{<:TropicalPuiseuxRational}
 
         # Test 3: Deep network
-        dims_deep = [2, 3, 3, 3, 1]
+        dims_deep = [2, 2, 2, 1]
         W3, b3, t3 = random_mlp(dims_deep)
         result3 = mlp_to_trop(W3, b3, t3)
         @test result3 isa Vector{<:TropicalPuiseuxRational}

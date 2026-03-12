@@ -11,7 +11,9 @@ using Test
 
     include("./UnitTests/mlp_to_trop.jl")
 
-    include("./UnitTests/visualise.jl")
+    if Base.find_package("CairoMakie") !== nothing
+        include("./UnitTests/visualise.jl")
+    end
 
     include("./UnitTests/hoffman.jl")
 

@@ -17,7 +17,11 @@ struct TropicalPuiseuxPoly{T}
 
     # Inner constructor to handle type conversion
     function TropicalPuiseuxPoly{T}(coeff::Dict, exp::Vector{Vector{T}}) where T
-        typed_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}(coeff)
+        R = Oscar.tropical_semiring(max)
+        typed_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+        for (k, v) in coeff
+            typed_coeff[k] = v isa Oscar.TropicalSemiringElem ? v : R(v)
+        end
         new{T}(typed_coeff, exp)
     end
 
