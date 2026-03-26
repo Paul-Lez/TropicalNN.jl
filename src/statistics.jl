@@ -141,16 +141,16 @@ end
 Returns interior points for the collection of polyhedron comprising linear regions.
 """
 function interior_points(linear_regions::Dict)
-    interior_points = Dict()
+    result = Dict()
     # Iterate through each linear region and identify interior points
     for (linear_map, components) in linear_regions
         components_interiors = []
         for polys in components
-            push!(components_interior, interior_points(polys))
+            push!(components_interiors, interior_points(polys))
         end
-        interior_points[linear_map] = components_interiors
+        result[linear_map] = components_interiors
     end
-    return interior_points
+    return result
 end
 
 @doc raw"""

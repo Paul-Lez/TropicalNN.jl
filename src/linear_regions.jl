@@ -126,89 +126,109 @@ function components(V, D)
 end
 
 @doc raw"""
-    enum_linear_regions_rat(f::TropicalPuiseuxPoly, g::TropicalPuiseuxPoly, verbose)
+    LinearRegion{T}
 
-Computes the linear regions of a tropical Puiseux rational function f/g
-Inputs: Tropical Puiseux polynomials f and g
-Ouput: array containing linear regions of f/g represented by polyhedra/arrays of polyhedra.
+Represents one linear region of a tropical Puiseux rational function.
+
+A linear region is the maximal set on which the rational function restricts to a single
+affine linear map. This set may be non-convex; `regions` holds all the full-dimensional
+convex polyhedra whose union makes up the linear region.
+
+Supports `length`, `iterate`, and integer indexing over `regions`.
+"""
+struct LinearRegion{T}
+    regions::Vector{T}
+end
+
+Base.length(lr::LinearRegion) = length(lr.regions)
+Base.iterate(lr::LinearRegion) = iterate(lr.regions)
+Base.iterate(lr::LinearRegion, state) = iterate(lr.regions, state)
+Base.getindex(lr::LinearRegion, i::Int) = lr.regions[i]
+
+@doc raw"""
+    LinearRegions{T}
+
+The return type of `enum_linear_regions_rat`. Holds all linear regions of a tropical
+Puiseux rational function as a vector of `LinearRegion{T}` objects.
+
+Each element of `regions` is a `LinearRegion` corresponding to a distinct affine linear
+map realised by the rational function. A `LinearRegion` may contain more than one convex
+polyhedron when the same linear map is realised on several disconnected pieces.
+
+Supports `length`, `iterate`, and integer indexing over the `LinearRegion` entries.
+"""
+struct LinearRegions{T}
+    regions::Vector{LinearRegion{T}}
+end
+
+Base.length(lrs::LinearRegions) = length(lrs.regions)
+Base.iterate(lrs::LinearRegions) = iterate(lrs.regions)
+Base.iterate(lrs::LinearRegions, state) = iterate(lrs.regions, state)
+Base.getindex(lrs::LinearRegions, i::Int) = lrs.regions[i]
+
+@doc raw"""
+    enum_linear_regions_rat(q::TropicalPuiseuxRational)
+
+Computes the linear regions of a tropical Puiseux rational function.
+
+# Arguments
+- `q::TropicalPuiseuxRational`: The rational function whose linear regions are computed.
+
+# Returns
+A `LinearRegions` object whose `regions` field is a `Vector{LinearRegion}`. Each
+`LinearRegion` corresponds to one distinct affine linear map realised by `q`, and its
+`regions` field holds the full-dimensional convex polyhedra on which that map is attained.
+When the same linear map appears on several disconnected pieces, all pieces are collected
+in one `LinearRegion`.
 
 # Example
-Enumerates the linear regions of f/g where f = max(x, y) and g = max(x+y, x+2y).
+Enumerates the linear regions of `f/g` where `f = max(x, y)` and `g = 0`.
+`f/g` has two linear regions (one per monomial of `f`), each a single half-plane.
 ```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
+julia> R = tropical_semiring(max);
 
-julia> g = TropicalPuiseuxPoly(Dict([1, 1] => 0, [1, 2] => 0), [[1, 1], [1, 2]]);
+julia> f = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false);
 
-julia> enum_linear_regions_rat(f, g)
-4-element Vector{Any}:
- Polyhedron in ambient dimension 2 with Float64 type coefficients
- Polyhedron in ambient dimension 2 with Float64 type coefficients
- Polyhedron in ambient dimension 2 with Float64 type coefficients
- Polyhedron in ambient dimension 2 with Float64 type coefficients
+julia> g = TropicalPuiseuxPoly([R(0)], [[0//1, 0//1]], false);
+
+julia> lr = enum_linear_regions_rat(f / g);
+
+julia> length(lr)
+2
+
+julia> length(lr[1].regions)
+1
 ```
 """
 function enum_linear_regions_rat(q::TropicalPuiseuxRational)
     f = q.num
     g = q.den
-    # first, compute the linear regions of f and g. 
+    # first, compute the linear regions of f and g.
     lin_f = enum_linear_regions(f)
     lin_g = enum_linear_regions(g)
-    # next, check which for repetitions of the linear map corresponding to f/g on intersections of the linear regions computed above.
-    function check_linear_repetitions()
-        linear_map = Dict()
-        # We need to check for pairwise intersection of each polytope, by iterating over
+    # next, group full-dimensional intersections by the linear map they realise.
+    function group_by_linear_map()
+        groups = Dict()  # linear_map_value => Vector of polyhedra
         for i in eachindex(f)
             for j in eachindex(g)
-                # we only need to do the checks on linear regions that are attained by f and g
+                # only process linear regions that are attained by f and g
                 if lin_f[i][2] && lin_g[j][2]
-                    # check if the polytopes intersect
                     poly = Oscar.intersect(lin_f[i][1], lin_g[j][1])
-                    # if they intersect on a large enough region then add this to the list of linear maps that arise in f/g
-                    # Note: we used to check that the poly is feasible and has dimension n, but it's a lot fast to check that it is full dimensional directly.
                     if Oscar.is_fulldimensional(poly)
-                        linear_map[poly] = [Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]]), f.exp[i] - g.exp[j]]
+                        lm = [Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]]), f.exp[i] - g.exp[j]]
+                        if haskey(groups, lm)
+                            push!(groups[lm], poly)
+                        else
+                            groups[lm] = [poly]
+                        end
                     end
                 end
             end
         end
-        # check for repetitions
-        linear_map_unique = unique([l for (key, l) in linear_map])
-        if length(linear_map) == length(linear_map_unique)
-            return linear_map, [], false
-        else
-            # compute indices of repetitions for each linear map
-            reps = [(l, Base.findall(x -> x == l, linear_map)) for l in linear_map_unique]
-            return linear_map, reps, true
-        end
+        return groups
     end
-    linear_map, reps, exists_reps = check_linear_repetitions()
-    # if there are no repetitions, then the linear regions are just the non-empty intersections of linear regions of f and linear regions of g
-    if !exists_reps
-        lin_regions = collect(keys(linear_map))
-        # if there are repetitions then we will need to find connected components of the union of the polytopes on which repetitions occur.
-    else
-        # Initialise the array lin_regions. This will contain the true linear regions of f/g
-        lin_regions = []
-        # first find all pairwise intersections of polytopes.
-        for (_, vals) in reps
-            # if vals has length 1 then there is no other linear region with the same linear map
-            if length(vals) == 1
-                append!(lin_regions, vals)
-            else
-                # otherwise, we check for intersections in the set of linear regions with a given map
-                has_intersect = Dict()
-                # iterate over unordered pairs of (distinct) elements of vals
-                for (poly1, poly2) in Combinatorics.combinations(vals, 2)
-                    # intersect the two polyhedra
-                    intesection = Oscar.intersect(poly1, poly2)
-                    # add true to the dictionary if the intersection is nonemtpy and false otherwise
-                    has_intersect[(poly1, poly2)] = Oscar.is_feasible(intesection)
-                end
-                # now find transitive closure of the relation given by dictionary has_intersect
-                # and append the corresponding components to lin_regions
-                append!(lin_regions, components(vals, has_intersect))
-            end
-        end
-    end
-    return lin_regions
+
+    groups = group_by_linear_map()
+    lin_regions = [LinearRegion(polys) for (_, polys) in groups]
+    return LinearRegions(lin_regions)
 end

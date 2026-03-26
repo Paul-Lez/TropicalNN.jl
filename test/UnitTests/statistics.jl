@@ -62,4 +62,70 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
     g=get_graph(f)
     @test typeof(g)<:MetaGraph
 
+    # interior_points tests
+    # Use f = max(0, x+1, 2x+1) in 1D.
+    # Exponents [0], [1], [2] with coefficients R(0), R(1), R(1).
+    # - Monomial [0] (coeff 0): region x ≤ -1        — unbounded ray, one vertex at x=-1
+    # - Monomial [1] (coeff 1): region -1 ≤ x ≤ 0   — bounded interval, vertices at x=-1 and x=0
+    # - Monomial [2] (coeff 1): region x ≥ 0         — unbounded ray, one vertex at x=0
+
+    @testset "interior_points(Array) — single bounded polyhedron" begin
+        R = tropical_semiring(max)
+        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        # polyhedron for monomial index 2 (exponent [1//1]) is the interval [-1, 0]
+        poly = TropicalNN.polyhedron(f_1d, 2)
+        pts = TropicalNN.interior_points([poly])
+        @test length(pts) == 1
+        # centroid of vertices {-1, 0} is -1/2
+        @test Float64.(pts[1]) ≈ [-0.5]
+    end
+
+    @testset "interior_points(Array) — multiple polyhedra" begin
+        R = tropical_semiring(max)
+        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        regions = enum_linear_regions(f_1d)
+        polys = [r[1] for r in regions if r[2]]  # all three regions are non-empty
+        pts = TropicalNN.interior_points(polys)
+        # one interior point per polyhedron
+        @test length(pts) == length(polys)
+    end
+
+    @testset "interior_points(Dict) — exercises the fixed code path" begin
+        R = tropical_semiring(max)
+        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        # interior_points(TropicalPuiseuxPoly) routes through interior_points(Dict)
+        # via map_statistic → separate_components → interior_points(Dict)
+        result = interior_points(f_1d)
+        @test result isa Dict
+        # All three monomials have full-dimensional regions, so three keys
+        @test length(result) == 3
+        # Each value is a list of connected components (each component is a list of points)
+        for v in values(result)
+            @test v isa Vector
+            @test all(c isa Vector for c in v)
+        end
+    end
+
+    @testset "interior_points(Dict) — centroid of bounded region" begin
+        R = tropical_semiring(max)
+        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        result = interior_points(f_1d)
+        # Collect all interior points across all regions and components
+        all_pts = [Float64.(pt)
+                   for (_, comps) in result
+                   for comp in comps
+                   for pt in comp]
+        # The bounded region [-1, 0] has centroid -0.5; check it appears in the results
+        @test any(p ≈ [-0.5] for p in all_pts)
+    end
+
+    @testset "interior_points(TropicalPuiseuxRational) — end-to-end" begin
+        # Verify the function runs without error on a rational function
+        W, b, t = random_mlp([1, 2, 1])
+        trop = mlp_to_trop(W, b, t)[1]
+        result = interior_points(trop)
+        @test result isa Dict
+        @test length(result) > 0
+    end
+
 end

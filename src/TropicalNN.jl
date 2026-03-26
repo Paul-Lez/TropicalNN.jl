@@ -69,6 +69,8 @@ module TropicalNN
         enum_linear_regions,
         n_components,
         components,
+        LinearRegion,
+        LinearRegions,
         enum_linear_regions_rat,
         polyhedron_highs,
         enum_linear_regions_highs,

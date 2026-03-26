@@ -234,7 +234,7 @@ using Test, TropicalNN, Oscar
         W, b, t = random_mlp(dims)
         trop_func = mlp_to_trop(W, b, t)
         regions = enum_linear_regions_rat(trop_func[1])
-        @test regions isa Vector
+        @test regions isa LinearRegions
         @test length(regions) > 0
 
         # Test 2: Conversion and evaluation consistency
