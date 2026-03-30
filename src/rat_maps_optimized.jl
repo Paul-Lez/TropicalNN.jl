@@ -1,13 +1,13 @@
-# Optimized TropicalPuiseuxPoly implementation using matrix storage
+# Optimized Signomial implementation using matrix storage
 # This provides significant speedups for medium to high dimensions (>5D)
 
 using Oscar
 using LinearAlgebra
 
 """
-    TropicalPuiseuxPolyMatrix{T}
+    SignomialMatrix{T}
 
-Optimized tropical Puiseux polynomial using matrix-based exponent storage.
+Optimized signomial using matrix-based exponent storage.
 Exponents are stored as a matrix where each column is one exponent vector.
 This provides better cache locality and eliminates per-vector allocation overhead.
 
@@ -22,12 +22,12 @@ This provides better cache locality and eliminates per-vector allocation overhea
 - Better cache locality due to contiguous memory
 - Eliminates allocation overhead in operations
 """
-struct TropicalPuiseuxPolyMatrix{T}
+struct SignomialMatrix{T}
     exp::Matrix{T}
     coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
     dim::Int
 
-    function TropicalPuiseuxPolyMatrix{T}(exp::Matrix{T}, coeff::Vector) where T
+    function SignomialMatrix{T}(exp::Matrix{T}, coeff::Vector) where T
         dim, n_monomials = size(exp)
         @assert length(coeff) == n_monomials "Coefficient count must match monomial count"
         new{T}(exp, coeff, dim)
@@ -35,9 +35,9 @@ struct TropicalPuiseuxPolyMatrix{T}
 end
 
 # Constructor from vector-of-vectors (for compatibility)
-function TropicalPuiseuxPolyMatrix{T}(exp_vecs::Vector{Vector{T}}, coeff::Vector) where T
+function SignomialMatrix{T}(exp_vecs::Vector{Vector{T}}, coeff::Vector) where T
     if isempty(exp_vecs)
-        return TropicalPuiseuxPolyMatrix{T}(Matrix{T}(undef, 0, 0), coeff)
+        return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), coeff)
     end
 
     dim = length(exp_vecs[1])
@@ -51,29 +51,29 @@ function TropicalPuiseuxPolyMatrix{T}(exp_vecs::Vector{Vector{T}}, coeff::Vector
         end
     end
 
-    return TropicalPuiseuxPolyMatrix{T}(exp_matrix, coeff)
+    return SignomialMatrix{T}(exp_matrix, coeff)
 end
 
 # Convenience constructor
-TropicalPuiseuxPolyMatrix(exp::Matrix{T}, coeff::Vector) where T = TropicalPuiseuxPolyMatrix{T}(exp, coeff)
+SignomialMatrix(exp::Matrix{T}, coeff::Vector) where T = SignomialMatrix{T}(exp, coeff)
 
 """
 Get the i-th exponent vector (returns a view for efficiency)
 """
-function get_exp(f::TropicalPuiseuxPolyMatrix, i::Int)
+function get_exp(f::SignomialMatrix, i::Int)
     return @view f.exp[:, i]
 end
 
 """
 Get number of monomials
 """
-Base.length(f::TropicalPuiseuxPolyMatrix) = size(f.exp, 2)
-Base.eachindex(f::TropicalPuiseuxPolyMatrix) = Base.OneTo(length(f))
+Base.length(f::SignomialMatrix) = size(f.exp, 2)
+Base.eachindex(f::SignomialMatrix) = Base.OneTo(length(f))
 
 """
 Addition of two tropical Puiseux polynomials (matrix version)
 """
-function Base.:+(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -100,14 +100,14 @@ function Base.:+(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T
     sorted_exp = combined_exp[:, perm]
     sorted_coeff = combined_coeff[perm]
 
-    return TropicalPuiseuxPolyMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
 end
 
 """
 Multiplication of two tropical Puiseux polynomials (matrix version)
 Optimized with preallocated workspace and @inbounds
 """
-function Base.:*(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -138,7 +138,7 @@ function Base.:*(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T
     sorted_exp = result_exp[:, perm]
     sorted_coeff = result_coeff[perm]
 
-    return TropicalPuiseuxPolyMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
 end
 
 """
@@ -162,8 +162,8 @@ end
 """
 Multiply with reusable workspace (zero-allocation version)
 """
-function mul_with_workspace!(f::TropicalPuiseuxPolyMatrix{T},
-                             g::TropicalPuiseuxPolyMatrix{T},
+function mul_with_workspace!(f::SignomialMatrix{T},
+                             g::SignomialMatrix{T},
                              workspace::TropicalPolyWorkspace{T}) where T
     @assert f.dim == g.dim "Dimensions must match"
 
@@ -195,8 +195,8 @@ function mul_with_workspace!(f::TropicalPuiseuxPolyMatrix{T},
     sorted_exp = result_exp[:, perm]
     sorted_coeff = result_coeff[perm]
 
-    return TropicalPuiseuxPolyMatrix{T}(Matrix(sorted_exp), Vector(sorted_coeff))
+    return SignomialMatrix{T}(Matrix(sorted_exp), Vector(sorted_coeff))
 end
 
 # Export the new types
-export TropicalPuiseuxPolyMatrix, TropicalPolyWorkspace, mul_with_workspace!
+export SignomialMatrix, TropicalPolyWorkspace, mul_with_workspace!

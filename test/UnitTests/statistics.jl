@@ -4,7 +4,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     # one-dimensional tropical polynomial
 
-    f=TropicalPuiseuxPoly(Rational{BigInt}.([0,1,1]),[Rational{BigInt}.([0]),Rational{BigInt}.([1]),Rational{BigInt}.([2])],false)
+    f=Signomial(Rational{BigInt}.([0,1,1]),[Rational{BigInt}.([0]),Rational{BigInt}.([1]),Rational{BigInt}.([2])],false)
 
     bds=bounds(f)
     @test bds==Dict{Any, Any}(Any[0//1, Rational{BigInt}[0]] => Any[Any[false]], Any[1//1, Rational{BigInt}[1]] => Any[Any[true]], Any[1//1, Rational{BigInt}[2]] => Any[Any[false]])
@@ -26,7 +26,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     # two-dimensional tropical polynomial
 
-    f=TropicalPuiseuxPoly(Rational{BigInt}.([7915717918548363//9007199254740992,-7126386568116357//36028797018963968,5429561850506053//18014398509481984,1797871556439715//9007199254740992,-7597859609031347//4503599627370496,6086636570648303//4503599627370496]),[Rational{BigInt}.([6247149566212205//36028797018963968, 6402402109461593//9007199254740992]),Rational{BigInt}.([1560644898352435//1125899906842624, 308028398761065//562949953421312]),Rational{BigInt}.([5123970192597481//18014398509481984, 8573812228218511//9007199254740992]),Rational{BigInt}.([8850358768454271//72057594037927936, 6433642560136419//9007199254740992]),Rational{BigInt}.([3082055910080279//36028797018963968, -2092896630110503//2251799813685248]),Rational{BigInt}.([8780149460643975//18014398509481984, 5087317266127709//36028797018963968])],false)
+    f=Signomial(Rational{BigInt}.([7915717918548363//9007199254740992,-7126386568116357//36028797018963968,5429561850506053//18014398509481984,1797871556439715//9007199254740992,-7597859609031347//4503599627370496,6086636570648303//4503599627370496]),[Rational{BigInt}.([6247149566212205//36028797018963968, 6402402109461593//9007199254740992]),Rational{BigInt}.([1560644898352435//1125899906842624, 308028398761065//562949953421312]),Rational{BigInt}.([5123970192597481//18014398509481984, 8573812228218511//9007199254740992]),Rational{BigInt}.([8850358768454271//72057594037927936, 6433642560136419//9007199254740992]),Rational{BigInt}.([3082055910080279//36028797018963968, -2092896630110503//2251799813685248]),Rational{BigInt}.([8780149460643975//18014398509481984, 5087317266127709//36028797018963968])],false)
 
     bds=bounds(f)
     @test bds==Dict{Any, Any}(Any[5429561850506053//18014398509481984, Rational{BigInt}[5123970192597481//18014398509481984, 8573812228218511//9007199254740992]] => Any[Any[false]], Any[-7126386568116357//36028797018963968, Rational{BigInt}[1560644898352435//1125899906842624, 308028398761065//562949953421312]] => Any[Any[false]], Any[-7597859609031347//4503599627370496, Rational{BigInt}[3082055910080279//36028797018963968, -2092896630110503//2251799813685248]] => Any[Any[false]], Any[7915717918548363//9007199254740992, Rational{BigInt}[6247149566212205//36028797018963968, 6402402109461593//9007199254740992]] => Any[Any[true]], Any[6086636570648303//4503599627370496, Rational{BigInt}[8780149460643975//18014398509481984, 5087317266127709//36028797018963968]] => Any[Any[true]], Any[1797871556439715//9007199254740992, Rational{BigInt}[8850358768454271//72057594037927936, 6433642560136419//9007199254740992]] => Any[Any[false]])
@@ -71,7 +71,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     @testset "interior_points(Array) — single bounded polyhedron" begin
         R = tropical_semiring(max)
-        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
         # polyhedron for monomial index 2 (exponent [1//1]) is the interval [-1, 0]
         poly = TropicalNN.polyhedron(f_1d, 2)
         pts = TropicalNN.interior_points([poly])
@@ -82,7 +82,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     @testset "interior_points(Array) — multiple polyhedra" begin
         R = tropical_semiring(max)
-        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
         regions = enum_linear_regions(f_1d)
         polys = [r[1] for r in regions if r[2]]  # all three regions are non-empty
         pts = TropicalNN.interior_points(polys)
@@ -92,8 +92,8 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     @testset "interior_points(Dict) — exercises the fixed code path" begin
         R = tropical_semiring(max)
-        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
-        # interior_points(TropicalPuiseuxPoly) routes through interior_points(Dict)
+        f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        # interior_points(Signomial) routes through interior_points(Dict)
         # via map_statistic → separate_components → interior_points(Dict)
         result = interior_points(f_1d)
         @test result isa Dict
@@ -108,7 +108,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
 
     @testset "interior_points(Dict) — centroid of bounded region" begin
         R = tropical_semiring(max)
-        f_1d = TropicalPuiseuxPoly([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
+        f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]], false)
         result = interior_points(f_1d)
         # Collect all interior points across all regions and components
         all_pts = [Float64.(pt)
@@ -119,7 +119,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
         @test any(p ≈ [-0.5] for p in all_pts)
     end
 
-    @testset "interior_points(TropicalPuiseuxRational) — end-to-end" begin
+    @testset "interior_points(RationalSignomial) — end-to-end" begin
         # Verify the function runs without error on a rational function
         W, b, t = random_mlp([1, 2, 1])
         trop = mlp_to_trop(W, b, t)[1]

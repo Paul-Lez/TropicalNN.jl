@@ -1,11 +1,11 @@
 ############### Utilities ###############
 
 @doc raw"""
-    linearmap_matrices(f::TropicalPuiseuxPoly)
+    linearmap_matrices(f::Signomial)
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
-function linearmap_matrices(f::TropicalPuiseuxPoly)
+function linearmap_matrices(f::Signomial)
     linear_maps = []
     exponents = []
     coefficients = []
@@ -30,11 +30,11 @@ function linearmap_matrices(f::TropicalPuiseuxPoly)
 end
 
 @doc raw"""
-    linearmap_matrices(f::TropicalPuiseuxRational)
+    linearmap_matrices(f::RationalSignomial)
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical rational map.
 """
-function linearmap_matrices(f::TropicalPuiseuxRational)
+function linearmap_matrices(f::RationalSignomial)
     Anum, bnum = linearmap_matrices(f.num)
     Aden, bden = linearmap_matrices(f.den)
     return (Anum, Aden), (bnum, bden)
@@ -192,11 +192,11 @@ end
 
 
 @doc raw"""
-    exact_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
+    exact_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
 
 Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function exact_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}; return_matrices::Bool=false)
+function exact_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool=false)
     hoff_const = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -211,11 +211,11 @@ function exact_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}; retur
 end
 
 @doc raw"""
-    upper_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational};return_matrices::Bool=false)
+    upper_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
 
 Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function upper_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}; return_matrices::Bool=false)
+function upper_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool=false)
     hoff_upper = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -230,27 +230,22 @@ function upper_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}; retur
 end
 
 @doc raw"""
-    lower_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational},num_samples::Int=10)
+    lower_hoff(f::Union{Signomial,RationalSignomial},num_samples::Int=10)
 
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function lower_hoff(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}, num_samples::Int=10; return_matrices::Bool=false)
+function lower_hoff(f::Union{Signomial,RationalSignomial}, num_samples::Int=10; return_matrices::Bool=false)
     A, b = linearmap_matrices(f)
     t_matrices = tilde_matrices(A)
     # if we are taking more samples than there are submatrices we are using exact
     # computations so we can take a maximum over the Hoffman constants
-    if num_samples >= 2^(size(t_matrices[1])[1])
-        hoff_lower = 0.0
-        for tilde_matrix in t_matrices
-            hoff_lower = max(hoff_lower, lower_hoff(tilde_matrix, num_samples))
-        end
-        # otherwise, to ensure we have a lower bound we must take the minimum 
-        # over all lower bounds
-    else
-        hoff_lower = Inf
-        for tilde_matrix in t_matrices
-            hoff_lower = min(hoff_lower, lower_hoff(tilde_matrix, num_samples))
-        end
+    # The Hoffman constant of the tropical function is max_k H(tilde_matrix_k).
+    # Each lower_hoff(tilde_matrix_k, ...) is a lower bound on H(tilde_matrix_k).
+    # max over lower bounds is still a lower bound on the overall max, regardless of
+    # whether we are in the exact or sampling regime.
+    hoff_lower = 0.0
+    for tilde_matrix in t_matrices
+        hoff_lower = max(hoff_lower, lower_hoff(tilde_matrix, num_samples))
     end
     if return_matrices
         return hoff_lower, A, b
@@ -262,43 +257,43 @@ end
 ############### Effective Radius ###############
 
 @doc raw"""
-    exact_er(f::TropicalPuiseuxPoly)
+    exact_er(f::Signomial)
 
 Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
 """
-function exact_er(f::TropicalPuiseuxPoly)
+function exact_er(f::Signomial)
     hoff_const, A, b = exact_hoff(f, return_matrices=true)
     tilde_bs = tilde_vectors(b)
     return hoff_const * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
 end
 
 @doc raw"""
-    upper_er(f::TropicalPuiseuxPoly)
+    upper_er(f::Signomial)
 
 Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
 """
-function upper_er(f::TropicalPuiseuxPoly)
+function upper_er(f::Signomial)
     hoff_upper, A, b = upper_hoff(f, return_matrices=true)
     tilde_bs = tilde_vectors(b)
     return hoff_upper * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
 end
 
 @doc raw"""
-    exact_er(f::TropicalPuiseuxRational)
+    exact_er(f::RationalSignomial)
 
 Provides an upper bound on the effective radius of a tropical rational map using exact Hoffman constant computations.
 """
-function exact_er(f::TropicalPuiseuxRational)
+function exact_er(f::RationalSignomial)
     hoff_const, A, b = exact_hoff(f, return_matrices=true)
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
 @doc raw"""
-    upper_er(f::TropicalPuiseuxRational)
+    upper_er(f::RationalSignomial)
 
 Provides an upper bound on the effective radius of a tropical rational map using upper bound approximations of the Hoffman constant.
 """
-function upper_er(f::TropicalPuiseuxRational)
+function upper_er(f::RationalSignomial)
     hoff_upper, A, b = upper_hoff(f, return_matrices=true)
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end

@@ -1,7 +1,7 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
 
 @doc raw"""
-    monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true)
+    monomial_strong_elim(f::Signomial{T}; parallel::Bool=true)
 
 Removes redundant monomials from a tropical Puiseux polynomial f.
 
@@ -13,17 +13,17 @@ full-dimensionality checks, which can provide significant speedup for
 polynomials with many monomials.
 
 # Arguments
-- `f::TropicalPuiseuxPoly{T}`: The polynomial to simplify
+- `f::Signomial{T}`: The polynomial to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 
 # Returns
-- `TropicalPuiseuxPoly{T}`: A new polynomial with redundant monomials removed
+- `Signomial{T}`: A new polynomial with redundant monomials removed
 
 # Note
 The parallel version requires Julia to be started with multiple threads
 (e.g., `julia -t auto` or `JULIA_NUM_THREADS=4 julia`).
 """
-function monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true) where T
+function monomial_strong_elim(f::Signomial{T}; parallel::Bool=true) where T
     n = length(f.exp)
 
     if parallel && Threads.nthreads() > 1 && n > 1
@@ -48,7 +48,7 @@ function monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true) wh
             end
         end
 
-        return TropicalPuiseuxPoly(new_coeff, new_exp)
+        return Signomial(new_coeff, new_exp)
     else
         # Sequential version (original algorithm)
         new_exp = Vector{Vector{T}}()
@@ -64,37 +64,37 @@ function monomial_strong_elim(f::TropicalPuiseuxPoly{T}; parallel::Bool=true) wh
             end
         end
 
-        return TropicalPuiseuxPoly(new_coeff, new_exp)
+        return Signomial(new_coeff, new_exp)
     end
 end 
 
 @doc raw"""
-    monomial_strong_elim(f::TropicalPuiseuxRational{T}; parallel::Bool=true)
+    monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true)
 
 Removes redundant monomials from both numerator and denominator of a tropical
 Puiseux rational function.
 
 # Arguments
-- `f::TropicalPuiseuxRational{T}`: The rational function to simplify
+- `f::RationalSignomial{T}`: The rational function to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(f::TropicalPuiseuxRational{T}; parallel::Bool=true) where T
-    return TropicalPuiseuxRational(
+function monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true) where T
+    return RationalSignomial(
         monomial_strong_elim(f.num; parallel=parallel),
         monomial_strong_elim(f.den; parallel=parallel)
     )
 end
 
 @doc raw"""
-    monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}; parallel::Bool=true)
+    monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true)
 
 Removes redundant monomials from a vector of tropical Puiseux rational functions.
 
 # Arguments
-- `F::Vector{TropicalPuiseuxRational{T}}`: The vector of rational functions to simplify
+- `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(F::Vector{TropicalPuiseuxRational{T}}; parallel::Bool=true) where T
+function monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true) where T
     return [monomial_strong_elim(f; parallel=parallel) for f in F]
 end
 

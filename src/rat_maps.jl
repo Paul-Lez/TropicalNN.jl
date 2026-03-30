@@ -7,16 +7,16 @@ The coefficients are elements of the tropical semiring.
 
 # Example
 
-julia> f = TropicalPuiseuxPoly(Dict([1, 2] => 1, [2, 1] => 2), [[1, 2], [2, 1]])
-  TropicalPuiseuxPoly{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
+julia> f = Signomial(Dict([1, 2] => 1, [2, 1] => 2), [[1, 2], [2, 1]])
+  Signomial{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
 
 """
-struct TropicalPuiseuxPoly{T}
+struct Signomial{T}
     coeff::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}
     exp::Vector{Vector{T}}
 
     # Inner constructor to handle type conversion
-    function TropicalPuiseuxPoly{T}(coeff::Dict, exp::Vector{Vector{T}}) where T
+    function Signomial{T}(coeff::Dict, exp::Vector{Vector{T}}) where T
         R = Oscar.tropical_semiring(max)
         typed_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
         for (k, v) in coeff
@@ -26,210 +26,205 @@ struct TropicalPuiseuxPoly{T}
     end
 
     # Direct constructor for already-typed dicts
-    function TropicalPuiseuxPoly{T}(coeff::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}, exp::Vector{Vector{T}}) where T
+    function Signomial{T}(coeff::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}, exp::Vector{Vector{T}}) where T
         new{T}(coeff, exp)
     end
 end
 
 # Outer constructor
-TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}) where T = TropicalPuiseuxPoly{T}(coeff, exp) 
+Signomial(coeff::Dict, exp::Vector{Vector{T}}) where T = Signomial{T}(coeff, exp)
 
 """
-Represents a quotient of tropical Puiseux polynomials.
+Represents a quotient of signomials.
 """
-struct TropicalPuiseuxRational{T}
-    num::TropicalPuiseuxPoly{T}
-    den::TropicalPuiseuxPoly{T}
-end 
+struct RationalSignomial{T}
+    num::Signomial{T}
+    den::Signomial{T}
+end
 
 @doc raw"""
-    TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}, sorted::Bool)
+    Signomial(coeff::Dict, exp::Vector{Vector{T}}, sorted::Bool)
 
-Constructs a tropical Puiseux polynomial from a dictionary of coefficients and a vector of exponents, by first sorting the exponents lexicographically.
+Constructs a signomial from a dictionary of coefficients and a vector of exponents, by first sorting the exponents lexicographically.
 """
-function TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}, sorted) where T
+function Signomial(coeff::Dict, exp::Vector{Vector{T}}, sorted) where T
     # first we need to order everything lexicographically
-    if !sorted 
+    if !sorted
         exp = sort(exp)
-    end 
-    return TropicalPuiseuxPoly(coeff, exp)
-end 
+    end
+    return Signomial(coeff, exp)
+end
 
 @doc raw"""
-    TropicalPuiseuxPoly(coeff::Dict, exp::Vector{Vector{T}}, sorted::Bool)
+    Signomial(coeff::Vector, exp::Vector, sorted::Bool)
 
-Constructs a tropical Puiseux polynomial from a vector of coefficients and a vector of exponents, by first sorting the exponents lexicographically, and then constructing the dictionary of coefficients.
+Constructs a signomial from a vector of coefficients and a vector of exponents, by first sorting the exponents lexicographically, and then constructing the dictionary of coefficients.
 
 ```jldoctest
-julia> f = TropicalPuiseuxPoly([1, 2], [[1, 2], [2, 1]])
-  TropicalPuiseuxPoly{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
+julia> f = Signomial([1, 2], [[1, 2], [2, 1]])
+  Signomial{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
 ```
 """
-function TropicalPuiseuxPoly(coeff::Vector, exp::Vector, sorted)
-    if !sorted 
+function Signomial(coeff::Vector, exp::Vector, sorted)
+    if !sorted
         I = sortperm(exp)
         exp = exp[I]
         coeff = coeff[I]
-    end 
-    return TropicalPuiseuxPoly(Dict(zip(exp, coeff)), exp)
-end 
+    end
+    return Signomial(Dict(zip(exp, coeff)), exp)
+end
 
 @doc raw"""
-    TropicalPuiseuxPoly_const(n, c, f::TropicalPuiseuxPoly{T})
+    Signomial_const(n, c, f::Signomial{T})
 
-Outputs the constant c viewed as a tropical Puiseux polynomial in n variables, and exponents in the 
+Outputs the constant c viewed as a signomial in n variables, and exponents in the
 same type as f.
 """
-function TropicalPuiseuxPoly_const(n, c, f::TropicalPuiseuxPoly{T}) where T
+function Signomial_const(n, c, f::Signomial{T}) where T
     exp = [Base.zeros(T, n)]
     coeff = Dict(Base.zeros(T, n) => c)
-    return TropicalPuiseuxPoly(coeff, exp)
-end 
-
-@doc raw"""
-    TropicalPuiseuxPoly_zero(n, f::TropicalPuiseuxPoly{T})
-Ouputs the tropical zero viewed as a tropical Puiseux polynomial in n variables, and exponents in the
-same type as f.
-"""
-function TropicalPuiseuxPoly_zero(n::Int64, f::TropicalPuiseuxPoly{T}) where T
-    return TropicalPuiseuxPoly_const(n, zero(f.coeff[f.exp[1]]), f)
-end 
-
-@doc raw"""
-    TropicalPuiseuxPoly_one(n, f::TropicalPuiseuxPoly{T})
-Ouputs the tropical one viewed as a tropical Puiseux polynomial in n variables, and exponents in the
-same type as f.
-"""
-function TropicalPuiseuxPoly_one(n::Int64, f::TropicalPuiseuxPoly{T}) where T
-    return TropicalPuiseuxPoly_one(n, one(f.coeff[f.exp[1]]), f)
-end 
-
-# This is deprecated and should be removed in the future
-function TropicalPuiseuxPoly_one(n::Int64, c::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T
-    return TropicalPuiseuxPoly_const(n, one(c), f)
+    return Signomial(coeff, exp)
 end
 
 @doc raw"""
-    TropicalPuiseuxMonomial(c, exp::Vector{T}) 
+    Signomial_zero(n, f::Signomial{T})
+Outputs the tropical zero viewed as a signomial in n variables, and exponents in the
+same type as f.
+"""
+function Signomial_zero(n::Int64, f::Signomial{T}) where T
+    return Signomial_const(n, zero(f.coeff[f.exp[1]]), f)
+end
 
-Constructs a tropical Puiseux polynomial from a scalar c and a vector of exponents. This is a monomial whose 
+@doc raw"""
+    Signomial_one(n, f::Signomial{T})
+Outputs the tropical one viewed as a signomial in n variables, and exponents in the
+same type as f.
+"""
+function Signomial_one(n::Int64, f::Signomial{T}) where T
+    return Signomial_const(n, one(f.coeff[f.exp[1]]), f)
+end
+
+@doc raw"""
+    SignomialMonomial(c, exp::Vector{T})
+
+Constructs a signomial from a scalar c and a vector of exponents. This is a monomial whose
 coefficient is c and exponents are given by exp.
 """
-function TropicalPuiseuxMonomial(c, exp::Vector{T}) where T
-    return TropicalPuiseuxPoly([c for _ in 1:length(exp)], [exp], true)
+function SignomialMonomial(c, exp::Vector{T}) where T
+    return Signomial([c], [exp], true)
 end
 
 @doc raw"""
-    TropicalPuiseuxRational(f)
+    signomial_to_rational(f)
 
-Constructs a tropical Puiseux rational function from a tropical Puiseux polynomial f, 
+Constructs a rational signomial from a signomial f,
 by setting the denominator to be the tropical one.
 """
-function TropicalPuiseuxPoly_to_rational(f)
-    return TropicalPuiseuxRational(f, TropicalPuiseuxPoly_one(nvars(f), f))
+function signomial_to_rational(f)
+    return RationalSignomial(f, Signomial_one(nvars(f), f))
 end
 
 @doc raw"""
-The identity function viewed as a tropical Puiseux rational function in n variables.
+The identity function viewed as a rational signomial in n variables.
 """
-function TropicalPuiseuxRational_identity(n, c)
-    output = Vector{TropicalPuiseuxRational}()
+function RationalSignomial_identity(n, c)
+    output = Vector{RationalSignomial}()
     sizehint!(output, n)
-    for i in 1:n 
-        # add the i-th coordinate viewed as a tropical rational function 
-        push!(output, TropicalPuiseuxPoly_to_rational( 
-            TropicalPuiseuxMonomial(one(c), [j == i ? 1 : 0 for j in 1:n])))
-    end 
+    for i in 1:n
+        # add the i-th coordinate viewed as a tropical rational function
+        push!(output, signomial_to_rational(
+            SignomialMonomial(one(c), [j == i ? 1 : 0 for j in 1:n])))
+    end
     return output
-end 
+end
 
 @doc raw"""
-Returns an iterator for the exponents of a tropical Puiseux polynomial.
+Returns an iterator for the exponents of a signomial.
 """
-function eachindex(f::TropicalPuiseuxPoly)
+function eachindex(f::Signomial)
     return Base.eachindex(f.exp)
-end 
+end
 
 @doc raw"""
-Returns the number of variables of a tropical Puiseux polynomial.
+Returns the number of variables of a signomial.
 """
-function Oscar.nvars(f::TropicalPuiseuxPoly)
+function Oscar.nvars(f::Signomial)
     if !is_empty(f.coeff)
         return length(f.exp[1])
-    else 
+    else
         return -1
-    end 
-end 
+    end
+end
 
 @doc raw"""
-Returns the number of variables of a tropical Puiseux rational.
+Returns the number of variables of a rational signomial.
 """
-function Oscar.nvars(f::TropicalPuiseuxRational)
+function Oscar.nvars(f::RationalSignomial)
     return Oscar.nvars(f.den)
-end 
+end
 
 @doc raw"""
-Outputs zero, viewed as a tropical Puiseux rational function in n variables, and with exponents in the same type as f.
+Outputs zero, viewed as a rational signomial in n variables, and with exponents in the same type as f.
 """
-function TropicalPuiseuxRational_zero(n::Int64, f::TropicalPuiseuxRational{T}) where T
-    return TropicalPuiseuxRational(TropicalPuiseuxPoly_zero(n, f.num), TropicalPuiseuxPoly_one(n, f.den))
-end 
+function RationalSignomial_zero(n::Int64, f::RationalSignomial{T}) where T
+    return RationalSignomial(Signomial_zero(n, f.num), Signomial_one(n, f.den))
+end
 
 @doc raw"""
-Outputs one, viewed as a tropical Puiseux rational function in n variables, and with exponents in the same type as f.
+Outputs one, viewed as a rational signomial in n variables, and with exponents in the same type as f.
 """
-function TropicalPuiseuxRational_one(n::Int64, f)
-    return TropicalPuiseuxRational(TropicalPuiseuxPoly_one(n, f.num), TropicalPuiseuxPoly_one(n, f.num))
-end 
+function RationalSignomial_one(n::Int64, f)
+    return RationalSignomial(Signomial_one(n, f.num), Signomial_one(n, f.num))
+end
 
 ##################################################################################
 
 ####################### STRING REPRESENTATIONS ###################################
 
-function Base.string(f::TropicalPuiseuxPoly{T}) where T
+function Base.string(f::Signomial{T}) where T
     str = ""
     for i in eachindex(f)
         # in dimension 1 we omit subscripts on the variables
         if nvars(f)==1
-            if i == 1 
-                str *= repr(f.coeff[f.exp[i]]) * "*T^" * repr(f.exp[i][1])
-            else 
-                str *= " + " * repr(f.coeff[f.exp[i]]) * "*T^" * repr(f.exp[i][1])
-            end 
-        else 
             if i == 1
-                str *= repr(f.coeff[f.exp[i]]) 
-            else 
-                str *= " + " * repr(f.coeff[f.exp[i]]) 
-            end 
+                str *= repr(f.coeff[f.exp[i]]) * "*T^" * repr(f.exp[i][1])
+            else
+                str *= " + " * repr(f.coeff[f.exp[i]]) * "*T^" * repr(f.exp[i][1])
+            end
+        else
+            if i == 1
+                str *= repr(f.coeff[f.exp[i]])
+            else
+                str *= " + " * repr(f.coeff[f.exp[i]])
+            end
             exp = f.exp[i]
             for j in Base.eachindex(exp)
-                str *= " * T_" * repr(j) * " ^ " * repr(exp[j])   
-            end 
+                str *= " * T_" * repr(j) * " ^ " * repr(exp[j])
+            end
         end
     end
     return str
-end 
+end
 
-function Base.repr(f::TropicalPuiseuxPoly)
+function Base.repr(f::Signomial)
     return string(f)
-end 
+end
 
-function Base.string(f::TropicalPuiseuxRational)
+function Base.string(f::RationalSignomial)
     return string(f.num) * " / " * string(f.den)
-end 
+end
 
 ######################################################################
 
 ########################## EVALUATION ################################
 
-#### This section defines API to evaluate Tropical Puiseux Polynomials ####
+#### This section defines API to evaluate Signomials ####
 
 @doc raw"""
-    evaluate(f::TropicalPuiseuxPoly, a::Vector)
-Evaluates the tropical Puiseux polynomial f at the point a.
+    evaluate(f::Signomial, a::Vector)
+Evaluates the signomial f at the point a.
 """
-function evaluate(f::TropicalPuiseuxPoly{T}, a::Vector) where T
+function evaluate(f::Signomial{T}, a::Vector) where T
     #R = tropical_semiring(max)
     ev = zero(a[1])
     for (exp, coeff) in f.coeff
@@ -243,20 +238,20 @@ function evaluate(f::TropicalPuiseuxPoly{T}, a::Vector) where T
 end
 
 @doc raw"""
-    evaluate(f::TropicalPuiseuxRational{T}, a::Vector)
-Evaluates the tropical Puiseux rational function f at the point a.
+    evaluate(f::RationalSignomial{T}, a::Vector)
+Evaluates the rational signomial f at the point a.
 """
-function evaluate(f::TropicalPuiseuxRational{T}, a::Vector) where T
+function evaluate(f::RationalSignomial{T}, a::Vector) where T
     n::TropicalSemiringElem{typeof(max)} = evaluate(f.num, a)
     m::TropicalSemiringElem{typeof(max)} = evaluate(f.den, a)
     return n / m
 end
 
 @doc raw"""
-    evaluate(F::Vector{TropicalPuiseuxRational{T}}, a::Vector)
-Evaluates the vector of tropical Puiseux rationals F at the point a.
+    evaluate(F::Vector{RationalSignomial{T}}, a::Vector)
+Evaluates the vector of rational signomials F at the point a.
 """
-function evaluate(F::Vector{TropicalPuiseuxRational{T}}, a::Vector) where T
+function evaluate(F::Vector{RationalSignomial{T}}, a::Vector) where T
     return [evaluate(f, a) for f in F]
 end
 
@@ -264,17 +259,25 @@ end
 
 ################ ARITHMETIC OPERATIONS ###############################
 
-#### This section implements standard arithmetic operations for tropical 
-#### polynomials and rational functions                                  
+#### This section implements standard arithmetic operations for
+#### signomials and rational signomials
 
-function Base.:/(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
-    return TropicalPuiseuxRational(f, g)
-end 
+function Base.:/(f::Signomial{T}, g::Signomial{T}) where T
+    return RationalSignomial(f, g)
+end
 
-# Quicker version of addition for vectors of tropical polynomials
-# *Warning*: this doesn't sort the exponents of the resulting polynomial, so should never be used if the
-# output is to be used in further computations that require the exponents to be sorted.
-function quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
+"""
+    quicksum(F::Vector{Signomial{T}})
+
+Faster alternative to iterated `+` when summing many polynomials. Instead of O(n) pairwise
+sorted merges, collects all terms and sorts once at the end.
+
+!!! warning
+    The intermediate `h_exp` accumulator is unsorted. The final `Signomial` constructor call
+    passes `sorted=false` so the result is always correctly sorted. Do **not** change this to
+    `sorted=true` — that would skip sorting and silently corrupt any downstream `+` operation.
+"""
+function quicksum(F::Vector{Signomial{T}}) where T
     # Estimate total number of terms
     total_terms = sum(length(f.exp) for f in F)
 
@@ -305,14 +308,14 @@ function quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
         end
     end
 
-    return TropicalPuiseuxPoly(h_coeff, h_exp, true)
+    return Signomial(h_coeff, h_exp, false)
 end
 
 """
-Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the sum with
-lexicoraphically ordered exponents
+Takes two Signomials whose exponents are lexicographically ordered and outputs the sum with
+lexicographically ordered exponents
 """
-function Base.:+(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
+function Base.:+(f::Signomial{T}, g::Signomial{T}) where T
     lf = length(f.exp)
     lg = length(g.exp)
 
@@ -383,14 +386,14 @@ function Base.:+(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
         j += 1
     end
 
-    return TropicalPuiseuxPoly(h_coeff, h_exp, true)
-end 
+    return Signomial(h_coeff, h_exp, true)
+end
 
 """
-Takes two TropicalPuiseuxPoly whose exponents are lexicographically ordered and outputs the product with
-lexicoraphically ordered exponents
+Takes two Signomials whose exponents are lexicographically ordered and outputs the product with
+lexicographically ordered exponents
 """
-function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
+function Base.:*(f::Signomial{T}, g::Signomial{T}) where T
     # Pre-allocate result storage
     n_f = length(f.exp)
     n_g = length(g.exp)
@@ -422,12 +425,11 @@ function Base.:*(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
     # Sort exponents lexicographically
     result_exp = sort(collect(keys(result_coeff)))
 
-    return TropicalPuiseuxPoly(result_coeff, result_exp, true)
-end 
+    return Signomial(result_coeff, result_exp, true)
+end
 
-# Multiplication of tropical polynomials with using quicksum addition.
-# This version defers sorting and deduplication until the end
-function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
+# Multiplication of signomials, collecting all pairwise products unsorted and sorting once at the end.
+function mul_with_quicksum(f::Signomial{T}, g::Signomial{T}) where T
     n_f = length(f.exp)
     n_g = length(g.exp)
     max_terms = n_f * n_g
@@ -458,92 +460,92 @@ function mul_with_quicksum(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T})
         end
     end
 
-    return TropicalPuiseuxPoly(result_coeff, result_exp, true)
-end 
+    return Signomial(result_coeff, result_exp, false)
+end
 
-# Addition of tropical Puiseux rationals
-function Base.:+(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
-    num = f.num * g.den + f.den * g.num 
-    den = f.den * g.den 
-    return TropicalPuiseuxRational(num, den) 
-end 
+# Addition of rational signomials
+function Base.:+(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
+    num = f.num * g.den + f.den * g.num
+    den = f.den * g.den
+    return RationalSignomial(num, den)
+end
 
-# Addition for tropical Puiseux rationals using quicksum addition on the numerator and denominator
+# Addition for rational signomials using quicksum addition on the numerator and denominator
 # This is an experimental feature and should be used with caution.
-function add_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
+function add_with_quicksum(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
     num = quicksum([mul_with_quicksum(f.num, g.den), mul_with_quicksum(f.den, g.num)])
-    den = mul_with_quicksum(f.den, g.den) 
-    return TropicalPuiseuxRational(num, den) 
-end 
+    den = mul_with_quicksum(f.den, g.den)
+    return RationalSignomial(num, den)
+end
 
-# Quick multiplication for rational functions
-function mul_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T
-    mul = TropicalPuiseuxRational_one(nvars(F[1]), F[1])
+# Quick multiplication for rational signomials
+function mul_with_quicksum(F::Vector{RationalSignomial{T}}) where T
+    mul = RationalSignomial_one(nvars(F[1]), F[1])
     for f in F
         mul = mul_with_quicksum(mul, f)
     end
     return mul
-end 
+end
 
-# Quick product over vector of polynomials
-function mul_with_quicksum(F::Vector{TropicalPuiseuxPoly{T}}) where T
-    mul = TropicalPuiseuxPoly_one(nvars(F[1]), F[1])
-    for f in F 
+# Quick product over vector of signomials
+function mul_with_quicksum(F::Vector{Signomial{T}}) where T
+    mul = Signomial_one(nvars(F[1]), F[1])
+    for f in F
         mul = mul_with_quicksum(mul, f)
-    end 
+    end
     return mul
-end 
+end
 
-# Quick addition for vectors of rational functions
-function quicksum(F::Vector{TropicalPuiseuxRational{T}}) where T
+# Quick addition for vectors of rational signomials
+function quicksum(F::Vector{RationalSignomial{T}}) where T
     denoms = [f.den for f in F]
     den = mul_with_quicksum(denoms)
-    summand = Vector{TropicalPuiseuxPoly{T}}()
+    summand = Vector{Signomial{T}}()
     sizehint!(summand, length(F))
     for i in Base.eachindex(F)
         push!(summand, mul_with_quicksum([j != i ? denoms[j] : F[i].num for j in Base.eachindex(F)]))
     end
-    return TropicalPuiseuxRational(quicksum(summand), den) 
-end 
+    return RationalSignomial(quicksum(summand), den)
+end
 
-# Usual multiplication for rational functions
-function Base.:*(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
-    num = f.num * g.num 
-    den = f.den * g.den 
-    return TropicalPuiseuxRational(num, den)
-end 
+# Usual multiplication for rational signomials
+function Base.:*(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
+    num = f.num * g.num
+    den = f.den * g.den
+    return RationalSignomial(num, den)
+end
 
-# Quick multiplication for rational functions
-function mul_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
-    num = mul_with_quicksum(f.num, g.num) 
-    den = mul_with_quicksum(f.den, g.den) 
-    return TropicalPuiseuxRational(num, den)
-end 
+# Quick multiplication for rational signomials
+function mul_with_quicksum(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
+    num = mul_with_quicksum(f.num, g.num)
+    den = mul_with_quicksum(f.den, g.den)
+    return RationalSignomial(num, den)
+end
 
-# Division for vectors of rational functions
-function Base.:/(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
-    num = f.num*g.den 
+# Division for rational signomials
+function Base.:/(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
+    num = f.num*g.den
     den = f.den*g.num
-    return TropicalPuiseuxRational(num, den)
-end 
+    return RationalSignomial(num, den)
+end
 
-# Quick division for vectors of rational functions
-function div_with_quicksum(f::TropicalPuiseuxRational{T}, g::TropicalPuiseuxRational{T}) where T
-    num = mul_with_quicksum(f.num, g.den) 
+# Quick division for rational signomials
+function div_with_quicksum(f::RationalSignomial{T}, g::RationalSignomial{T}) where T
+    num = mul_with_quicksum(f.num, g.den)
     den = mul_with_quicksum(f.den, g.num)
-    return TropicalPuiseuxRational(num, den)
-end 
+    return RationalSignomial(num, den)
+end
 
-# Scalar multiplication for rational functions
-function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxRational{T}) where T
-    return TropicalPuiseuxRational(a*f.num, f.den)
-end 
+# Scalar multiplication for rational signomials
+function Base.:*(a::TropicalSemiringElem, f::RationalSignomial{T}) where T
+    return RationalSignomial(a*f.num, f.den)
+end
 
 # Exponentiation in the tropical semiring
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::TropicalSemiringElem{typeof(max)})
     R = tropical_semiring(max)
     return R(Rational(a)*Rational(b))
-end 
+end
 
 # Exponentiation of element of tropical semiring by rational number.
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Rational{T}) where T<:Integer
@@ -558,78 +560,78 @@ function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Float64)
     return R(rationalize(result_val))
 end
 
-# exponentiation of a tropical Puiseux polynomial by a positive rational
-function Base.:^(f::TropicalPuiseuxPoly, rat::Float64)
+# exponentiation of a signomial by a positive rational
+function Base.:^(f::Signomial, rat::Float64)
     if rat == 0
-        return TropicalPuiseuxPoly_one(nvars(f), f)
-    else 
+        return Signomial_one(nvars(f), f)
+    else
         new_f_coeff = Dict()
         new_f_exp = copy(f.exp)
-        new_f_exp = rat * new_f_exp 
+        new_f_exp = rat * new_f_exp
         for (key, elem) in f.coeff
             new_f_coeff[rat*key] = elem^rat
-        end 
-        return TropicalPuiseuxPoly(new_f_coeff, new_f_exp, true)
-    end 
-end 
+        end
+        return Signomial(new_f_coeff, new_f_exp, true)
+    end
+end
 
-# exponentiation of a tropical Puiseux rational function by a positive rational
-function Base.:^(f::TropicalPuiseuxRational, rat::Float64)
+# exponentiation of a rational signomial by a positive rational
+function Base.:^(f::RationalSignomial, rat::Float64)
     if rat == 0
-        return TropicalPuiseuxRational_one(nvars(f), f)
-    else 
-        return TropicalPuiseuxRational(f.num^rat , f.den^rat)
-    end 
-end 
+        return RationalSignomial_one(nvars(f), f)
+    else
+        return RationalSignomial(f.num^rat , f.den^rat)
+    end
+end
 
-function Base.:^(f::TropicalPuiseuxPoly{T}, int::Int64) where T
+function Base.:^(f::Signomial{T}, int::Int64) where T
     new_f_coeff = Dict()
     new_f_exp::Vector{Vector{T}} = copy(f.exp)
-    new_f_exp = int * new_f_exp 
+    new_f_exp = int * new_f_exp
     for (key, elem) in f.coeff
         new_f_coeff[int*key] = elem^int
-    end 
-    return TropicalPuiseuxPoly(new_f_coeff, new_f_exp, true)
-end 
+    end
+    return Signomial(new_f_coeff, new_f_exp, true)
+end
 
-function Base.:^(f::TropicalPuiseuxPoly, int::Rational{T}) where T<:Integer
+function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
     new_f_coeff = Dict()
     new_f_exp = convert(Vector{Vector{Rational{BigInt}}}, f.exp)
-    new_f_exp::Vector{Vector{Rational{BigInt}}} = Vector{Rational{BigInt}}.(int * new_f_exp) 
+    new_f_exp::Vector{Vector{Rational{BigInt}}} = Vector{Rational{BigInt}}.(int * new_f_exp)
     for (key, elem) in f.coeff
         new_f_coeff[int*key] = elem^int
-    end 
-    return TropicalPuiseuxPoly(new_f_coeff, new_f_exp, true)
-end 
+    end
+    return Signomial(new_f_coeff, new_f_exp, true)
+end
 
-# exponentiation of a tropical Puiseux rational function by a positive integer
-function Base.:^(f::TropicalPuiseuxRational, int::Int64)
+# exponentiation of a rational signomial by a positive integer
+function Base.:^(f::RationalSignomial, int::Int64)
     if int == 0
-        return TropicalPuiseuxRational_one(nvars(f), f)
-    else 
-        return TropicalPuiseuxRational(f.num^int , f.den^int)
-    end 
-end 
+        return RationalSignomial_one(nvars(f), f)
+    else
+        return RationalSignomial(f.num^int , f.den^int)
+    end
+end
 
-# exponentiation of a tropical Puiseux rational function by a positive integer
-function Base.:^(f::TropicalPuiseuxRational, int::Rational{T}) where T<:Integer
+# exponentiation of a rational signomial by a positive integer
+function Base.:^(f::RationalSignomial, int::Rational{T}) where T<:Integer
     if int == 0
-        return TropicalPuiseuxRational_one(nvars(f), f)
-    else 
-        return TropicalPuiseuxRational(f.num^int , f.den^int)
-    end 
-end 
+        return RationalSignomial_one(nvars(f), f)
+    else
+        return RationalSignomial(f.num^int , f.den^int)
+    end
+end
 
-function Base.:*(a::TropicalSemiringElem, f::TropicalPuiseuxPoly{T}) where T
+function Base.:*(a::TropicalSemiringElem, f::Signomial{T}) where T
     new_f_coeff = copy(f.coeff)
     new_f_exp = copy(f.exp)
     for i in eachindex(f)
         new_f_coeff[f.exp[i]] = a*f.coeff[f.exp[i]]
-    end 
-    return TropicalPuiseuxPoly(new_f_coeff, new_f_exp, true)
+    end
+    return Signomial(new_f_coeff, new_f_exp, true)
 end
 
-function Base.:(==)(f::TropicalPuiseuxPoly{T}, g::TropicalPuiseuxPoly{T}) where T
+function Base.:(==)(f::Signomial{T}, g::Signomial{T}) where T
     return f.coeff == g.coeff && f.exp == g.exp
 end
 
@@ -637,107 +639,104 @@ end
 
 ############# CODE FOR COMPOSITION ##################################
 
-function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxPoly{T}}) where T
-    comp = TropicalPuiseuxPoly_zero(nvars(G[1]), f)
+function comp(f::Signomial{T}, G::Vector{Signomial{T}}) where T
+    result = Signomial_zero(nvars(G[1]), f)
     # evaluate monomial-wise
     for (exp, coeff) in f.coeff
-        term = TropicalPuiseuxPoly_one(nvars(G[1]), f)
+        term = Signomial_one(nvars(G[1]), f)
         for i in Base.eachindex(G)
-            # multiply each variable in the monomial 
+            # multiply each variable in the monomial
             term *= G[i]^exp[i]
-        end 
-        comp += coeff * term
-    end 
-    return comp
+        end
+        result += coeff * term
+    end
+    return result
 end
 
-function comp(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
+function comp(f::Signomial{T}, G::Vector{RationalSignomial{T}}) where T
     @req length(G) == nvars(f) "Incorrect number of variables"
-    comp = TropicalPuiseuxRational_zero(nvars(G[1]), G[1])
+    result = RationalSignomial_zero(nvars(G[1]), G[1])
     for (key, val) in f.coeff
-        term = TropicalPuiseuxRational_one(nvars(G[1]), G[1])
+        term = RationalSignomial_one(nvars(G[1]), G[1])
         for i in Base.eachindex(G)
             term *= G[i]^key[i]
         end
-        comp += val * term 
-    end 
-    return comp
+        result += val * term
+    end
+    return result
 end
 
-# Quick version of composition 
-function comp_with_quicksum(f::TropicalPuiseuxPoly{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
+# Quick version of composition
+function comp_with_quicksum(f::Signomial{T}, G::Vector{RationalSignomial{T}}) where T
     @req length(G) == nvars(f) "Incorrect number of variables"
-    summands = Vector{TropicalPuiseuxRational{T}}()
+    summands = Vector{RationalSignomial{T}}()
     sizehint!(summands, length(f.exp))
-    comp = TropicalPuiseuxRational_zero(nvars(G[1]), G[1])
     for (key, val) in f.coeff
-        term = TropicalPuiseuxRational_one(nvars(G[1]), G[1])
+        term = RationalSignomial_one(nvars(G[1]), G[1])
         for i in Base.eachindex(G)
             term = mul_with_quicksum(term, G[i]^key[i])
         end
         push!(summands, val * term)
-    end 
+    end
     return quicksum(summands)
 end
 
-function comp(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
-    num =  comp(f.num, G)
+function comp(f::RationalSignomial{T}, G::Vector{RationalSignomial{T}}) where T
+    num = comp(f.num, G)
     den = comp(f.den, G)
-    val = num / den 
-    return val 
-end 
+    return num / den
+end
 
-# Quick version of composition 
-function comp_with_quicksum(f::TropicalPuiseuxRational{T}, G::Vector{TropicalPuiseuxRational{T}}) where T
-    num =  comp_with_quicksum(f.num, G)
+# Quick version of composition
+function comp_with_quicksum(f::RationalSignomial{T}, G::Vector{RationalSignomial{T}}) where T
+    num = comp_with_quicksum(f.num, G)
     den = comp_with_quicksum(f.den, G)
-    val = div_with_quicksum(num, den) 
-    return val 
-end 
+    return div_with_quicksum(num, den)
+end
 
-function comp(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T
+function comp(F::Vector{RationalSignomial{T}}, G::Vector{RationalSignomial{T}}) where T
     return [comp(f, G) for f in F]
-end 
+end
 
-# Quick version of composition 
-function comp_with_quicksum(F::Vector{TropicalPuiseuxRational{T}}, G::Vector{TropicalPuiseuxRational{T}}) where T
+# Quick version of composition
+function comp_with_quicksum(F::Vector{RationalSignomial{T}}, G::Vector{RationalSignomial{T}}) where T
     return [comp_with_quicksum(f, G) for f in F]
 end
 
 #########################################################################################################
-# Helper functions 
+# Helper functions
 
 # remove all zero monomials from the expression of f
-function dedup_monomials(f::TropicalPuiseuxPoly{T}) where T
+function dedup_monomials(f::Signomial{T}) where T
     new_exp::Vector{Vector{T}} = []
     new_coeff=Dict()
     tropical_zero = zero(f.coeff[f.exp[1]])
     for i in f.exp
-        if i != tropical_zero
+        if f.coeff[i] != tropical_zero
             push!(new_exp, i)
             new_coeff[i] = f.coeff[i]
         end
     end
-    return TropicalPuiseuxPoly(new_coeff, new_exp)
-end 
+    return Signomial(new_coeff, new_exp)
+end
 
-function dedup_monomials(f::TropicalPuiseuxRational{T}) where T
-    return TropicalPuiseuxRational(dedup_monomials(f.num), dedup_monomials(f.den))
-end 
+function dedup_monomials(f::RationalSignomial{T}) where T
+    return RationalSignomial(dedup_monomials(f.num), dedup_monomials(f.den))
+end
 
-function dedup_monomials(F::Vector{TropicalPuiseuxRational{T}}) where T
+function dedup_monomials(F::Vector{RationalSignomial{T}}) where T
     return [dedup_monomials(f) for f in F]
-end 
+end
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(f::TropicalPuiseuxPoly{T}) where T
+function monomial_count(f::Signomial{T}) where T
     return length(f.exp)
-end 
+end
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(f::TropicalPuiseuxRational{T}) where T
+function monomial_count(f::RationalSignomial{T}) where T
     return monomial_count(f.num) + monomial_count(f.den)
-end 
+end
 
 ####################### PRETTY PRINTING #######################################
 
@@ -810,6 +809,6 @@ function Base.show(io::IO, F::Vector{TropicalPuiseuxRational{T}}) where T
 end
 
 # Count the number of monomials appearing in a tropical expression
-function monomial_count(F::Vector{TropicalPuiseuxRational{T}}) where T
+function monomial_count(F::Vector{RationalSignomial{T}}) where T
     return sum([monomial_count(f) for f in F])
 end

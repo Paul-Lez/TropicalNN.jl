@@ -5,7 +5,7 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     # random_pmap
     pmap=random_pmap(2,4)
-    @test typeof(pmap)<: TropicalPuiseuxPoly{Rational{BigInt}}
+    @test typeof(pmap)<: Signomial{Rational{BigInt}}
     @test nvars(pmap)==2
     @test monomial_count(pmap)==4
 
@@ -20,7 +20,7 @@ using Test, TropicalNN, Oscar, CairoMakie
     @test typeof(fig) <: Figure && typeof(ax) <: Axis3
 
     # one-dimensional pmap 0*T^1 + 0*T^2 + -1*T^3
-    pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2]),Rational{BigInt}.([3])],false)
+    pmap=Signomial(Rational{BigInt}.([0,0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2]),Rational{BigInt}.([3])],false)
 
     reps=m_reps(pmap)
     @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[[[0, 1, 2], [0, 0, 1]], [[-1, 0, 1], [0, 0, 1]], [[-2, -1, 0], [-1, -1, 0]]]
@@ -43,7 +43,7 @@ using Test, TropicalNN, Oscar, CairoMakie
     @test surface==(Vector{Rational{BigInt}}[[1, 2]], Rational{BigInt}[2, 5])
 
     # one-dimensional rational map (0*T^0 + 0*T^3) / (0*T^1 + -1*T^2)
-    pmap=TropicalNN.TropicalPuiseuxRational(TropicalPuiseuxPoly(Rational{BigInt}.([0,0]),[Rational{BigInt}.([3]),Rational{BigInt}.([0])],false),TropicalPuiseuxPoly(Rational{BigInt}.([0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2])],false))
+    pmap=TropicalNN.RationalSignomial(Signomial(Rational{BigInt}.([0,0]),[Rational{BigInt}.([3]),Rational{BigInt}.([0])],false),Signomial(Rational{BigInt}.([0,-1]),[Rational{BigInt}.([1]),Rational{BigInt}.([2])],false))
 
     reps=formatted_reps(pmap)
     @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[[[0, 3, 0, 1, 1, -1], [0, 0, 0, 1, 2, 1]], [[-3, 0, 0, 1, 1, -1], [0, 0, 0, 1, 2, 1]], [[-3, 0, -1, 0, 1, -1], [0, 0, -1, 0, 2, 1]]]
@@ -53,7 +53,7 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     # projecting representations
 
-    pmap=TropicalPuiseuxPoly(Rational{BigInt}.([0,0.5,1,0.1]),[Rational{BigInt}.([0,1,1]),Rational{BigInt}.([0.5,0.5,0.5]),Rational{BigInt}.([1,0,0]),Rational{BigInt}.([0.5,0.5,1])],false)
+    pmap=Signomial(Rational{BigInt}.([0,0.5,1,0.1]),[Rational{BigInt}.([0,1,1]),Rational{BigInt}.([0.5,0.5,0.5]),Rational{BigInt}.([1,0,0]),Rational{BigInt}.([0.5,0.5,1])],false)
     reps=formatted_reps(pmap,rot_matrix=[1 0 0;0 1 0;0 0 1])
     @test reps["m_reps"]==Any[Array{Float64}[[0.0 0.0; 0.5 -0.5; 0.5 -0.5; 1.0 -1.0; 1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0; 0.0 0.0; 0.0 0.0], [0.0, -0.5, -0.1, -1.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]], Array{Float64}[[-1.0 1.0; -0.5 0.5; -0.5 0.5; 0.0 0.0; 1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0; 0.0 0.0; 0.0 0.0], [1.0, 0.5, 0.9, 0.0, 1.0, 1.2, 1.0, 1.0, 1.8, 1.0]]]
 

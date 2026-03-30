@@ -10,15 +10,15 @@ R = tropical_semiring(max)
 # ---------------------------------------------------------------
 # Bug 1: Docstring API mismatch
 # The docstring (linear_regions.jl:129) shows the call as:
-#   enum_linear_regions_rat(f::TropicalPuiseuxPoly, g::TropicalPuiseuxPoly, verbose)
+#   enum_linear_regions_rat(f::Signomial, g::Signomial, verbose)
 # and the example uses:
 #   enum_linear_regions_rat(f, g)
 # But the actual signature is:
-#   enum_linear_regions_rat(q::TropicalPuiseuxRational)
+#   enum_linear_regions_rat(q::RationalSignomial)
 # ---------------------------------------------------------------
 println("\n--- Bug 1: Docstring API mismatch ---")
-f_doc = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-g_doc = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
+f_doc = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+g_doc = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
 
 println("Calling enum_linear_regions_rat(f, g) as shown in the docstring...")
 try
@@ -30,7 +30,7 @@ catch e
     println("  Users following the docstring example cannot call this function.")
 end
 
-println("\nCalling correctly with a TropicalPuiseuxRational...")
+println("\nCalling correctly with a RationalSignomial...")
 q_doc = f_doc / g_doc
 result_correct = enum_linear_regions_rat(q_doc)
 println("SUCCESS: Got $(length(result_correct)) regions with correct call.")
@@ -58,11 +58,11 @@ println("SUCCESS: Got $(length(result_correct)) regions with correct call.")
 # ---------------------------------------------------------------
 println("\n--- Bug 2: Output type inconsistency ---")
 
-f2 = TropicalPuiseuxPoly(
+f2 = Signomial(
     Dict([1//1, 1//1] => R(0), [1//1, 0//1] => R(0), [0//1, 0//1] => R(1)),
     [[0//1, 0//1], [1//1, 0//1], [1//1, 1//1]]
 )
-g2 = TropicalPuiseuxPoly(
+g2 = Signomial(
     Dict([0//1, 1//1] => R(0), [0//1, 0//1] => R(0)),
     [[0//1, 0//1], [0//1, 1//1]]
 )
@@ -101,7 +101,7 @@ end
 println("\n" * "=" ^ 60)
 println("Summary of findings:")
 println("  Bug 1 (API mismatch): enum_linear_regions_rat docstring shows")
-println("    a 2-argument call but the function only accepts TropicalPuiseuxRational.")
+println("    a 2-argument call but the function only accepts RationalSignomial.")
 println("  Bug 2 (type inconsistency): when linear maps repeat, the output")
 println("    mixes bare Oscar.Polyhedron and Vector{Oscar.Polyhedron},")
 println("    making uniform iteration error-prone.")

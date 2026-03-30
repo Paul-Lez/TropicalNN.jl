@@ -5,15 +5,15 @@ using Test, TropicalNN, Oscar
 
     # Test 1: Basic polynomial - max(x, y)
     @testset "Basic polynomial max(x, y)" begin
-        u = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
 
-        # Test enum_linear_regions_highs
+        # Test enum_linear_regions_highs (returns raw (A,b) feasibility pairs, not LinearRegions)
         regions_highs = enum_linear_regions_highs(u)
         @test length(regions_highs) == 2
 
         # Both regions should be feasible
-        @test regions_highs[1][2] == true  # First region is feasible
-        @test regions_highs[2][2] == true  # Second region is feasible
+        @test regions_highs[1][2] == true
+        @test regions_highs[2][2] == true
 
         # Each region should be represented by (A, b) matrix pair
         @test regions_highs[1][1] isa Tuple{Matrix{Float64}, Vector{Float64}}
@@ -22,63 +22,62 @@ using Test, TropicalNN, Oscar
 
     # Test 2: Rational function - max(x, y) / constant
     @testset "Rational function max(x, y) / 0" begin
-        u = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        v = TropicalPuiseuxPoly([R(0)], [[0//1, 0//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        v = Signomial([R(0)], [[0//1, 0//1]], false)
         q = u / v
 
-        # Test enum_linear_regions_rat_highs
+        # enum_linear_regions_rat_highs now returns LinearRegions, mirroring the Oscar backend
         regions_rat_highs = enum_linear_regions_rat_highs(q)
+        @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) == 2
 
-        # Each region should be (A, b) pair
-        for region in regions_rat_highs
-            @test region isa Tuple{Matrix{Float64}, Vector{Float64}}
+        # Each LinearRegion contains (A, b) pairs
+        for lr in regions_rat_highs
+            @test lr isa LinearRegion
+            @test length(lr.regions) >= 1
+            @test lr.regions[1] isa Tuple{Matrix{Float64}, Vector{Float64}}
         end
     end
 
     # Test 3: More complex rational function
     @testset "Complex rational function" begin
-        # f = max(x, y) and g = max(x+y, x+2y)
-        f = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        g = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
+        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
         q = f / g
 
         regions_rat_highs = enum_linear_regions_rat_highs(q)
-        # Should have some regions (exact count depends on geometry)
+        @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) > 0
     end
 
     # Test 4: Polynomial with redundant monomial
     @testset "Polynomial max(0, x, 2x)" begin
-        # max(0, x, 2x) - the x monomial is redundant
-        u = TropicalPuiseuxPoly([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]], false)
+        u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]], false)
 
         regions_highs = enum_linear_regions_highs(u)
-        @test length(regions_highs) == 3  # Still gets all three before elimination
+        @test length(regions_highs) == 3
 
-        # Check that at least some regions are feasible
         feasible_count = sum([r[2] for r in regions_highs])
-        @test feasible_count >= 2  # At least 0 and 2x should be feasible
+        @test feasible_count >= 2
     end
 
-    # Test 5: Consistency check - compare HiGHS with Oscar on simple case
+    # Test 5: Consistency check — both backends return the same region count
     @testset "HiGHS vs Oscar consistency" begin
-        u = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        v = TropicalPuiseuxPoly([R(0)], [[0//1, 0//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        v = Signomial([R(0)], [[0//1, 0//1]], false)
         q = u / v
 
-        # Get regions from both implementations
         regions_oscar = enum_linear_regions_rat(q)
         regions_highs = enum_linear_regions_rat_highs(q)
 
-        # Should have the same number of regions
+        # Both return LinearRegions; counts should agree
+        @test regions_oscar isa LinearRegions
+        @test regions_highs isa LinearRegions
         @test length(regions_oscar) == length(regions_highs)
     end
 
     # Test 6: MLP-derived polynomial
     @testset "MLP-derived polynomial" begin
-        # Fixed network: 2→2→1 with identity-like first layer.
-        # Both backends should agree on the region count for this deterministic input.
         W_fixed = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
@@ -87,36 +86,41 @@ using Test, TropicalNN, Oscar
         regions_oscar_fixed = enum_linear_regions_rat(trop_fixed)
         @test length(regions_highs_fixed) == length(regions_oscar_fixed)
 
-        # Random MLP: smoke test only — exact counts may differ near degenerate cases
         w, b, t = TropicalNN.random_mlp([2, 2, 1])
         trop = mlp_to_trop(w, b, t)[1]
         regions_highs = enum_linear_regions_rat_highs(trop)
+        @test regions_highs isa LinearRegions
         @test length(regions_highs) > 0
     end
 
-    # Test 7: Empty polyhedron detection
-    @testset "Empty polyhedron detection" begin
-        # Create a deliberately infeasible system: x ≤ 0 and x ≥ 1
-        A = [1.0 0.0; -1.0 0.0]  # 2x2 matrix
-        b = [0.0; -1.0]
+    # Test 7: Repeated linear map path (exists_reps = true)
+    @testset "Repeated linear map (f/f)" begin
+        # f/f is the constant function 0; both diagonal pairs (i,i) share the same
+        # linear map, so they should be collected into a single LinearRegion with 2 pieces.
+        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        lr = enum_linear_regions_rat_highs(f / f)
+        @test lr isa LinearRegions
+        @test length(lr) == 1          # one distinct linear map
+        @test length(lr[1].regions) == 2  # two convex pieces
+    end
 
-        # This should be detected as empty
+    # Test 8: Empty polyhedron detection
+    @testset "Empty polyhedron detection" begin
+        A = [1.0 0.0; -1.0 0.0]
+        b = [0.0; -1.0]
         @test TropicalNN.highs_is_empty(A, b) == true
 
-        # Feasible system: x ≤ 1 and x ≥ 0
-        A_feasible = [1.0 0.0; -1.0 0.0]  # 2x2 matrix
+        A_feasible = [1.0 0.0; -1.0 0.0]
         b_feasible = [1.0; 0.0]
         @test TropicalNN.highs_is_empty(A_feasible, b_feasible) == false
     end
 
-    # Test 8: Full dimensional check
+    # Test 9: Full dimensional check
     @testset "Full dimensional check" begin
-        # 2D box: x ≤ 1, x ≥ -1, y ≤ 1, y ≥ -1 (full dimensional)
         A = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
         b = [1.0; 1.0; 1.0; 1.0]
         @test TropicalNN.highs_is_full_dimensional(A, b) == true
 
-        # 1D line in 2D: x = 0 (not full dimensional in 2D)
         A_line = [1.0 0.0; -1.0 0.0]
         b_line = [0.0; 0.0]
         @test TropicalNN.highs_is_full_dimensional(A_line, b_line) == false

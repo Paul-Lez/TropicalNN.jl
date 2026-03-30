@@ -11,13 +11,13 @@ Convert a single ReLU layer to tropical Puiseux rational functions.
 - `t::AbstractVector`: Activation threshold vector
 
 # Returns
-- `Vector{TropicalPuiseuxRational{T}}`: Tropical representation of max(Ax+b, t)
+- `Vector{RationalSignomial{T}}`: Tropical representation of max(Ax+b, t)
 
 # Throws
 - `DimensionMismatch`: If dimensions don't match (A has size(A,1) rows, b and t must have the same length)
 """
 function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-    G = Vector{TropicalPuiseuxRational{T}}()
+    G = Vector{RationalSignomial{T}}()
 
     # Check dimensions match
     if size(A, 1) != length(b) || size(A, 1) != length(t)
@@ -41,10 +41,10 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) wher
         end
         # the numerator is the monomial given by the positive part, with coeff b[i], plus the monomial given by the negative part 
         # with coeff t[i]
-        num = TropicalPuiseuxMonomial(b[i], pos) + TropicalPuiseuxMonomial(t[i], neg)
+        num = SignomialMonomial(b[i], pos) + SignomialMonomial(t[i], neg)
         # the denominator is the monomila given by the negative part, with coeff the tropical multiplicative 
         # unit, i.e. 0
-        den = TropicalPuiseuxMonomial(one(t[i]), neg)
+        den = SignomialMonomial(one(t[i]), neg)
         push!(G, num/den) 
     end 
     return G
@@ -72,7 +72,7 @@ where `T<:Union{Oscar.scalar_types, Rational{BigInt}}`
 - `dedup::Bool=false`: Apply deduplication to remove duplicate monomials at each layer
 
 # Returns
-- `Vector{TropicalPuiseuxRational{T}}`: Tropical rational functions representing the MLP outputs
+- `Vector{RationalSignomial{T}}`: Tropical rational functions representing the MLP outputs
 
 # Throws
 - `DimensionMismatch`: If matrix/vector dimensions don't match at any layer
@@ -231,7 +231,7 @@ end
 Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
 """
 function random_pmap(n_vars,n_mons)
-    return TropicalPuiseuxPoly(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
+    return Signomial(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
 end
 
 """

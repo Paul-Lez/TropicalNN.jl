@@ -4,7 +4,7 @@ function intersect_reps(rep_1, rep_2)
     return [vcat(rep_1[1], rep_2[1]), vcat(rep_1[2], rep_2[2])]
 end
 
-function m_reps(f::TropicalPuiseuxPoly)
+function m_reps(f::Signomial)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for i in eachindex(f)
         A = mapreduce(permutedims, vcat, [f.exp[j] - f.exp[i] for j in eachindex(f)])
@@ -18,7 +18,7 @@ function m_reps(f::TropicalPuiseuxPoly)
     return reps
 end
 
-function m_reps(f::TropicalPuiseuxRational)
+function m_reps(f::RationalSignomial)
     n_reps = m_reps(f.num)
     d_reps = m_reps(f.den)
     reps = Dict("m_reps" => [], "f_indices" => [])
@@ -43,7 +43,7 @@ function polyhedra_from_reps(reps, oscar::Bool=false)
     end
 end
 
-function get_linear_maps(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational}, f_indices)
+function get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices)
     linear_maps = []
     for f_idx in f_indices
         if length(f_idx) == 1
@@ -98,12 +98,12 @@ Applies a statistic function to a tropical polynomial or tropical rational map b
 
 # Arguments
 - `statistic::Function`: Function to apply to linear regions (e.g., `length` to count regions)
-- `f::Union{TropicalPuiseuxPoly, TropicalPuiseuxRational}`: The tropical function to analyze
+- `f::Union{Signomial, RationalSignomial}`: The tropical function to analyze
 
 # Returns
 - Result of applying `statistic` to the identified linear regions
 """
-function map_statistic(statistic::Function, f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function map_statistic(statistic::Function, f::Union{Signomial,RationalSignomial})
     # Obtain the unbounded matrix representations
     reps = m_reps(f)
     # Obtain the corresponding polyhedron representations
@@ -158,7 +158,7 @@ end
 
 Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function interior_points(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function interior_points(f::Union{Signomial,RationalSignomial})
     return map_statistic(interior_points, f)
 end
 
@@ -201,11 +201,11 @@ function bounds(linear_regions::Dict)
 end
 
 @doc raw"""
-    bounds(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    bounds(f::Union{Signomial,RationalSignomial})
 
 Determines whether the polyhedra constituting the linear region of a tropical polynomial or a tropical rational map are bounded.
 """
-function bounds(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function bounds(f::Union{Signomial,RationalSignomial})
     return map_statistic(bounds, f)
 end
 
@@ -253,11 +253,11 @@ function volumes(linear_regions::Dict)
 end
 
 @doc raw"""
-    volumes(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    volumes(f::Union{Signomial,RationalSignomial})
 
 Finds the volumes of the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function volumes(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function volumes(f::Union{Signomial,RationalSignomial})
     return map_statistic(volumes, f)
 end
 
@@ -275,11 +275,11 @@ function polyhedron_counts(linear_regions::Dict)
 end
 
 @doc raw"""
-    polyhedron_counts(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    polyhedron_counts(f::Union{Signomial,RationalSignomial})
 
 Returns the number of polyhedra in each linear region of the tropical polynomial or tropical rational map.
 """
-function polyhedron_counts(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function polyhedron_counts(f::Union{Signomial,RationalSignomial})
     return map_statistic(polyhedron_counts, f)
 end
 
@@ -342,11 +342,11 @@ function get_graph(linear_regions::Dict)
 end
 
 @doc raw"""
-    get_graph(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    get_graph(f::Union{Signomial,RationalSignomial})
 
 Constructs a graph of linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function get_graph(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function get_graph(f::Union{Signomial,RationalSignomial})
     return map_statistic(get_graph, f)
 end
 
@@ -362,11 +362,11 @@ function edge_count(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    edge_count(f::Union{Signomial,RationalSignomial})
 
 Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
 """
-function edge_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function edge_count(f::Union{Signomial,RationalSignomial})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
@@ -420,11 +420,11 @@ function edge_gradients(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_gradients(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    edge_gradients(f::Union{Signomial,RationalSignomial})
 
 Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_gradients(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function edge_gradients(f::Union{Signomial,RationalSignomial})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
@@ -469,11 +469,11 @@ function edge_lengths(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    edge_lengths(f::Union{Signomial,RationalSignomial})
 
 Calculates the lengths of the edges eminating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_lengths(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function edge_lengths(f::Union{Signomial,RationalSignomial})
     # For one-dimensional polyhedra, there is no concept of
     # gradient for the intersection
     if nvars(f) == 1
@@ -529,11 +529,11 @@ function edge_directions(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    edge_directions(f::Union{Signomial,RationalSignomial})
 
 Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
 """
-function edge_directions(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function edge_directions(f::Union{Signomial,RationalSignomial})
     # For one-dimensional polyhedra, there is no concept of
     # a direction for the intersection
     if nvars(f) == 1
@@ -565,11 +565,11 @@ function vertex_collection(g::MetaGraph)
 end
 
 @doc raw"""
-    vertex_collection(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    vertex_collection(f::Union{Signomial,RationalSignomial})
 
 Collects the vertices of the linear regions corresponding to the tropical polynomial or tropical rational map, along with their multiplicities, that is, how many regions share that vertex. 
 """
-function vertex_collection(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function vertex_collection(f::Union{Signomial,RationalSignomial})
     return vertex_collection(get_graph(f))
 end
 
@@ -585,10 +585,10 @@ function vertex_count(g::MetaGraph)
 end
 
 @doc raw"""
-    vertex_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+    vertex_count(f::Union{Signomial,RationalSignomial})
 
 Counts the number of vertices in the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function vertex_count(f::Union{TropicalPuiseuxPoly,TropicalPuiseuxRational})
+function vertex_count(f::Union{Signomial,RationalSignomial})
     return vertex_count(get_graph(f))
 end

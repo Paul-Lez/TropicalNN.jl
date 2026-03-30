@@ -2,7 +2,7 @@
 # the linear regions of tropical Puiseux polynomials and rational functions.
 
 @doc raw"""
-    polyhedron(f::TropicalPuiseuxPoly, i::Int)
+    polyhedron(f::Signomial, i::Int)
 
 Ouputs the polyhedron corresponding to points where f is given by the 
 linear map corresponding to the i-th monomial of f. 
@@ -10,13 +10,13 @@ linear map corresponding to the i-th monomial of f.
 # Example
 Output the polyhedron where f = max(x, y) is equal to x
 ```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
+julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
 julia> polyhedron(f, [1, 0])
 Polyhedron in ambient dimension 2 with Float64 type coefficients
 ```
 """
-function polyhedron(f::TropicalPuiseuxPoly, i)
+function polyhedron(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
     A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
     # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i. 
@@ -26,7 +26,7 @@ function polyhedron(f::TropicalPuiseuxPoly, i)
 end
 
 @doc raw"""
-    enum_linear_regions(f::TropicalPuiseuxPoly) 
+    enum_linear_regions(f::Signomial) 
     
 Outputs an array of tuples (poly, bool) indexed by the same set as the exponents of f. The tuple element poly 
 is the linear region corresponding to the exponent, and bool is true when this region is nonemtpy.
@@ -34,7 +34,7 @@ is the linear region corresponding to the exponent, and bool is true when this r
 # Example
 Enumerates the linear regions of f = max(x, y).
 ```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
+julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
 julia> enum_linear_regions(f)
 2-element Vector{Any}:
@@ -42,7 +42,7 @@ julia> enum_linear_regions(f)
  (Polyhedron in ambient dimension 2 with Float64 type coefficients, true)
 ```
 """
-function enum_linear_regions(f::TropicalPuiseuxPoly)
+function enum_linear_regions(f::Signomial)
     linear_regions = Vector()
     sizehint!(linear_regions, length(f.exp))
     for i in eachindex(f)
@@ -167,12 +167,12 @@ Base.iterate(lrs::LinearRegions, state) = iterate(lrs.regions, state)
 Base.getindex(lrs::LinearRegions, i::Int) = lrs.regions[i]
 
 @doc raw"""
-    enum_linear_regions_rat(q::TropicalPuiseuxRational)
+    enum_linear_regions_rat(q::RationalSignomial)
 
 Computes the linear regions of a tropical Puiseux rational function.
 
 # Arguments
-- `q::TropicalPuiseuxRational`: The rational function whose linear regions are computed.
+- `q::RationalSignomial`: The rational function whose linear regions are computed.
 
 # Returns
 A `LinearRegions` object whose `regions` field is a `Vector{LinearRegion}`. Each
@@ -187,9 +187,9 @@ Enumerates the linear regions of `f/g` where `f = max(x, y)` and `g = 0`.
 ```jldoctest
 julia> R = tropical_semiring(max);
 
-julia> f = TropicalPuiseuxPoly([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false);
+julia> f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false);
 
-julia> g = TropicalPuiseuxPoly([R(0)], [[0//1, 0//1]], false);
+julia> g = Signomial([R(0)], [[0//1, 0//1]], false);
 
 julia> lr = enum_linear_regions_rat(f / g);
 
@@ -200,7 +200,7 @@ julia> length(lr[1].regions)
 1
 ```
 """
-function enum_linear_regions_rat(q::TropicalPuiseuxRational)
+function enum_linear_regions_rat(q::RationalSignomial)
     f = q.num
     g = q.den
     # first, compute the linear regions of f and g.

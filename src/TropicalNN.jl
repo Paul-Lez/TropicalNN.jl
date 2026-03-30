@@ -18,13 +18,25 @@ module TropicalNN
     import Base: string, +, *, /
 
     export
+        # Primary names (used throughout the module)
+        Signomial,
+        RationalSignomial,
+        Signomial_const,
+        Signomial_zero,
+        Signomial_one,
+        SignomialMonomial,
+        signomial_to_rational,
+        RationalSignomial_identity,
+        RationalSignomial_zero,
+        RationalSignomial_one,
+        # Paper-consistent aliases — TropicalPuiseuxPoly / TropicalPuiseuxRational
+        # are the names used in the associated publication; both resolve to the same types.
         TropicalPuiseuxPoly,
         TropicalPuiseuxRational,
         TropicalPuiseuxPoly_const,
         TropicalPuiseuxPoly_zero,
         TropicalPuiseuxPoly_one,
         TropicalPuiseuxMonomial,
-        TropicalPuiseuxPoly_to_rational,
         TropicalPuiseuxRational_identity,
         TropicalPuiseuxRational_zero,
         TropicalPuiseuxRational_one,
@@ -112,4 +124,19 @@ module TropicalNN
     include("hoffman.jl")
 
     include("statistics.jl")
+
+    # ---------------------------------------------------------------------------
+    # Paper-consistent type and function aliases.
+    # The publication uses TropicalPuiseuxPoly / TropicalPuiseuxRational;
+    # both names resolve to exactly the same types and functions.
+    # ---------------------------------------------------------------------------
+    const TropicalPuiseuxPoly        = Signomial
+    const TropicalPuiseuxRational    = RationalSignomial
+    const TropicalPuiseuxPoly_const  = Signomial_const
+    const TropicalPuiseuxPoly_zero   = Signomial_zero
+    const TropicalPuiseuxPoly_one    = Signomial_one
+    const TropicalPuiseuxMonomial    = SignomialMonomial
+    const TropicalPuiseuxRational_identity = RationalSignomial_identity
+    const TropicalPuiseuxRational_zero     = RationalSignomial_zero
+    const TropicalPuiseuxRational_one      = RationalSignomial_one
 end

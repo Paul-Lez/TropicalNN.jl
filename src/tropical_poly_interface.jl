@@ -16,7 +16,7 @@ using LinearAlgebra
 #==============================================================================#
 
 """
-    AbstractTropicalPuiseuxPoly{T}
+    AbstractSignomial{T}
 
 Abstract supertype for all tropical Puiseux polynomial representations.
 Concrete subtypes implement different storage strategies optimized for
@@ -31,21 +31,14 @@ All subtypes must implement:
 - `get_exp(f, i)` - Get i-th exponent vector
 - `get_coeff(f, exp)` - Get coefficient for exponent
 """
-abstract type AbstractTropicalPuiseuxPoly{T} end
-
-"""
-    AbstractTropicalPuiseuxRational{T}
-
-Abstract supertype for tropical Puiseux rational functions (quotients of polynomials).
-"""
-abstract type AbstractTropicalPuiseuxRational{T} end
+abstract type AbstractSignomial{T} end
 
 #==============================================================================#
 #                    STATIC ARRAYS IMPLEMENTATION (dim ≤ 5)                    #
 #==============================================================================#
 
 """
-    TropicalPuiseuxPolyStatic{T, N}
+    SignomialStatic{T, N}
 
 Tropical Puiseux polynomial using StaticArrays for exponent storage.
 Optimal for dimensions 1-5, providing ~1.3-1.5x speedup over vector storage.
@@ -59,11 +52,11 @@ Optimal for dimensions 1-5, providing ~1.3-1.5x speedup over vector storage.
 - Efficient comparison and hashing for small tuples
 - Best for visualization (2D/3D) and small MLPs
 """
-struct TropicalPuiseuxPolyStatic{T, N} <: AbstractTropicalPuiseuxPoly{T}
+struct SignomialStatic{T, N} <: AbstractSignomial{T}
     coeff::Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}
     exp::Vector{SVector{N,T}}
 
-    function TropicalPuiseuxPolyStatic{T,N}(
+    function SignomialStatic{T,N}(
         coeff::Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}},
         exp::Vector{SVector{N,T}}
     ) where {T,N}
@@ -72,7 +65,7 @@ struct TropicalPuiseuxPolyStatic{T, N} <: AbstractTropicalPuiseuxPoly{T}
 end
 
 # Constructor from vector-of-vectors
-function TropicalPuiseuxPolyStatic{T,N}(
+function SignomialStatic{T,N}(
     coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
     exp_vecs::Vector{Vector{T}},
     sorted::Bool=false
@@ -89,11 +82,11 @@ function TropicalPuiseuxPolyStatic{T,N}(
         sort!(exp_static)
     end
 
-    return TropicalPuiseuxPolyStatic{T,N}(coeff_static, exp_static)
+    return SignomialStatic{T,N}(coeff_static, exp_static)
 end
 
 # Constructor from coefficient vector and exponent vector
-function TropicalPuiseuxPolyStatic{T,N}(
+function SignomialStatic{T,N}(
     coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
     exp_vecs::Vector{Vector{T}},
     sorted::Bool=false
@@ -110,7 +103,7 @@ function TropicalPuiseuxPolyStatic{T,N}(
         exp_static[i] => coeffs[i] for i in eachindex(coeffs)
     )
 
-    return TropicalPuiseuxPolyStatic{T,N}(coeff_static, exp_static)
+    return SignomialStatic{T,N}(coeff_static, exp_static)
 end
 
 #==============================================================================#
@@ -118,7 +111,7 @@ end
 #==============================================================================#
 
 """
-    TropicalPuiseuxPolyMatrix{T}
+    SignomialMatrix{T}
 
 Tropical Puiseux polynomial using matrix-based exponent storage.
 Optimal for dimensions >5, providing ~1.5-3x speedup over vector storage.
@@ -133,12 +126,12 @@ Optimal for dimensions >5, providing ~1.5-3x speedup over vector storage.
 - No per-vector allocation overhead
 - Better for medium/large MLPs (10-100+ input dimensions)
 """
-struct TropicalPuiseuxPolyMatrix{T} <: AbstractTropicalPuiseuxPoly{T}
+struct SignomialMatrix{T} <: AbstractSignomial{T}
     exp::Matrix{T}
     coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
     dim::Int
 
-    function TropicalPuiseuxPolyMatrix{T}(
+    function SignomialMatrix{T}(
         exp::Matrix{T},
         coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
     ) where T
@@ -149,13 +142,13 @@ struct TropicalPuiseuxPolyMatrix{T} <: AbstractTropicalPuiseuxPoly{T}
 end
 
 # Constructor from vector-of-vectors
-function TropicalPuiseuxPolyMatrix{T}(
+function SignomialMatrix{T}(
     coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
     exp_vecs::Vector{Vector{T}},
     sorted::Bool=false
 ) where T
     if isempty(exp_vecs)
-        return TropicalPuiseuxPolyMatrix{T}(Matrix{T}(undef, 0, 0), eltype(values(coeff_dict))[])
+        return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), eltype(values(coeff_dict))[])
     end
 
     dim = length(exp_vecs[1])
@@ -177,17 +170,17 @@ function TropicalPuiseuxPolyMatrix{T}(
         coeff_vec[i] = coeff_dict[exp_vecs[i]]
     end
 
-    return TropicalPuiseuxPolyMatrix{T}(exp_matrix, coeff_vec)
+    return SignomialMatrix{T}(exp_matrix, coeff_vec)
 end
 
 # Constructor from coefficient vector and exponent vector
-function TropicalPuiseuxPolyMatrix{T}(
+function SignomialMatrix{T}(
     coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
     exp_vecs::Vector{Vector{T}},
     sorted::Bool=false
 ) where T
     if isempty(exp_vecs)
-        return TropicalPuiseuxPolyMatrix{T}(Matrix{T}(undef, 0, 0), coeffs)
+        return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), coeffs)
     end
 
     dim = length(exp_vecs[1])
@@ -206,7 +199,7 @@ function TropicalPuiseuxPolyMatrix{T}(
         end
     end
 
-    return TropicalPuiseuxPolyMatrix{T}(exp_matrix, coeffs)
+    return SignomialMatrix{T}(exp_matrix, coeffs)
 end
 
 #==============================================================================#
@@ -214,31 +207,31 @@ end
 #==============================================================================#
 
 # Number of variables
-Oscar.nvars(f::TropicalPuiseuxPolyStatic{T,N}) where {T,N} = N
-Oscar.nvars(f::TropicalPuiseuxPolyMatrix) = f.dim
+Oscar.nvars(f::SignomialStatic{T,N}) where {T,N} = N
+Oscar.nvars(f::SignomialMatrix) = f.dim
 
 # Number of monomials
-Base.length(f::TropicalPuiseuxPolyStatic) = length(f.exp)
-Base.length(f::TropicalPuiseuxPolyMatrix) = size(f.exp, 2)
+Base.length(f::SignomialStatic) = length(f.exp)
+Base.length(f::SignomialMatrix) = size(f.exp, 2)
 
 # Iteration
-Base.eachindex(f::AbstractTropicalPuiseuxPoly) = Base.OneTo(length(f))
+Base.eachindex(f::AbstractSignomial) = Base.OneTo(length(f))
 
 # Get exponent vector (returns view for matrix, copy for static)
-function get_exp(f::TropicalPuiseuxPolyStatic{T,N}, i::Int) where {T,N}
+function get_exp(f::SignomialStatic{T,N}, i::Int) where {T,N}
     return f.exp[i]
 end
 
-function get_exp(f::TropicalPuiseuxPolyMatrix, i::Int)
+function get_exp(f::SignomialMatrix, i::Int)
     return @view f.exp[:, i]
 end
 
 # Get coefficient
-function get_coeff(f::TropicalPuiseuxPolyStatic, i::Int)
+function get_coeff(f::SignomialStatic, i::Int)
     return f.coeff[f.exp[i]]
 end
 
-function get_coeff(f::TropicalPuiseuxPolyMatrix, i::Int)
+function get_coeff(f::SignomialMatrix, i::Int)
     return f.coeff[i]
 end
 
@@ -246,7 +239,7 @@ end
 #                    ARITHMETIC: STATIC IMPLEMENTATION                          #
 #==============================================================================#
 
-function Base.:+(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function Base.:+(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
     lf, lg = length(f.exp), length(g.exp)
 
     h_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
@@ -307,10 +300,10 @@ function Base.:+(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic
         j += 1
     end
 
-    return TropicalPuiseuxPolyStatic{T,N}(h_coeff, h_exp)
+    return SignomialStatic{T,N}(h_coeff, h_exp)
 end
 
-function Base.:*(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function Base.:*(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
     m, n = length(f.exp), length(g.exp)
     result_size = m * n
 
@@ -339,14 +332,14 @@ function Base.:*(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic
 
     # Sort and deduplicate
     sorted_exp = sort(collect(keys(result_coeff)))
-    return TropicalPuiseuxPolyStatic{T,N}(result_coeff, sorted_exp)
+    return SignomialStatic{T,N}(result_coeff, sorted_exp)
 end
 
 #==============================================================================#
 #                    ARITHMETIC: MATRIX IMPLEMENTATION                          #
 #==============================================================================#
 
-function Base.:+(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -372,10 +365,10 @@ function Base.:+(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T
     sorted_exp = combined_exp[:, perm]
     sorted_coeff = combined_coeff[perm]
 
-    return TropicalPuiseuxPolyMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
 end
 
-function Base.:*(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -402,14 +395,14 @@ function Base.:*(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T
     sorted_exp = result_exp[:, perm]
     sorted_coeff = result_coeff[perm]
 
-    return TropicalPuiseuxPolyMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
 end
 
 #==============================================================================#
 #                         EVALUATION                                            #
 #==============================================================================#
 
-function eval_poly(f::TropicalPuiseuxPolyStatic{T,N}, a::Vector) where {T,N}
+function eval_poly(f::SignomialStatic{T,N}, a::Vector) where {T,N}
     ev = zero(a[1])
     for i in eachindex(f)
         exp_i = f.exp[i]
@@ -423,7 +416,7 @@ function eval_poly(f::TropicalPuiseuxPolyStatic{T,N}, a::Vector) where {T,N}
     return ev
 end
 
-function eval_poly(f::TropicalPuiseuxPolyMatrix{T}, a::Vector) where T
+function eval_poly(f::SignomialMatrix{T}, a::Vector) where T
     ev = zero(a[1])
     dim = f.dim
     for i in 1:length(f)
@@ -442,24 +435,24 @@ end
 #==============================================================================#
 
 # Scalar multiplication
-function Base.:*(c::Oscar.TropicalSemiringElem, f::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialStatic{T,N}) where {T,N}
     new_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         k => c * v for (k, v) in f.coeff
     )
-    return TropicalPuiseuxPolyStatic{T,N}(new_coeff, copy(f.exp))
+    return SignomialStatic{T,N}(new_coeff, copy(f.exp))
 end
 
-function Base.:*(c::Oscar.TropicalSemiringElem, f::TropicalPuiseuxPolyMatrix{T}) where T
-    return TropicalPuiseuxPolyMatrix{T}(copy(f.exp), c .* f.coeff)
+function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialMatrix{T}) where T
+    return SignomialMatrix{T}(copy(f.exp), c .* f.coeff)
 end
 
 # Exponentiation by rational
-function Base.:^(f::TropicalPuiseuxPolyStatic{T,N}, r::Rational) where {T,N}
+function Base.:^(f::SignomialStatic{T,N}, r::Base.Rational) where {T,N}
     if r == 0
         # Return one polynomial
         R = parent(first(values(f.coeff)))
         one_exp = SVector{N,T}(zeros(T, N))
-        return TropicalPuiseuxPolyStatic{T,N}(
+        return SignomialStatic{T,N}(
             Dict(one_exp => one(R(0))),
             [one_exp]
         )
@@ -469,14 +462,14 @@ function Base.:^(f::TropicalPuiseuxPolyStatic{T,N}, r::Rational) where {T,N}
     new_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         new_exp[i] => f.coeff[f.exp[i]]^r for i in eachindex(f.exp)
     )
-    return TropicalPuiseuxPolyStatic{T,N}(new_coeff, new_exp)
+    return SignomialStatic{T,N}(new_coeff, new_exp)
 end
 
-function Base.:^(f::TropicalPuiseuxPolyMatrix{T}, r::Rational) where T
+function Base.:^(f::SignomialMatrix{T}, r::Base.Rational) where T
     if r == 0
         # Return one polynomial
         R = parent(f.coeff[1])
-        return TropicalPuiseuxPolyMatrix{T}(
+        return SignomialMatrix{T}(
             zeros(T, f.dim, 1),
             [one(R(0))]
         )
@@ -490,26 +483,26 @@ function Base.:^(f::TropicalPuiseuxPolyMatrix{T}, r::Rational) where T
         end
     end
     new_coeff = [c^r for c in f.coeff]
-    return TropicalPuiseuxPolyMatrix{T}(new_exp, new_coeff)
+    return SignomialMatrix{T}(new_exp, new_coeff)
 end
 
 # Exponentiation by Float64
-Base.:^(f::AbstractTropicalPuiseuxPoly, r::Float64) = f^rationalize(r)
+Base.:^(f::AbstractSignomial, r::Float64) = f^rationalize(r)
 
 # Exponentiation by Int
-Base.:^(f::AbstractTropicalPuiseuxPoly, n::Int) = f^Rational(n)
+Base.:^(f::AbstractSignomial, n::Int) = f^Base.Rational(n)
 
 #==============================================================================#
 #                    QUICKSUM (FAST SUMMATION)                                  #
 #==============================================================================#
 
 """
-    quicksum(F::Vector{<:AbstractTropicalPuiseuxPoly})
+    quicksum(F::Vector{<:AbstractSignomial})
 
 Fast summation that defers sorting and deduplication until the end.
 Trades accuracy for speed in intermediate steps.
 """
-function quicksum(F::Vector{TropicalPuiseuxPolyStatic{T,N}}) where {T,N}
+function quicksum(F::Vector{SignomialStatic{T,N}}) where {T,N}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     # Estimate total terms
@@ -540,10 +533,10 @@ function quicksum(F::Vector{TropicalPuiseuxPolyStatic{T,N}}) where {T,N}
         end
     end
 
-    return TropicalPuiseuxPolyStatic{T,N}(h_coeff, h_exp)
+    return SignomialStatic{T,N}(h_coeff, h_exp)
 end
 
-function quicksum(F::Vector{TropicalPuiseuxPolyMatrix{T}}) where T
+function quicksum(F::Vector{SignomialMatrix{T}}) where T
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     dim = F[1].dim
@@ -565,7 +558,7 @@ function quicksum(F::Vector{TropicalPuiseuxPolyMatrix{T}}) where T
         end
     end
 
-    return TropicalPuiseuxPolyMatrix{T}(combined_exp, combined_coeff)
+    return SignomialMatrix{T}(combined_exp, combined_coeff)
 end
 
 #==============================================================================#
@@ -578,7 +571,7 @@ end
 Multiplication that defers sorting and deduplication.
 Faster but less accurate for intermediate results.
 """
-function mul_with_quicksum(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function mul_with_quicksum(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
     m, n = length(f.exp), length(g.exp)
     result_size = m * n
 
@@ -605,10 +598,10 @@ function mul_with_quicksum(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseux
         end
     end
 
-    return TropicalPuiseuxPolyStatic{T,N}(result_coeff, result_exp)
+    return SignomialStatic{T,N}(result_coeff, result_exp)
 end
 
-function mul_with_quicksum(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function mul_with_quicksum(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     # Same as regular multiplication for matrix version
     return f * g
 end
@@ -618,12 +611,12 @@ end
 #==============================================================================#
 
 """
-    comp(f::AbstractTropicalPuiseuxPoly, G::Vector{<:AbstractTropicalPuiseuxPoly})
+    comp(f::AbstractSignomial, G::Vector{<:AbstractSignomial})
 
 Compose polynomial f with vector of polynomials G.
 Computes f(G[1], G[2], ..., G[n]).
 """
-function comp(f::TropicalPuiseuxPolyStatic{T,N}, G::Vector{<:AbstractTropicalPuiseuxPoly}) where {T,N}
+function comp(f::SignomialStatic{T,N}, G::Vector{<:AbstractSignomial}) where {T,N}
     @assert length(G) == N "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
@@ -633,7 +626,7 @@ function comp(f::TropicalPuiseuxPolyStatic{T,N}, G::Vector{<:AbstractTropicalPui
         true
     )
 
-    comp = zero_poly
+    result = zero_poly
 
     # Evaluate monomial-wise
     for (exp, coeff) in f.coeff
@@ -646,14 +639,14 @@ function comp(f::TropicalPuiseuxPolyStatic{T,N}, G::Vector{<:AbstractTropicalPui
         for i in 1:N
             term_poly = term_poly * (G[i]^exp[i])
         end
-        comp = comp + (coeff * term_poly)
+        result = result + (coeff * term_poly)
     end
 
-    return comp
+    return result
 end
 
 # Similar implementation for matrix version
-function comp(f::TropicalPuiseuxPolyMatrix{T}, G::Vector{<:AbstractTropicalPuiseuxPoly}) where T
+function comp(f::SignomialMatrix{T}, G::Vector{<:AbstractSignomial}) where T
     @assert length(G) == f.dim "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
@@ -663,7 +656,7 @@ function comp(f::TropicalPuiseuxPolyMatrix{T}, G::Vector{<:AbstractTropicalPuise
         true
     )
 
-    comp = zero_poly
+    result = zero_poly
 
     # Evaluate monomial-wise
     for i in 1:length(f)
@@ -676,10 +669,10 @@ function comp(f::TropicalPuiseuxPolyMatrix{T}, G::Vector{<:AbstractTropicalPuise
         for d in 1:f.dim
             term_poly = term_poly * (G[d]^f.exp[d, i])
         end
-        comp = comp + (f.coeff[i] * term_poly)
+        result = result + (f.coeff[i] * term_poly)
     end
 
-    return comp
+    return result
 end
 
 #==============================================================================#
@@ -726,15 +719,15 @@ end
 #                    EQUALITY AND STRING REPRESENTATION                         #
 #==============================================================================#
 
-function Base.:(==)(f::TropicalPuiseuxPolyStatic{T,N}, g::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function Base.:(==)(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
     return f.coeff == g.coeff && f.exp == g.exp
 end
 
-function Base.:(==)(f::TropicalPuiseuxPolyMatrix{T}, g::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.:(==)(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     return f.exp == g.exp && f.coeff == g.coeff
 end
 
-function Base.string(f::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
+function Base.string(f::SignomialStatic{T,N}) where {T,N}
     str = ""
     for (i, exp) in enumerate(f.exp)
         if i > 1
@@ -748,7 +741,7 @@ function Base.string(f::TropicalPuiseuxPolyStatic{T,N}) where {T,N}
     return str
 end
 
-function Base.string(f::TropicalPuiseuxPolyMatrix{T}) where T
+function Base.string(f::SignomialMatrix{T}) where T
     str = ""
     for i in 1:length(f)
         if i > 1
@@ -762,7 +755,7 @@ function Base.string(f::TropicalPuiseuxPolyMatrix{T}) where T
     return str
 end
 
-Base.repr(f::AbstractTropicalPuiseuxPoly) = string(f)
+Base.repr(f::AbstractSignomial) = string(f)
 
 #==============================================================================#
 #                    SMART CONSTRUCTOR (AUTO-SELECTS IMPLEMENTATION)           #
@@ -777,7 +770,7 @@ for the given dimension:
 - Dimensions >5:  Uses Matrix storage (~2-3x faster at high dims)
 
 The returned type varies based on dimension, but all types conform to the
-`AbstractTropicalPuiseuxPoly` interface.
+`AbstractSignomial` interface.
 
 # Example
 ```julia
@@ -807,17 +800,17 @@ function OptimalTropicalPoly(
 
     # Choose optimal representation based on dimension
     if dim == 1
-        return TropicalPuiseuxPolyStatic{T,1}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T,1}(coeffs, exp_vecs, sorted)
     elseif dim == 2
-        return TropicalPuiseuxPolyStatic{T,2}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T,2}(coeffs, exp_vecs, sorted)
     elseif dim == 3
-        return TropicalPuiseuxPolyStatic{T,3}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T,3}(coeffs, exp_vecs, sorted)
     elseif dim == 4
-        return TropicalPuiseuxPolyStatic{T,4}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T,4}(coeffs, exp_vecs, sorted)
     elseif dim == 5
-        return TropicalPuiseuxPolyStatic{T,5}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T,5}(coeffs, exp_vecs, sorted)
     else
-        return TropicalPuiseuxPolyMatrix{T}(coeffs, exp_vecs, sorted)
+        return SignomialMatrix{T}(coeffs, exp_vecs, sorted)
     end
 end
 
@@ -835,7 +828,7 @@ end
 #                    CONVERSION BETWEEN REPRESENTATIONS                         #
 #==============================================================================#
 
-# Note: Conversion functions to/from baseline TropicalPuiseuxPoly are defined
+# Note: Conversion functions to/from baseline Signomial are defined
 # in a separate extension file that loads when TropicalNN is available.
 # For standalone use, the optimal representations work independently.
 
@@ -844,16 +837,15 @@ end
 #==============================================================================#
 
 """
-    TropicalPuiseuxRationalOpt{P<:AbstractTropicalPuiseuxPoly}
+    RationalSignomial{P<:AbstractSignomial}
 
-Optimized tropical Puiseux rational function using the same polynomial
-representation for both numerator and denominator.
+Tropical Puiseux rational function, represented as a quotient of two signomials.
 """
-struct TropicalPuiseuxRationalOpt{P<:AbstractTropicalPuiseuxPoly}
+struct RationalSignomial{P<:AbstractSignomial}
     num::P
     den::P
 
-    function TropicalPuiseuxRationalOpt(num::P, den::P) where P<:AbstractTropicalPuiseuxPoly
+    function RationalSignomial(num::P, den::P) where P<:AbstractSignomial
         new{P}(num, den)
     end
 end
@@ -862,25 +854,25 @@ end
 function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted=false)
     num = OptimalTropicalPoly(num_coeffs, num_exp, sorted)
     den = OptimalTropicalPoly(den_coeffs, den_exp, sorted)
-    return TropicalPuiseuxRationalOpt(num, den)
+    return RationalSignomial(num, den)
 end
 
 # Arithmetic
-function Base.:+(f::TropicalPuiseuxRationalOpt{P}, g::TropicalPuiseuxRationalOpt{P}) where P
+function Base.:+(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
     num = f.num * g.den + f.den * g.num
     den = f.den * g.den
-    return TropicalPuiseuxRationalOpt(num, den)
+    return RationalSignomial(num, den)
 end
 
-function Base.:*(f::TropicalPuiseuxRationalOpt{P}, g::TropicalPuiseuxRationalOpt{P}) where P
-    return TropicalPuiseuxRationalOpt(f.num * g.num, f.den * g.den)
+function Base.:*(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
+    return RationalSignomial(f.num * g.num, f.den * g.den)
 end
 
-function Base.:/(f::TropicalPuiseuxRationalOpt{P}, g::TropicalPuiseuxRationalOpt{P}) where P
-    return TropicalPuiseuxRationalOpt(f.num * g.den, f.den * g.num)
+function Base.:/(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
+    return RationalSignomial(f.num * g.den, f.den * g.num)
 end
 
-function eval_rational(f::TropicalPuiseuxRationalOpt, a::Vector)
+function eval_rational(f::RationalSignomial, a::Vector)
     return eval_poly(f.num, a) / eval_poly(f.den, a)
 end
 
@@ -888,9 +880,9 @@ end
 #                              EXPORTS                                          #
 #==============================================================================#
 
-export AbstractTropicalPuiseuxPoly, AbstractTropicalPuiseuxRational
-export TropicalPuiseuxPolyStatic, TropicalPuiseuxPolyMatrix
-export TropicalPuiseuxRationalOpt
+export AbstractSignomial
+export SignomialStatic, SignomialMatrix
+export RationalSignomial
 export OptimalTropicalPoly, OptimalTropicalRational
 export get_exp, get_coeff, eval_poly, eval_rational
 export quicksum, mul_with_quicksum, comp

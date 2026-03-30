@@ -122,7 +122,7 @@ function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Flo
 end
 
 @doc raw"""
-    polyhedron_highs(f::TropicalPuiseuxPoly, i::Int)
+    polyhedron_highs(f::Signomial, i::Int)
 
 Outputs the (A, b) matrix representation of the polyhedron corresponding to
 points where f is given by the linear map corresponding to the i-th monomial of f.
@@ -132,12 +132,12 @@ Returns a tuple (A, b) where the polyhedron is {x : Ax ≤ b}.
 # Example
 Output the polyhedron where f = max(x, y) is equal to x
 ```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
+julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
 julia> A, b = polyhedron_highs(f, [1, 0])
 ```
 """
-function polyhedron_highs(f::TropicalPuiseuxPoly, i)
+function polyhedron_highs(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
     A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
     # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
@@ -147,7 +147,7 @@ function polyhedron_highs(f::TropicalPuiseuxPoly, i)
 end
 
 @doc raw"""
-    enum_linear_regions_highs(f::TropicalPuiseuxPoly; tol=HIGHS_DEFAULT_TOL)
+    enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
 
 Outputs an array of tuples ((A, b), bool) indexed by the same set as the exponents of f.
 The tuple element (A, b) is the matrix representation of the linear region corresponding
@@ -158,7 +158,7 @@ Uses HiGHS LP solver for fast feasibility checks.
 # Example
 Enumerates the linear regions of f = max(x, y).
 ```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
+julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
 julia> enum_linear_regions_highs(f)
 2-element Vector{Any}:
@@ -166,7 +166,7 @@ julia> enum_linear_regions_highs(f)
  ((A, b), true)
 ```
 """
-function enum_linear_regions_highs(f::TropicalPuiseuxPoly; tol=HIGHS_DEFAULT_TOL)
+function enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
     linear_regions = Vector()
     sizehint!(linear_regions, length(f.exp))
     for i in eachindex(f)
@@ -179,127 +179,76 @@ function enum_linear_regions_highs(f::TropicalPuiseuxPoly; tol=HIGHS_DEFAULT_TOL
 end
 
 @doc raw"""
-    enum_linear_regions_rat_highs(q::TropicalPuiseuxRational; tol=HIGHS_DEFAULT_TOL)
+    enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_TOL)
 
 Computes the linear regions of a tropical Puiseux rational function f/g using HiGHS.
 
-Inputs: Tropical Puiseux rational q = f/g
-Output: array containing linear regions of f/g represented by (A, b) matrix pairs or arrays of pairs.
+Faster alternative to `enum_linear_regions_rat`: uses the HiGHS LP solver directly
+instead of building Oscar `Polyhedron` objects. The return type mirrors that of
+`enum_linear_regions_rat` — a `LinearRegions` object — so both backends can be used
+interchangeably. Each `LinearRegion` stores one or more `(A, b)` matrix pairs (instead
+of `Oscar.Polyhedron` objects) representing the convex pieces of that region.
 
-Uses HiGHS LP solver for fast intersection and full-dimensionality checks.
+# Arguments
+- `q::RationalSignomial`: The rational function whose linear regions are computed.
+- `tol`: Numerical tolerance for LP feasibility and full-dimensionality checks.
 
-# Example
-Enumerates the linear regions of f/g where f = max(x, y) and g = max(x+y, x+2y).
-```jldoctest
-julia> f = TropicalPuiseuxPoly(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> g = TropicalPuiseuxPoly(Dict([1, 1] => 0, [1, 2] => 0), [[1, 1], [1, 2]]);
-
-julia> q = TropicalPuiseuxRational(f, g);
-
-julia> enum_linear_regions_rat_highs(q)
-4-element Vector{Any}:
- (A1, b1)
- (A2, b2)
- (A3, b3)
- (A4, b4)
-```
+# Returns
+A `LinearRegions` object. Each element is a `LinearRegion` whose `regions` field holds
+the `(A, b)` pairs (where the polyhedron is `{x : Ax ≤ b}`) making up that region.
 """
-function enum_linear_regions_rat_highs(q::TropicalPuiseuxRational; tol=HIGHS_DEFAULT_TOL)
+function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_TOL)
     f = q.num
     g = q.den
     # first, compute the linear regions of f and g.
     lin_f = enum_linear_regions_highs(f; tol=tol)
     lin_g = enum_linear_regions_highs(g; tol=tol)
 
-    # next, check which for repetitions of the linear map corresponding to f/g on intersections of the linear regions computed above.
-    function check_linear_repetitions()
-        # Key insight: Use linear map [c, α] tuple as dictionary KEY (what we're tracking)
-        # and store list of (A, b) regions as VALUE
-        # This avoids floating-point comparison issues with (A, b) tuples
-        map_to_regions = Dict()  # (c, α) -> [(A, b), ...]
+    # Group all full-dimensional intersections by the linear map they realise.
+    # map_to_regions: (c, α) -> Vector of (A, b) pairs
+    map_to_regions = Dict()
 
-        # We need to check for pairwise intersection of each polytope, by iterating over
-        for i in eachindex(f)
-            for j in eachindex(g)
-                # we only need to do the checks on linear regions that are attained by f and g
-                if lin_f[i][2] && lin_g[j][2]
-                    # Get the matrix representations
-                    A1, b1 = lin_f[i][1]
-                    A2, b2 = lin_g[j][1]
+    for i in eachindex(f)
+        for j in eachindex(g)
+            if lin_f[i][2] && lin_g[j][2]
+                A1, b1 = lin_f[i][1]
+                A2, b2 = lin_g[j][1]
 
-                    # check if the polytopes intersect on a full-dimensional region
-                    if highs_intersect_is_full_dimensional(A1, b1, A2, b2; tol=tol)
-                        # Compute the intersection by concatenating constraints
-                        A_intersect = vcat(A1, A2)
-                        b_intersect = vcat(b1, b2)
-                        Ab = (A_intersect, b_intersect)
-
-                        # Compute the linear map for this region
-                        c = Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]])
-                        α = f.exp[i] - g.exp[j]
-                        linear_map_key = (c, α)
-
-                        # Group regions by their linear map
-                        if haskey(map_to_regions, linear_map_key)
-                            push!(map_to_regions[linear_map_key], Ab)
-                        else
-                            map_to_regions[linear_map_key] = [Ab]
-                        end
+                if highs_intersect_is_full_dimensional(A1, b1, A2, b2; tol=tol)
+                    Ab = (vcat(A1, A2), vcat(b1, b2))
+                    c = Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]])
+                    α = f.exp[i] - g.exp[j]
+                    key = (c, α)
+                    if haskey(map_to_regions, key)
+                        push!(map_to_regions[key], Ab)
+                    else
+                        map_to_regions[key] = [Ab]
                     end
                 end
             end
         end
-
-        # Check for repetitions: if any linear map has multiple regions
-        exists_reps = any(length(regions) > 1 for regions in values(map_to_regions))
-
-        if !exists_reps
-            # Return all regions (flatten the values)
-            all_regions = vcat(values(map_to_regions)...)
-            return map_to_regions, all_regions, false
-        else
-            # Return only the groups that have repetitions
-            reps = [(lmap, regions) for (lmap, regions) in map_to_regions]
-            return map_to_regions, reps, true
-        end
     end
 
-    map_to_regions, reps, exists_reps = check_linear_repetitions()
-
-    # if there are no repetitions, then the linear regions are just the non-empty intersections of linear regions of f and linear regions of g
-    if !exists_reps
-        lin_regions = reps  # reps contains all_regions when there are no repetitions
-    # if there are repetitions then we will need to find connected components of the union of the polytopes on which repetitions occur.
-    else
-        # Initialise the array lin_regions. This will contain the true linear regions of f/g
-        lin_regions = []
-        # first find all pairwise intersections of polytopes.
-        for (lmap, regions) in reps
-            # if regions has length 1 then there is no other linear region with the same linear map
-            if length(regions) == 1
-                append!(lin_regions, regions)
-            else
-                # otherwise, we check for intersections in the set of linear regions with a given map
-                has_intersect = Dict()
-                # iterate over unordered pairs of (distinct) elements of regions
-                for (Ab1, Ab2) in Combinatorics.combinations(regions, 2)
-                    A1, b1 = Ab1
-                    A2, b2 = Ab2
-
-                    # Check if the two polyhedra intersect (feasibly)
-                    A_check = vcat(A1, A2)
-                    b_check = vcat(b1, b2)
-                    intersects = !highs_is_empty(A_check, b_check)
-
-                    # add true to the dictionary if the intersection is nonempty and false otherwise
-                    has_intersect[(Ab1, Ab2)] = intersects
-                end
-                # now find transitive closure of the relation given by dictionary has_intersect
-                # and append the corresponding components to lin_regions
-                append!(lin_regions, components(regions, has_intersect))
+    # Build a LinearRegions result, grouping (A, b) pairs into connected components.
+    # Each connected component becomes one LinearRegion.  The structure mirrors the
+    # Oscar-based enum_linear_regions_rat so that callers can treat both backends uniformly.
+    Ab_type = Tuple{Matrix{Float64}, Vector{Float64}}
+    lr_list = LinearRegion{Ab_type}[]
+    for (_, regions) in map_to_regions
+        if length(regions) == 1
+            push!(lr_list, LinearRegion(regions))
+        else
+            # Check pairwise feasibility of intersections to find connected components
+            has_intersect = Dict()
+            for (Ab1, Ab2) in Combinatorics.combinations(regions, 2)
+                A_check = vcat(Ab1[1], Ab2[1])
+                b_check = vcat(Ab1[2], Ab2[2])
+                has_intersect[(Ab1, Ab2)] = !highs_is_empty(A_check, b_check)
+            end
+            for component in components(regions, has_intersect)
+                push!(lr_list, LinearRegion(convert(Vector{Ab_type}, component)))
             end
         end
     end
-    return lin_regions
+    return LinearRegions(lr_list)
 end
