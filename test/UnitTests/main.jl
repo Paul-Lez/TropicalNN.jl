@@ -3,7 +3,7 @@ using Test, TropicalNN, Oscar
 @testset "Main" begin
     w, b, t = TropicalNN.random_mlp([3, 2, 1])
     trop = mlp_to_trop(w, b, t)[1]
-    @show length(enum_linear_regions_rat(trop))
+    @test length(enum_linear_regions_rat(trop)) > 0
     R = tropical_semiring(max)
     f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]], false)
     # Write down the tropical polynomial 0*X^1*Y^7 + 4*X^0*Y^1 + (-5)*X^9*Y^1

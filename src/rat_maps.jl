@@ -789,7 +789,7 @@ function _monomial_str(coeff::Oscar.TropicalSemiringElem, exp::Vector{T}) where 
     return join(terms, " + ")
 end
 
-function Base.show(io::IO, f::TropicalPuiseuxPoly{T}) where T
+function Base.show(io::IO, f::Signomial{T}) where T
     if isempty(f.exp)
         print(io, "max()")
         return
@@ -798,11 +798,11 @@ function Base.show(io::IO, f::TropicalPuiseuxPoly{T}) where T
     print(io, "max(", join(strs, ", "), ")")
 end
 
-function Base.show(io::IO, f::TropicalPuiseuxRational{T}) where T
+function Base.show(io::IO, f::RationalSignomial{T}) where T
     print(io, "(", f.num, ") ⊘ (", f.den, ")")
 end
 
-function Base.show(io::IO, F::Vector{TropicalPuiseuxRational{T}}) where T
+function Base.show(io::IO, F::Vector{RationalSignomial{T}}) where T
     for (i, f) in enumerate(F)
         print(io, "f$(_subscript(i)) = ", f, "\n")
     end

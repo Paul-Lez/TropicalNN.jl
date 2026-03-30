@@ -152,6 +152,27 @@ using Test, TropicalNN, Oscar
         for c in [composed, composed_qs]
             @test all(x -> x isa RationalSignomial, c)
         end
+
+        # Test 3: Correctness — comp(f, G) evaluated at p equals f evaluated at [G[i](p)]
+        # f = max(x₁, x₂) as a polynomial in 2 variables
+        # G = [1 + y₁, 2 + y₂] as rational signomials in 2 variables
+        # comp(f, G) = max(1 + y₁, 2 + y₂)
+        # At [y₁ = R(3), y₂ = R(5)]: max(1+3, 2+5) = max(4, 7) = R(7)
+        # Use Rational{BigInt} exponents throughout to keep types consistent across `^`.
+        R_comp = tropical_semiring(max)
+        exps_comp = [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]
+        f_comp = Signomial([R_comp(0), R_comp(0)], exps_comp, false)
+        g1 = signomial_to_rational(SignomialMonomial(R_comp(1), Rational{BigInt}[1, 0]))
+        g2 = signomial_to_rational(SignomialMonomial(R_comp(2), Rational{BigInt}[0, 1]))
+        composed_known = comp(f_comp, [g1, g2])
+        @test TropicalNN.evaluate(composed_known, [R_comp(3), R_comp(5)]) == R_comp(7)
+        # At [y₁ = R(10), y₂ = R(0)]: max(1+10, 2+0) = max(11, 2) = R(11)
+        @test TropicalNN.evaluate(composed_known, [R_comp(10), R_comp(0)]) == R_comp(11)
+
+        # Test 4: comp_with_quicksum gives same result as comp on the same inputs
+        composed_qs_known = comp_with_quicksum(f_comp, [g1, g2])
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(3), R_comp(5)]) == R_comp(7)
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(10), R_comp(0)]) == R_comp(11)
     end
 
     #==========================================================================

@@ -156,26 +156,47 @@ using Test, TropicalNN, Oscar
     # Evaluation Tests
     ==========================================================================#
     @testset "Polynomial Evaluation" begin
-        # Test 1: Basic evaluation with Rational
+        # f = max(1 + x₁, 2 + x₂, 3 + x₁ + x₂)
+        # at [R(2), R(3)]: max(1+2, 2+3, 3+2+3) = max(3, 5, 8) = 8
         f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]], false)
-        point = [R(2), R(3)]
-        result = TropicalNN.evaluate(f, point)
-        @test result isa Oscar.TropicalSemiringElem
+        @test TropicalNN.evaluate(f, [R(2), R(3)]) == R(8)
 
-        # Note: Float64 exponent evaluation not tested due to power operation issues
+        # at [R(5), R(0)]: max(1+5, 2+0, 3+5+0) = max(6, 2, 8) = 8
+        @test TropicalNN.evaluate(f, [R(5), R(0)]) == R(8)
+
+        # at [R(0), R(10)]: max(1+0, 2+10, 3+0+10) = max(1, 12, 13) = 13
+        @test TropicalNN.evaluate(f, [R(0), R(10)]) == R(13)
+
+        # RationalSignomial evaluation: f/g where f = max(x₁, x₂), g = constant 0
+        # at [R(2), R(3)]: num = max(0+2, 0+3) = R(3), den = R(0) → R(3)/R(0) = R(3)
+        num = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        den = Signomial([R(0)], [[0//1, 0//1]], false)
+        q = RationalSignomial(num, den)
+        @test TropicalNN.evaluate(q, [R(2), R(3)]) == R(3)
+        # at [R(5), R(2)]: max(5, 2) = 5
+        @test TropicalNN.evaluate(q, [R(5), R(2)]) == R(5)
     end
 
     #==========================================================================
     # Monomial Deduplication Tests
     ==========================================================================#
     @testset "Monomial Deduplication" begin
-        # Test 1: Dedup with no duplicates (should be unchanged)
+        # Test 1: Dedup with no zero-coefficient monomials (should be unchanged)
         g = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]], false)
         g_dedup = TropicalNN.dedup_monomials(g)
         @test length(g_dedup.exp) == length(g.exp)
         @test g_dedup.coeff == g.coeff
 
-        # Test 2: Dedup for rational functions
+        # Test 2: Dedup actually removes a zero-coefficient monomial
+        # Build a polynomial with one tropical-zero coefficient by summing f + (-f) for one monomial.
+        # tropical zero = zero(R(0)) = R(-Inf)
+        tropical_zero = zero(R(0))
+        g_with_zero = Signomial([tropical_zero, R(2)], [[1//1, 0//1], [0//1, 1//1]], false)
+        g_with_zero_dedup = TropicalNN.dedup_monomials(g_with_zero)
+        @test length(g_with_zero_dedup.exp) == 1
+        @test g_with_zero_dedup.coeff[[0//1, 1//1]] == R(2)
+
+        # Test 3: Dedup for rational functions
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]], false)
         den = Signomial([R(0)], [[0//1, 0//1]], false)
         rat = RationalSignomial(num, den)

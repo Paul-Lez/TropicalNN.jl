@@ -94,7 +94,7 @@ using Test, TropicalNN, Oscar
     end
 
     # Test 7: Repeated linear map path (exists_reps = true)
-    @testset "Repeated linear map (f/f)" begin
+    @testset "Repeated linear map (f/f) — 2D, 2 monomials" begin
         # f/f is the constant function 0; both diagonal pairs (i,i) share the same
         # linear map, so they should be collected into a single LinearRegion with 2 pieces.
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
@@ -102,6 +102,43 @@ using Test, TropicalNN, Oscar
         @test lr isa LinearRegions
         @test length(lr) == 1          # one distinct linear map
         @test length(lr[1].regions) == 2  # two convex pieces
+    end
+
+    @testset "Repeated linear map (f/f) — 1D, 6 monomials" begin
+        # f = max(0, x-1, 2x-4, 3x-9, 4x-16, 5x-25): 6 active monomials with breakpoints
+        # at x = 1, 3, 5, 7, 9 → 6 full-dimensional regions.
+        # f/f: all 6 diagonal pairs share linear map (coeff 0, exp [0]) → one LinearRegion
+        # with 6 convex pieces.
+        f6 = Signomial(
+            [R(0), R(-1), R(-4), R(-9), R(-16), R(-25)],
+            [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]],
+            false
+        )
+        lr6 = enum_linear_regions_rat_highs(f6 / f6)
+        @test lr6 isa LinearRegions
+        @test length(lr6) == 1
+        @test length(lr6[1].regions) == 6
+        for (A, b) in lr6[1].regions
+            @test TropicalNN.highs_is_full_dimensional(A, b)
+        end
+    end
+
+    @testset "Repeated linear map (f/f) — 2D, 6 monomials" begin
+        # f = max(0, y, 2y-1, x, x+y, x+2y-1): 2×3 grid of 6 full-dimensional regions.
+        # f/f: all 6 diagonal pairs share linear map (coeff 0, exp [0,0]) → one LinearRegion
+        # with 6 convex pieces.
+        f6_2d = Signomial(
+            [R(0), R(0), R(-1), R(0), R(0), R(-1)],
+            [[0//1,0//1], [0//1,1//1], [0//1,2//1], [1//1,0//1], [1//1,1//1], [1//1,2//1]],
+            false
+        )
+        lr6_2d = enum_linear_regions_rat_highs(f6_2d / f6_2d)
+        @test lr6_2d isa LinearRegions
+        @test length(lr6_2d) == 1
+        @test length(lr6_2d[1].regions) == 6
+        for (A, b) in lr6_2d[1].regions
+            @test TropicalNN.highs_is_full_dimensional(A, b)
+        end
     end
 
     # Test 8: Empty polyhedron detection

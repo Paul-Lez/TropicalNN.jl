@@ -1,6 +1,8 @@
-using Test, TropicalNN
+using Test, TropicalNN, Random
 
 @testset "Hoffman" begin
+    Random.seed!(42)
+
     @test round(exact_hoff([1 0 0;0 1 0;0 0 1]),digits=2)==1.0
     @test round(exact_hoff([1 0 0;0 1 0;0 0 1;-1 -1 -1]),digits=2)==3.0
     @test round(exact_hoff([1 0 0;0 1 0;0 0 1;-1 0 0;0 -1 0;0 0 -1]),digits=2)==1.0
@@ -39,5 +41,5 @@ using Test, TropicalNN
     er_exact=exact_er(rmap)
     er_upper=upper_er(rmap)
     @test er_exact<=er_upper
-    
+
 end

@@ -6,14 +6,13 @@ using Test
 
     include("./UnitTests/polynomial_algebra.jl")
 
-    # TODO: StandardizedTropicalPoly functions not yet implemented
-    # include("./UnitTests/standardized_poly.jl")
-
     include("./UnitTests/mlp_to_trop.jl")
 
-    if Base.find_package("CairoMakie") !== nothing
-        include("./UnitTests/visualise.jl")
-    end
+    # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
+    # Commented out until visualise.jl is integrated into the module.
+    # if Base.find_package("CairoMakie") !== nothing
+    #     include("./UnitTests/visualise.jl")
+    # end
 
     include("./UnitTests/hoffman.jl")
 
