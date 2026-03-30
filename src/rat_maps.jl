@@ -739,6 +739,76 @@ function monomial_count(f::TropicalPuiseuxRational{T}) where T
     return monomial_count(f.num) + monomial_count(f.den)
 end 
 
+####################### PRETTY PRINTING #######################################
+
+# Unicode subscript digits for variable names like x₁, x₂, ...
+const _SUBSCRIPT_DIGITS = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉']
+
+function _subscript(n::Integer)
+    return join(_SUBSCRIPT_DIGITS[d+1] for d in reverse(digits(n)))
+end
+
+# Format a scalar exponent value as a string, dispatching on its type.
+_exp_str(α::AbstractFloat) = isinteger(α) ? "$(Int(α))" : "$(α)"
+_exp_str(α::Rational)      = denominator(α) == 1 ? "$(numerator(α))" : "$(α)"
+_exp_str(α::Integer)       = "$(α)"
+_exp_str(α)                = "$(α)"  # fallback
+
+# Format a scalar coefficient (underlying value from the tropical semiring).
+_coeff_str(c::AbstractFloat) = isinteger(c) ? "$(Int(c))" : "$(c)"
+_coeff_str(c::Rational)      = denominator(c) == 1 ? "$(numerator(c))" : "$(c)"
+_coeff_str(c::Integer)       = "$(c)"
+_coeff_str(c)                = "$(c)"  # fallback
+
+# Format a single monomial as a human-readable string.
+# A monomial is c ⊙ x₁^α₁ ⊙ x₂^α₂ ⊙ ... which in classical terms means
+# c + α₁x₁ + α₂x₂ + ...
+function _monomial_str(coeff::Oscar.TropicalSemiringElem, exp::Vector{T}) where T
+    c = Oscar.data(coeff)   # underlying Rational (or Int) value
+    terms = String[]
+
+    for (i, α) in enumerate(exp)
+        α == 0 && continue
+        vname = "x$(_subscript(i))"
+        if α == 1
+            push!(terms, vname)
+        elseif α == -1
+            push!(terms, "-" * vname)
+        else
+            push!(terms, "$(_exp_str(α))$(vname)")
+        end
+    end
+
+    if isempty(terms)
+        return _coeff_str(c)
+    end
+
+    # prepend the constant coefficient if non-zero
+    if c != 0
+        pushfirst!(terms, _coeff_str(c))
+    end
+    return join(terms, " + ")
+end
+
+function Base.show(io::IO, f::TropicalPuiseuxPoly{T}) where T
+    if isempty(f.exp)
+        print(io, "max()")
+        return
+    end
+    strs = [_monomial_str(f.coeff[e], e) for e in f.exp]
+    print(io, "max(", join(strs, ", "), ")")
+end
+
+function Base.show(io::IO, f::TropicalPuiseuxRational{T}) where T
+    print(io, "(", f.num, ") ⊘ (", f.den, ")")
+end
+
+function Base.show(io::IO, F::Vector{TropicalPuiseuxRational{T}}) where T
+    for (i, f) in enumerate(F)
+        print(io, "f$(_subscript(i)) = ", f, "\n")
+    end
+end
+
 # Count the number of monomials appearing in a tropical expression
 function monomial_count(F::Vector{TropicalPuiseuxRational{T}}) where T
     return sum([monomial_count(f) for f in F])
