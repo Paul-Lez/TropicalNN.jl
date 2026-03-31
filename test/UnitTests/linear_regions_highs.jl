@@ -5,7 +5,7 @@ using Test, TropicalNN, Oscar
 
     # Test 1: Basic polynomial - max(x, y)
     @testset "Basic polynomial max(x, y)" begin
-        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
 
         # Test enum_linear_regions_highs (returns raw (A,b) feasibility pairs, not LinearRegions)
         regions_highs = enum_linear_regions_highs(u)
@@ -22,8 +22,8 @@ using Test, TropicalNN, Oscar
 
     # Test 2: Rational function - max(x, y) / constant
     @testset "Rational function max(x, y) / 0" begin
-        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        v = Signomial([R(0)], [[0//1, 0//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+        v = Signomial([R(0)], [[0//1, 0//1]]; sorted=false)
         q = u / v
 
         # enum_linear_regions_rat_highs now returns LinearRegions, mirroring the Oscar backend
@@ -41,8 +41,8 @@ using Test, TropicalNN, Oscar
 
     # Test 3: More complex rational function
     @testset "Complex rational function" begin
-        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
+        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+        g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]]; sorted=false)
         q = f / g
 
         regions_rat_highs = enum_linear_regions_rat_highs(q)
@@ -52,7 +52,7 @@ using Test, TropicalNN, Oscar
 
     # Test 4: Polynomial with redundant monomial
     @testset "Polynomial max(0, x, 2x)" begin
-        u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]], false)
+        u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted=false)
 
         regions_highs = enum_linear_regions_highs(u)
         @test length(regions_highs) == 3
@@ -63,8 +63,8 @@ using Test, TropicalNN, Oscar
 
     # Test 5: Consistency check — both backends return the same region count
     @testset "HiGHS vs Oscar consistency" begin
-        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-        v = Signomial([R(0)], [[0//1, 0//1]], false)
+        u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+        v = Signomial([R(0)], [[0//1, 0//1]]; sorted=false)
         q = u / v
 
         regions_oscar = enum_linear_regions_rat(q)
@@ -97,7 +97,7 @@ using Test, TropicalNN, Oscar
     @testset "Repeated linear map (f/f) — 2D, 2 monomials" begin
         # f/f is the constant function 0; both diagonal pairs (i,i) share the same
         # linear map, so they should be collected into a single LinearRegion with 2 pieces.
-        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
+        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
         lr = enum_linear_regions_rat_highs(f / f)
         @test lr isa LinearRegions
         @test length(lr) == 1          # one distinct linear map
@@ -111,8 +111,8 @@ using Test, TropicalNN, Oscar
         # with 6 convex pieces.
         f6 = Signomial(
             [R(0), R(-1), R(-4), R(-9), R(-16), R(-25)],
-            [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]],
-            false
+            [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
+            sorted=false
         )
         lr6 = enum_linear_regions_rat_highs(f6 / f6)
         @test lr6 isa LinearRegions
@@ -129,8 +129,8 @@ using Test, TropicalNN, Oscar
         # with 6 convex pieces.
         f6_2d = Signomial(
             [R(0), R(0), R(-1), R(0), R(0), R(-1)],
-            [[0//1,0//1], [0//1,1//1], [0//1,2//1], [1//1,0//1], [1//1,1//1], [1//1,2//1]],
-            false
+            [[0//1,0//1], [0//1,1//1], [0//1,2//1], [1//1,0//1], [1//1,1//1], [1//1,2//1]];
+            sorted=false
         )
         lr6_2d = enum_linear_regions_rat_highs(f6_2d / f6_2d)
         @test lr6_2d isa LinearRegions

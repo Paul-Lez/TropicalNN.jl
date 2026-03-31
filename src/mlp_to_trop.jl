@@ -231,7 +231,7 @@ end
 Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
 """
 function random_pmap(n_vars,n_mons)
-    return Signomial(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons],true)
+    return Signomial(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons]; sorted=false)
 end
 
 """

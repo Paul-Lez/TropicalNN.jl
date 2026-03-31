@@ -367,10 +367,8 @@ end
 Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
 """
 function edge_count(f::Union{Signomial,RationalSignomial})
-    # For one-dimensional polyhedra, there is no concept of
-    # gradient for the intersection
-    if nvars(f) == 1
-        throw(ArgumentError("For univariate tropical polynomials or tropical rational maps use the vertex functions instead."))
+    if nvars(f) != 2
+        throw(ArgumentError("edge_count is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
     return Graphs.ne(get_graph(f))
 end
@@ -425,10 +423,8 @@ end
 Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
 function edge_gradients(f::Union{Signomial,RationalSignomial})
-    # For one-dimensional polyhedra, there is no concept of
-    # gradient for the intersection
-    if nvars(f) == 1
-        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
+    if nvars(f) != 2
+        throw(ArgumentError("edge_gradients is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
     return edge_gradients(get_graph(f))
 end
@@ -474,10 +470,8 @@ end
 Calculates the lengths of the edges eminating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
 function edge_lengths(f::Union{Signomial,RationalSignomial})
-    # For one-dimensional polyhedra, there is no concept of
-    # gradient for the intersection
-    if nvars(f) == 1
-        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
+    if nvars(f) != 2
+        throw(ArgumentError("edge_lengths is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
     return edge_lengths(get_graph(f))
 end
@@ -534,10 +528,8 @@ end
 Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
 """
 function edge_directions(f::Union{Signomial,RationalSignomial})
-    # For one-dimensional polyhedra, there is no concept of
-    # a direction for the intersection
-    if nvars(f) == 1
-        throw(ArgumentError("Not supported for univariate tropical polynomials or tropical rational maps."))
+    if nvars(f) != 2
+        throw(ArgumentError("edge_directions is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
     return edge_directions(get_graph(f))
 end

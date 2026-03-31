@@ -31,9 +31,6 @@ struct Signomial{T}
     end
 end
 
-# Outer constructor
-Signomial(coeff::Dict, exp::Vector{Vector{T}}) where T = Signomial{T}(coeff, exp)
-
 """
 Represents a quotient of signomials.
 """
@@ -43,35 +40,63 @@ struct RationalSignomial{T}
 end
 
 @doc raw"""
-    Signomial(coeff::Dict, exp::Vector{Vector{T}}, sorted::Bool)
+    Signomial(coeff::Dict, exp::Vector{Vector{T}}; sorted::Bool=false)
 
-Constructs a signomial from a dictionary of coefficients and a vector of exponents, by first sorting the exponents lexicographically.
+Constructs a signomial from a dictionary of coefficients and a vector of exponents.
+Pass `sorted=true` only if the exponents are already in lexicographic order.
 """
-function Signomial(coeff::Dict, exp::Vector{Vector{T}}, sorted) where T
-    # first we need to order everything lexicographically
+# 3-arg positional helper: sorts if needed, then dispatches to the inner {T} constructor.
+# This is the final sorting gateway — it does NOT call back through any outer constructor.
+function Signomial(coeff::Dict, exp::Vector{Vector{T}}, sorted::Bool) where T
     if !sorted
         exp = sort(exp)
     end
-    return Signomial(coeff, exp)
+    return Signomial{T}(coeff, exp)   # call inner parameterised constructor directly
 end
 
-@doc raw"""
-    Signomial(coeff::Vector, exp::Vector, sorted::Bool)
+# Keyword convenience wrapper — calling Signomial(coeff, exp; sorted=true/false)
+# dispatches here, then on to the 3-arg positional above.
+Signomial(coeff::Dict, exp::Vector{Vector{T}}; sorted::Bool=false) where T =
+    Signomial(coeff, exp, sorted)
 
-Constructs a signomial from a vector of coefficients and a vector of exponents, by first sorting the exponents lexicographically, and then constructing the dictionary of coefficients.
+@doc raw"""
+    Signomial(coeff::Vector, exp::Vector; sorted::Bool=false)
+
+Constructs a signomial from a vector of coefficients and a vector of exponents.
+If `sorted=false` (the default), the exponents are sorted lexicographically and
+coefficients reordered to match. Pass `sorted=true` only if the exponents are
+already in lexicographic order.
 
 ```jldoctest
 julia> f = Signomial([1, 2], [[1, 2], [2, 1]])
   Signomial{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
 ```
 """
-function Signomial(coeff::Vector, exp::Vector, sorted)
+function Signomial(coeff::Vector, exp::Vector; sorted::Bool=false)
     if !sorted
         I = sortperm(exp)
         exp = exp[I]
         coeff = coeff[I]
     end
-    return Signomial(Dict(zip(exp, coeff)), exp)
+    # Pass sorted=true since we just sorted (or confirmed already sorted)
+    return Signomial(Dict(zip(exp, coeff)), exp, true)
+end
+
+@doc raw"""
+    Signomial(coeff::Vector{<:Real}, exp::Vector; sorted::Bool=false)
+
+Convenience constructor that accepts plain numbers (e.g. `Int`, `Float64`) as
+coefficients, automatically wrapping them in the max-plus tropical semiring.
+
+# Example
+```julia
+# Equivalent to the Oscar-based construction but without ceremony:
+f = Signomial([0, 1, -1], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
+```
+"""
+function Signomial(coeff::Vector{<:Real}, exp::Vector; sorted::Bool=false)
+    R = Oscar.tropical_semiring(max)
+    return Signomial(R.(coeff), exp; sorted=sorted)
 end
 
 @doc raw"""
@@ -111,7 +136,7 @@ Constructs a signomial from a scalar c and a vector of exponents. This is a mono
 coefficient is c and exponents are given by exp.
 """
 function SignomialMonomial(c, exp::Vector{T}) where T
-    return Signomial([c], [exp], true)
+    return Signomial([c], [exp]; sorted=true)
 end
 
 @doc raw"""
@@ -141,9 +166,7 @@ end
 @doc raw"""
 Returns an iterator for the exponents of a signomial.
 """
-function eachindex(f::Signomial)
-    return Base.eachindex(f.exp)
-end
+Base.eachindex(f::Signomial) = Base.eachindex(f.exp)
 
 @doc raw"""
 Returns the number of variables of a signomial.
@@ -152,7 +175,7 @@ function Oscar.nvars(f::Signomial)
     if !is_empty(f.coeff)
         return length(f.exp[1])
     else
-        return -1
+        throw(ArgumentError("nvars is not defined for an empty Signomial"))
     end
 end
 
@@ -308,7 +331,7 @@ function quicksum(F::Vector{Signomial{T}}) where T
         end
     end
 
-    return Signomial(h_coeff, h_exp, false)
+    return Signomial(h_coeff, h_exp; sorted=false)
 end
 
 """
@@ -386,7 +409,7 @@ function Base.:+(f::Signomial{T}, g::Signomial{T}) where T
         j += 1
     end
 
-    return Signomial(h_coeff, h_exp, true)
+    return Signomial(h_coeff, h_exp; sorted=true)
 end
 
 """
@@ -425,7 +448,7 @@ function Base.:*(f::Signomial{T}, g::Signomial{T}) where T
     # Sort exponents lexicographically
     result_exp = sort(collect(keys(result_coeff)))
 
-    return Signomial(result_coeff, result_exp, true)
+    return Signomial(result_coeff, result_exp; sorted=true)
 end
 
 # Multiplication of signomials, collecting all pairwise products unsorted and sorting once at the end.
@@ -460,7 +483,7 @@ function mul_with_quicksum(f::Signomial{T}, g::Signomial{T}) where T
         end
     end
 
-    return Signomial(result_coeff, result_exp, false)
+    return Signomial(result_coeff, result_exp; sorted=false)
 end
 
 # Addition of rational signomials
@@ -571,7 +594,7 @@ function Base.:^(f::Signomial, rat::Float64)
         for (key, elem) in f.coeff
             new_f_coeff[rat*key] = elem^rat
         end
-        return Signomial(new_f_coeff, new_f_exp, true)
+        return Signomial(new_f_coeff, new_f_exp; sorted=true)
     end
 end
 
@@ -591,7 +614,7 @@ function Base.:^(f::Signomial{T}, int::Int64) where T
     for (key, elem) in f.coeff
         new_f_coeff[int*key] = elem^int
     end
-    return Signomial(new_f_coeff, new_f_exp, true)
+    return Signomial(new_f_coeff, new_f_exp; sorted=true)
 end
 
 function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
@@ -601,7 +624,7 @@ function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
     for (key, elem) in f.coeff
         new_f_coeff[int*key] = elem^int
     end
-    return Signomial(new_f_coeff, new_f_exp, true)
+    return Signomial(new_f_coeff, new_f_exp; sorted=true)
 end
 
 # exponentiation of a rational signomial by a positive integer
@@ -628,7 +651,7 @@ function Base.:*(a::TropicalSemiringElem, f::Signomial{T}) where T
     for i in eachindex(f)
         new_f_coeff[f.exp[i]] = a*f.coeff[f.exp[i]]
     end
-    return Signomial(new_f_coeff, new_f_exp, true)
+    return Signomial(new_f_coeff, new_f_exp; sorted=true)
 end
 
 function Base.:(==)(f::Signomial{T}, g::Signomial{T}) where T
@@ -807,6 +830,10 @@ function Base.show(io::IO, F::Vector{RationalSignomial{T}}) where T
         print(io, "f$(_subscript(i)) = ", f, "\n")
     end
 end
+
+# Callable interface: f(x) as syntactic sugar for evaluate(f, x)
+(f::Signomial)(x::Vector) = evaluate(f, x)
+(f::RationalSignomial)(x::Vector) = evaluate(f, x)
 
 # Count the number of monomials appearing in a tropical expression
 function monomial_count(F::Vector{RationalSignomial{T}}) where T

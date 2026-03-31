@@ -17,8 +17,8 @@ R = tropical_semiring(max)
 #   enum_linear_regions_rat(q::RationalSignomial)
 # ---------------------------------------------------------------
 println("\n--- Bug 1: Docstring API mismatch ---")
-f_doc = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false)
-g_doc = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]], false)
+f_doc = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+g_doc = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]]; sorted=false)
 
 println("Calling enum_linear_regions_rat(f, g) as shown in the docstring...")
 try

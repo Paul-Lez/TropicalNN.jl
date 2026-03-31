@@ -2,7 +2,7 @@ using TropicalNN, GraphMakie, CairoMakie, Graphs
 
 # Generate a random neural network and obtain its tropical representation
 w,b,t=random_mlp([2,4,1])
-f=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+f=mlp_to_trop(w,b,t; quicksum=true, strong_elim=true)[1]
 
 # Our statistics are derived from the polyhedra representing the linear regions of the neural network.
 # For simplicitly we compute these before hand such that they can used to derive multiple statistics.

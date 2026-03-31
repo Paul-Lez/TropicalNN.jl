@@ -10,7 +10,7 @@ using TropicalNN, Random
 matrix=rand(7,7)
 pmap=random_pmap(2,7)
 w,b,t=random_mlp([2,4,1])
-rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+rmap=mlp_to_trop(w,b,t; quicksum=true, strong_elim=true)[1]
 
 hoff_const_matrix=round(exact_hoff(matrix),digits=4)
 hoff_const_pmap=round(exact_hoff(pmap),digits=4)
@@ -119,7 +119,7 @@ for _ in 1:5
     push!(pmap_upper_tightness,abs(exact-upper)/exact)
 
     local w,b,t=random_mlp([2,3,1])
-    local rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+    local rmap=mlp_to_trop(w,b,t; quicksum=true, strong_elim=true)[1]
     lower=lower_hoff(rmap)
     exact=exact_hoff(rmap)
     upper=upper_hoff(rmap)

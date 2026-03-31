@@ -27,7 +27,7 @@ using TropicalNN
 exps   = [[1, 0], [0, 1], [2, 2], [1, 1], [2, 0], [0, 2]]
 coeffs = [0, 0, 0, 0, 0, 0]
 
-f = TropicalPuiseuxPoly(coeffs, exps, false)
+f = TropicalPuiseuxPoly(coeffs, exps)
 
 println("Original polynomial:")
 println("  Number of monomials: ", monomial_count(f))

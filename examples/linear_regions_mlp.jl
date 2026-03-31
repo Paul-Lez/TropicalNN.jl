@@ -38,10 +38,10 @@ println("Number of linear regions: ", length(regions))
 println()
 
 for (i, region) in enumerate(regions)
-    # A region is either a single (A, b) pair or a connected component
-    # (array of (A, b) pairs sharing the same linear map).
-    if region isa Tuple
-        A, b = region
+    # Each region is a LinearRegion containing one or more (A, b) pairs.
+    # A single convex piece has length 1; disconnected pieces have length > 1.
+    if length(region) == 1
+        A, b = region[1]
         println("Region $i:  {x : Ax ≤ b}")
         println("  A = ", A)
         println("  b = ", b)

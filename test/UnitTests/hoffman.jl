@@ -22,7 +22,7 @@ using Test, TropicalNN, Random
     @test h_exact>=h_lower
 
     w,b,t=random_mlp([2,2,1])
-    rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+    rmap=mlp_to_trop(w,b,t)[1]
     h_exact=exact_hoff(rmap)
     h_upper=upper_hoff(rmap)
     h_lower=lower_hoff(rmap)
@@ -37,7 +37,7 @@ using Test, TropicalNN, Random
     @test er_exact<=er_upper
 
     w,b,t=random_mlp([2,2,1])
-    rmap=mlp_to_trop_with_quicksum_with_strong_elim(w,b,t)[1]
+    rmap=mlp_to_trop(w,b,t)[1]
     er_exact=exact_er(rmap)
     er_upper=upper_er(rmap)
     @test er_exact<=er_upper

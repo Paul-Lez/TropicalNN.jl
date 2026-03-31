@@ -187,9 +187,9 @@ Enumerates the linear regions of `f/g` where `f = max(x, y)` and `g = 0`.
 ```jldoctest
 julia> R = tropical_semiring(max);
 
-julia> f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]], false);
+julia> f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false);
 
-julia> g = Signomial([R(0)], [[0//1, 0//1]], false);
+julia> g = Signomial([R(0)], [[0//1, 0//1]]; sorted=false);
 
 julia> lr = enum_linear_regions_rat(f / g);
 

@@ -10,7 +10,7 @@ using TropicalNN, CairoMakie
 weights,biases,thresholds=random_mlp([2,4,1])
 
 # Obtain the tropical rational map corresponding to this neural network
-f=mlp_to_trop_with_quicksum_with_strong_elim(weights,biases,thresholds)[1]
+f=mlp_to_trop(weights,biases,thresholds; quicksum=true, strong_elim=true)[1]
 
 # Plot the linear regions
 fig,ax=plot_linear_regions(f)

@@ -49,19 +49,19 @@ using Test, TropicalNN, Oscar
         @test standard isa Vector{RationalSignomial{Rational{BigInt}}}
 
         # Test 2: Quicksum version
-        quicksum_result = mlp_to_trop_with_quicksum(W, b, t)
+        quicksum_result = mlp_to_trop(W, b, t, quicksum=true)
         @test quicksum_result isa Vector{RationalSignomial{Rational{BigInt}}}
 
         # Test 3: Strong elimination version
-        strong_elim = mlp_to_trop_with_strong_elim(W, b, t)
+        strong_elim = mlp_to_trop(W, b, t, strong_elim=true)
         @test strong_elim isa Vector{RationalSignomial{Rational{BigInt}}}
 
         # Test 4: Quicksum with strong elimination
-        qs_elim = mlp_to_trop_with_quicksum_with_strong_elim(W, b, t)
+        qs_elim = mlp_to_trop(W, b, t, quicksum=true, strong_elim=true)
         @test qs_elim isa Vector{RationalSignomial{Rational{BigInt}}}
 
         # Test 5: Dedup version
-        dedup = mlp_to_trop_with_dedup(W, b, t)
+        dedup = mlp_to_trop(W, b, t, dedup=true)
         @test dedup isa Vector{RationalSignomial{Rational{BigInt}}}
 
         # All variants should produce valid tropical rational functions
@@ -161,7 +161,7 @@ using Test, TropicalNN, Oscar
         # Use Rational{BigInt} exponents throughout to keep types consistent across `^`.
         R_comp = tropical_semiring(max)
         exps_comp = [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]
-        f_comp = Signomial([R_comp(0), R_comp(0)], exps_comp, false)
+        f_comp = Signomial([R_comp(0), R_comp(0)], exps_comp; sorted=false)
         g1 = signomial_to_rational(SignomialMonomial(R_comp(1), Rational{BigInt}[1, 0]))
         g2 = signomial_to_rational(SignomialMonomial(R_comp(2), Rational{BigInt}[0, 1]))
         composed_known = comp(f_comp, [g1, g2])
@@ -269,7 +269,7 @@ using Test, TropicalNN, Oscar
         # Test 3: Monomial elimination actually reduces complexity
         W3, b3, t3 = random_mlp([2, 4, 1])
         without_elim = mlp_to_trop(W3, b3, t3)
-        with_elim = mlp_to_trop_with_strong_elim(W3, b3, t3)
+        with_elim = mlp_to_trop(W3, b3, t3, strong_elim=true)
         # Both should produce valid results
         @test without_elim isa Vector{<:RationalSignomial}
         @test with_elim isa Vector{<:RationalSignomial}
@@ -288,9 +288,9 @@ using Test, TropicalNN, Oscar
 
         # All variants should complete successfully
         @test mlp_to_trop(W, b, t) isa Vector{<:RationalSignomial}
-        @test mlp_to_trop_with_quicksum(W, b, t) isa Vector{<:RationalSignomial}
-        @test mlp_to_trop_with_strong_elim(W, b, t) isa Vector{<:RationalSignomial}
-        @test mlp_to_trop_with_quicksum_with_strong_elim(W, b, t) isa Vector{<:RationalSignomial}
-        @test mlp_to_trop_with_dedup(W, b, t) isa Vector{<:RationalSignomial}
+        @test mlp_to_trop(W, b, t, quicksum=true) isa Vector{<:RationalSignomial}
+        @test mlp_to_trop(W, b, t, strong_elim=true) isa Vector{<:RationalSignomial}
+        @test mlp_to_trop(W, b, t, quicksum=true, strong_elim=true) isa Vector{<:RationalSignomial}
+        @test mlp_to_trop(W, b, t, dedup=true) isa Vector{<:RationalSignomial}
     end
 end

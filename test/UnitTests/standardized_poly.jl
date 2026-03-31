@@ -8,7 +8,7 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "standardize() and destandardize()" begin
         # Test 1: Simple polynomial with rational exponents
-        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//3]], false)
+        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//3]]; sorted=false)
         g = TropicalNN.standardize(f)
 
         @test g isa TropicalNN.StandardizedTropicalPoly
@@ -22,7 +22,7 @@ using Test, TropicalNN, Oscar
         @test f_back.coeff == f.coeff
 
         # Test 3: Polynomial with integer exponents (denominator should be 1)
-        f_int = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 2//1]], false)
+        f_int = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 2//1]]; sorted=false)
         g_int = TropicalNN.standardize(f_int)
         @test g_int.denominator == 1
 
@@ -47,7 +47,7 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "convert_denominator()" begin
         # Create standardized polynomial with denominator 2
-        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]], false)
+        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
         g = TropicalNN.standardize(f)
         @test g.denominator == 2
 
@@ -94,7 +94,7 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Edge Cases" begin
         # Test 1: Single term polynomial
-        f_single = Signomial([R(5)], [[2//3, 1//2]], false)
+        f_single = Signomial([R(5)], [[2//3, 1//2]]; sorted=false)
         g_single = TropicalNN.standardize(f_single)
         @test g_single.denominator == 6
         # Round-trip should preserve values
@@ -104,13 +104,13 @@ using Test, TropicalNN, Oscar
 
         # Test 2: Polynomial with many variables
         large_exp = [i//2 for i in 1:10]
-        f_large = Signomial([R(1)], [large_exp], false)
+        f_large = Signomial([R(1)], [large_exp]; sorted=false)
         g_large = TropicalNN.standardize(f_large)
         @test g_large.denominator == 2
         @test nvars(g_large.ring) == 10
 
         # Test 3: Already integer exponents
-        f_already_int = Signomial([R(1), R(2)], [[2//1, 3//1], [1//1, 5//1]], false)
+        f_already_int = Signomial([R(1), R(2)], [[2//1, 3//1], [1//1, 5//1]]; sorted=false)
         g_already_int = TropicalNN.standardize(f_already_int)
         @test g_already_int.denominator == 1
         # Round-trip should preserve values
@@ -147,8 +147,8 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Standardized Polynomial Addition" begin
         # Test 1: Basic addition with same denominator
-        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]], false)
-        g = Signomial([R(3), R(4)], [[1//2, 0//1], [1//1, 0//1]], false)
+        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g = Signomial([R(3), R(4)], [[1//2, 0//1], [1//1, 0//1]]; sorted=false)
         f_std = TropicalNN.standardize(f)
         g_std = TropicalNN.standardize(g)
         h_std = f_std + g_std
@@ -157,8 +157,8 @@ using Test, TropicalNN, Oscar
         @test h_std.denominator == 2
 
         # Test 2: Addition with different denominators
-        f2 = Signomial([R(1)], [[1//2, 0//1]], false)
-        g2 = Signomial([R(2)], [[0//1, 1//3]], false)
+        f2 = Signomial([R(1)], [[1//2, 0//1]]; sorted=false)
+        g2 = Signomial([R(2)], [[0//1, 1//3]]; sorted=false)
         f2_std = TropicalNN.standardize(f2)
         g2_std = TropicalNN.standardize(g2)
         h2_std = f2_std + g2_std
@@ -183,8 +183,8 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Standardized Polynomial Multiplication" begin
         # Test 1: Basic multiplication
-        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]], false)
-        g = Signomial([R(3), R(4)], [[1//2, 0//1], [0//1, 1//2]], false)
+        f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g = Signomial([R(3), R(4)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
         f_std = TropicalNN.standardize(f)
         g_std = TropicalNN.standardize(g)
         h_std = f_std * g_std
@@ -201,8 +201,8 @@ using Test, TropicalNN, Oscar
         end
 
         # Test 3: Multiplication with different denominators
-        f2 = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//3]], false)
-        g2 = Signomial([R(3)], [[1//3, 0//1]], false)
+        f2 = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//3]]; sorted=false)
+        g2 = Signomial([R(3)], [[1//3, 0//1]]; sorted=false)
         f2_std = TropicalNN.standardize(f2)
         g2_std = TropicalNN.standardize(g2)
         h2_std = f2_std * g2_std
@@ -224,9 +224,9 @@ using Test, TropicalNN, Oscar
     @testset "Standardized Quicksum" begin
         # Test 1: Basic quicksum with same denominator
         polys = [
-            Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]], false),
-            Signomial([R(3), R(4)], [[1//2, 0//1], [1//1, 0//1]], false),
-            Signomial([R(5)], [[0//1, 1//2]], false)
+            Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false),
+            Signomial([R(3), R(4)], [[1//2, 0//1], [1//1, 0//1]]; sorted=false),
+            Signomial([R(5)], [[0//1, 1//2]]; sorted=false)
         ]
         polys_std = [TropicalNN.standardize(p) for p in polys]
         result_std = TropicalNN.quicksum(polys_std)
@@ -241,9 +241,9 @@ using Test, TropicalNN, Oscar
 
         # Test 3: Quicksum with different denominators
         polys2 = [
-            Signomial([R(1)], [[1//2, 0//1]], false),
-            Signomial([R(2)], [[1//3, 0//1]], false),
-            Signomial([R(3)], [[1//5, 0//1]], false)
+            Signomial([R(1)], [[1//2, 0//1]]; sorted=false),
+            Signomial([R(2)], [[1//3, 0//1]]; sorted=false),
+            Signomial([R(3)], [[1//5, 0//1]]; sorted=false)
         ]
         polys2_std = [TropicalNN.standardize(p) for p in polys2]
         result2_std = TropicalNN.quicksum(polys2_std)
@@ -256,7 +256,7 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Horner Evaluation" begin
         # Test 1: Univariate evaluation
-        f_uni = Signomial([R(1), R(2), R(3)], [[2//1], [1//1], [0//1]], false)
+        f_uni = Signomial([R(1), R(2), R(3)], [[2//1], [1//1], [0//1]]; sorted=false)
         f_uni_std = TropicalNN.standardize(f_uni)
 
         point = [R(2)]
@@ -284,7 +284,7 @@ using Test, TropicalNN, Oscar
         @test result_multi_horner == result_multi_puiseux
 
         # Test 3: Direct evaluation with rational denominators
-        f3 = Signomial([R(5), R(7)], [[1//2, 1//3], [1//4, 1//6]], false)
+        f3 = Signomial([R(5), R(7)], [[1//2, 1//3], [1//4, 1//6]]; sorted=false)
         f3_std = TropicalNN.standardize(f3)
 
         point3 = [R(4), R(27)]
