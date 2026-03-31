@@ -84,9 +84,32 @@ end
 ############### Hoffman Algorithms ###############
 
 @doc raw"""
-    surjectivity_test(A)
+    surjectivity_test(A::Matrix) -> (x_val, t_val)
 
-Solves the optimisation problem which determines whether the matrix has surjectivity with respect to the matrix from which it was sampled.
+Test whether the matrix `A` is *A-surjective* — a condition arising in Hoffman constant computation
+for tropical polynomials.
+
+A matrix ``\tilde{A}`` (a "tilde matrix" derived from the linear-map matrix ``A`` via
+[`tilde_matrices`](@ref)) is A-surjective if the image of the positive orthant under ``\tilde{A}^T``
+intersects every open halfspace through the origin; equivalently, there is no direction in which
+all rows of ``\tilde{A}`` have non-positive dot product.  A-surjectivity is the precondition under
+which the Hoffman constant ``H(\tilde{A})`` is finite (see [`exact_hoff`](@ref)).
+
+The test solves the LP
+
+```
+min  t
+s.t. ‖Aᵀx‖₁ ≤ t,  sum(x) = 1,  x ≥ 0
+```
+
+# Arguments
+- `A::Matrix`: A tilde matrix (typically one element of the vector returned by [`tilde_matrices`](@ref)).
+
+# Returns
+- `(x_val, t_val)`: the optimal primal variable `x` (a probability vector over the rows of `A`) and
+  the optimal objective value `t`.  If `t_val > 0` the matrix is A-surjective and
+  ``H(\tilde{A}) = 1 / t_{\min}`` where ``t_{\min}`` is the minimum over all feasible probability
+  vectors; if `t_val == 0` then `A` is **not** A-surjective and the Hoffman constant is infinite.
 """
 function surjectivity_test(A::Matrix)
     n = size(A, 2)

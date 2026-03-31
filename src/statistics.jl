@@ -1,9 +1,27 @@
 ############### Geometry Helpers (formerly visualise.jl) ###############
 
+"""
+    intersect_reps(rep_1, rep_2) -> [A, b]
+
+Combine two H-representations `[A₁, b₁]` and `[A₂, b₂]` (each encoding `{x : Aᵢx ≤ bᵢ}`)
+into the H-representation of their intersection by vertically stacking the constraint matrices.
+"""
 function intersect_reps(rep_1, rep_2)
     return [vcat(rep_1[1], rep_2[1]), vcat(rep_1[2], rep_2[2])]
 end
 
+"""
+    m_reps(f::Signomial) -> Dict
+
+Compute the H-representation `[A, b]` for every full-dimensional monomial region of the tropical
+polynomial `f`.  Each region is the polyhedron `{x : Ax ≤ b}` where row `j` of `A` is
+`αⱼ - αᵢ` and `bⱼ = c(αᵢ) - c(αⱼ)` (with `αᵢ` the exponent of the dominant monomial and
+`c(·)` the coefficient).
+
+Returns a `Dict` with keys:
+- `"m_reps"`: `Vector` of `[A, b]` pairs, one per full-dimensional region.
+- `"f_indices"`: corresponding monomial indices into `f.exp`.
+"""
 function m_reps(f::Signomial)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for i in eachindex(f)
@@ -18,6 +36,17 @@ function m_reps(f::Signomial)
     return reps
 end
 
+"""
+    m_reps(f::RationalSignomial) -> Dict
+
+Compute the H-representation for every full-dimensional region of the tropical rational function
+`f = num/den`.  Each region is the intersection of a monomial region of the numerator with a
+monomial region of the denominator (see the `Signomial` overload for details).
+
+Returns a `Dict` with keys:
+- `"m_reps"`: `Vector` of `[A, b]` pairs encoding the intersection polyhedra.
+- `"f_indices"`: `Vector` of `[i_num, i_den]` index pairs into `f.num.exp` and `f.den.exp`.
+"""
 function m_reps(f::RationalSignomial)
     n_reps = m_reps(f.num)
     d_reps = m_reps(f.den)
@@ -35,6 +64,14 @@ function m_reps(f::RationalSignomial)
     return reps
 end
 
+"""
+    polyhedra_from_reps(reps::Dict, oscar::Bool=false) -> Vector
+
+Convert a collection of H-representations (as returned by [`m_reps`](@ref)) into polyhedron objects.
+
+- `oscar=true`: returns `Oscar.Polyhedron` objects (Float64 coefficients, fast).
+- `oscar=false` (default): returns `Polyhedra.jl` polyhedra via CDDLib with exact rational arithmetic.
+"""
 function polyhedra_from_reps(reps, oscar::Bool=false)
     if oscar
         return [Oscar.polyhedron(m_rep[1], m_rep[2]) for m_rep in reps["m_reps"]]
@@ -43,6 +80,15 @@ function polyhedra_from_reps(reps, oscar::Bool=false)
     end
 end
 
+"""
+    get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices) -> Vector
+
+Extract the affine linear map `[constant, exponent_vector]` that `f` realises on each region
+identified by `f_indices` (as returned by [`m_reps`](@ref)).
+
+For a `Signomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
+For a `RationalSignomial`, it is `(c_num(αᵢ) - c_den(αⱼ)) + (αᵢ - αⱼ) · x` for index pair `[i, j]`.
+"""
 function get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices)
     linear_maps = []
     for f_idx in f_indices
@@ -56,6 +102,15 @@ function get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices)
     return linear_maps
 end
 
+"""
+    get_linear_regions(polyhedra, linear_maps) -> Dict
+
+Group a collection of polyhedra by their associated linear map.  Regions sharing the same
+linear map (same constant and exponent vector) are collected into a single dict entry; their
+union is the (potentially disconnected) set where `f` acts by that affine function.
+
+Returns a `Dict` mapping each unique linear map to `Dict("polyhedra" => [poly, ...])`.
+"""
 function get_linear_regions(polyhedra, linear_maps)
     linear_regions = Dict()
     for (linear_map, poly) in zip(linear_maps, polyhedra)
@@ -123,7 +178,13 @@ end
 @doc raw"""
     interior_points(polys::Array)
 
-Returns interior points for each polyhedron in the collection.
+Returns an approximate interior point for each polyhedron in `polys`, computed as the
+**centroid of the vertex set** (i.e. the average of `Oscar.vertices(poly)`).
+
+!!! warning
+    This is only a valid interior point for **bounded** polyhedra with a non-empty vertex set.
+    For unbounded regions (which have no vertices) the vertex list is empty and this function
+    will throw a `DivideError`.  Use only after filtering for bounded regions.
 """
 function interior_points(polys::Array)
     component_interiors = []

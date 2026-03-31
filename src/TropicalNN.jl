@@ -1,3 +1,41 @@
+"""
+    TropicalNN
+
+Julia library implementing tropical geometric tools for neural network analysis.
+Converts ReLU MLPs to tropical rational functions, enabling analysis of linear regions,
+expressivity measures, and Hoffman constants.
+
+# Overview
+
+- **Tropical arithmetic**: [`Signomial`](@ref) (max-plus polynomial), [`RationalSignomial`](@ref)
+- **MLP conversion**: [`mlp_to_trop`](@ref) — converts any ReLU MLP to a tropical rational function
+- **Linear regions**: [`enum_linear_regions_rat`](@ref) — enumerate the polyhedral linear regions
+- **Expressivity**: [`monomial_count`](@ref), [`exact_hoff`](@ref) — Hoffman constant bounds
+- **Statistics**: [`bounds`](@ref), [`volumes`](@ref), [`edge_count`](@ref)
+
+# Quick Start
+
+```julia
+using TropicalNN
+
+# Define tropical polynomials
+f = Signomial([0, 0, 1], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
+g = Signomial([0], [[0//1, 0//1]])
+
+# Enumerate linear regions of f/g
+regions = enum_linear_regions_rat(f / g)
+println("Number of linear regions: ", length(regions))
+
+# Convert a random MLP to a tropical rational function
+W, b, t = random_mlp([3, 2, 2])
+trop = mlp_to_trop(W, b, t)
+```
+
+See [arXiv:2405.20174](https://arxiv.org/abs/2405.20174) for the theoretical background.
+
+Both `TropicalPuiseuxPoly`/`TropicalPuiseuxRational` (paper names) and
+`Signomial`/`RationalSignomial` (module names) are exported and refer to the same types.
+"""
 module TropicalNN
 
     using Oscar

@@ -2,8 +2,23 @@
 
 [![Build Status](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-## Content 
-This library implements some basic symbolic tropical geometric tools for computing with neural networks in Julia. 
+## Installation
+
+This package requires Julia 1.10. To install, open the Julia REPL, press `]` to enter Pkg mode, and run:
+
+```
+pkg> add https://github.com/Paul-Lez/TropicalNN.jl
+```
+
+Or from the Julia REPL:
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/Paul-Lez/TropicalNN.jl")
+```
+
+## Content
+This library implements some basic symbolic tropical geometric tools for computing with neural networks in Julia.
 
 ### Tropical Expressions of Neural Networks
 Every fully connected multilayer perceptron (MLP) with ReLU activation can be written in terms of tropical algebra [1]. More precisely, any such MLP can be expressed as a *tropical rational function*, if one allows the exponents appearing in such expressions to be non-integral (e.g. rational or real numbers). We provide tools for symbolically manipulating such objects, and for finding the tropical expression of arbitrary MLPs with ReLU activation. 
@@ -14,31 +29,36 @@ There are various ways of measuring how *complicated* the function represented b
 ## Examples of usage: 
 
 ### Manipulating Tropical Expressions
-```
-# Write down the tropical polynomial f = 1*X^1*Y^0 + 2*X^0*Y^1 + 3*X^1*Y^1
-f = Signomial([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
-# Write down the tropical polynomial 0*X^1*Y^7 + 4*X^0*Y^1 + (-5)*X^9*Y^1
-g = Signomial([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
-@show f + g # outputs the sum of f and g 
-@show f * g # outputs the product of f and g
+```julia
+using TropicalNN
+
+# Write down the tropical polynomial f = max(1+x, 2+y, 3+x+y)
+f = Signomial([1, 2, 3], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
+# Write down the tropical polynomial g = max(0+x+7y, 4+y, -5+9x+y)
+g = Signomial([0, 4, -5], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]])
+@show f + g  # tropical sum (max of all monomials)
+@show f * g  # tropical product (sum of exponents, sum of coefficients)
 ```
 
 ### Computing Tropical Expressions of MLPs
-```
-# Generate a random neural network, expressed as a tuple (W, b, t) where W is an array of weight 
-# matrices, b an array of biases and t an array of activation threshholds
+```julia
+using TropicalNN
+
+# Generate a random neural network: returns (W, b, t) — weight matrices, biases, thresholds
 W, b, t = random_mlp([3, 2, 2])
-# Compute a tropical expression of this network
-@show trop1 = mlp_to_trop(W, b, t)
-# Compute a reduced tropical expression of this network 
-@show trop2 = mlp_to_trop_with_quicksum_with_monomial_strong_elim(W, b, t)
+# Compute a tropical rational expression of this network
+trop1 = mlp_to_trop(W, b, t)
+# Compute a reduced tropical expression (faster, fewer monomials)
+trop2 = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true)
 ```
 
 ### Computing Linear Regions of Tropical Rational Functions
-```
-f = Signomial([1, 2, 3], [[1, 0], [0, 1], [1, 1]], false)
-g = Signomial([0, 4, -5], [[1, 7], [0, 1], [9, 1]], false) 
-# Compute the linear regions of f/g, expressed as an array containing polyhedra or arrays of polyhedra
+```julia
+using TropicalNN
+
+f = Signomial([1, 2, 3], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
+g = Signomial([0, 4, -5], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]])
+# Compute the linear regions of f/g as a LinearRegions object
 linear_regions = enum_linear_regions_rat(f / g)
 @show length(linear_regions)
 ```
