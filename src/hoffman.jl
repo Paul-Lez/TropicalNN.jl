@@ -6,9 +6,9 @@
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
 function linearmap_matrices(f::Signomial)
-    linear_maps = []
-    exponents = []
-    coefficients = []
+    linear_maps  = Vector{Vector{Any}}()
+    exponents    = Vector{Vector{Float64}}()
+    coefficients = Vector{Any}()
     for i in eachindex(f)
         A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
         b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]

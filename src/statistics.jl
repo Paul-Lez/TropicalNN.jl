@@ -90,7 +90,7 @@ For a `Signomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
 For a `RationalSignomial`, it is `(c_num(αᵢ) - c_den(αⱼ)) + (αᵢ - αⱼ) · x` for index pair `[i, j]`.
 """
 function get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices)
-    linear_maps = []
+    linear_maps = Vector{Vector{Any}}()
     for f_idx in f_indices
         if length(f_idx) == 1
             push!(linear_maps, [Rational(f.coeff[f.exp[f_idx]]), f.exp[f_idx]])
@@ -187,7 +187,7 @@ Returns an approximate interior point for each polyhedron in `polys`, computed a
     will throw a `DivideError`.  Use only after filtering for bounded regions.
 """
 function interior_points(polys::Array)
-    component_interiors = []
+    component_interiors = Vector{Any}()
     for poly in polys
         # Obtain an interior point for each polyhedron in the collection
         vertices = Oscar.vertices(poly)
@@ -205,7 +205,7 @@ function interior_points(linear_regions::Dict)
     result = Dict()
     # Iterate through each linear region and identify interior points
     for (linear_map, components) in linear_regions
-        components_interiors = []
+        components_interiors = Vector{Any}()
         for polys in components
             push!(components_interiors, interior_points(polys))
         end
@@ -231,16 +231,7 @@ end
 Determines whether the polyhedra in a collection are bounded.
 """
 function bounds(polys::Array)
-    component_bounded = []
-    for poly in polys
-        # Identify which polyhedra are bounded
-        if Oscar.is_bounded(poly)
-            push!(component_bounded, true)
-        else
-            push!(component_bounded, false)
-        end
-    end
-    return component_bounded
+    return Oscar.is_bounded.(polys)
 end
 
 @doc raw"""
@@ -252,7 +243,7 @@ function bounds(linear_regions::Dict)
     bounded = Dict()
     # Iterate through the linear regions and note the polyhedra which are bounded
     for (linear_map, components) in linear_regions
-        components_bounded = []
+        components_bounded = Vector{Vector{Bool}}()
         for polys in components
             push!(components_bounded, bounds(polys))
         end
@@ -280,7 +271,7 @@ Finds the volumes of the polyhedra in a collection.
 function volumes(polys::Array)
     # Determine the bounded polyhedra
     bds = bounds(polys)
-    vols = []
+    vols = Vector{Float64}()
     for (poly, bd) in zip(polys, bds)
         # Compute the volume of the bounded
         if bd
@@ -302,7 +293,7 @@ function volumes(linear_regions::Dict)
     # Iterate throguh the linear regions and compute their volume
     # by summing the volumes of the constituent polyhedra
     for (linear_map, components) in linear_regions
-        components_vols = []
+        components_vols = Vector{Float64}()
         for polys in components
             # Take the sum of the volumes of the polyhedra
             # within the linear regions
@@ -367,8 +358,8 @@ function get_graph(linear_regions::Dict)
         return nothing
     end
     # Collect the regions and their corresponding linear maps
-    region_polys = []
-    linear_maps = []
+    region_polys = Vector{Any}()
+    linear_maps  = Vector{Any}()
     for (linear_map, components) in linear_regions
         for component in components
             push!(region_polys, component)
@@ -454,7 +445,7 @@ function edge_gradients(g::MetaGraph)
         return gs
     end
     # We want to obtain the gradients of the linear regions as a collective
-    gs_full = []
+    gs_full = Vector{Any}()   # gradients are QQFieldElem (Oscar rational field elements)
     # We want to collect the gradients of the outgoing edges for each node separately
     gs_with_source = Dict()
     for e in collect(edge_labels(g))
@@ -507,7 +498,7 @@ function edge_lengths(g::MetaGraph)
         return ls
     end
     # We want to obtain the lengths of the linear regions as a collective
-    ls_full = []
+    ls_full = Vector{Float64}()
     # We want to collect the lengths of the outgoing edges for each node separately
     ls_with_source = Dict()
     for e in collect(edge_labels(g))
@@ -555,7 +546,7 @@ function edge_directions(g::MetaGraph)
     end
     # We want to obtain the directions of the edges of the linear regions as a collective
     # We canonically choose the vector representation that is positive in the first component
-    ds_full = []
+    ds_full = Vector{Vector{Float64}}()
     # We want to collect the directions of the outgoing edges for each node separately.
     # We canonically choose the vector representation as the normalised direction vector from the
     # source node to the destination node.

@@ -43,7 +43,7 @@ julia> enum_linear_regions(f)
 ```
 """
 function enum_linear_regions(f::Signomial)
-    linear_regions = Vector()
+    linear_regions = Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}()
     sizehint!(linear_regions, length(f.exp))
     for i in eachindex(f)
         poly = polyhedron(f, i)
@@ -98,32 +98,36 @@ julia> components(V, D)
 ```
 """
 function components(V, D)
-    count = 0
-    visited = Dict()
-    for v in V
-        visited[v] = false
+    # Precompute adjacency list so DFS visits only actual neighbours — O(V+E)
+    adj = Dict(v => eltype(V)[] for v in V)
+    for ((u, v), connected) in D
+        if connected
+            haskey(adj, u) && push!(adj[u], v)
+            haskey(adj, v) && push!(adj[v], u)
+        end
     end
-    # depth first search. We pass a component array as a parameter to store the components of the graph as we go along.
+
+    visited = Dict(v => false for v in V)
+
     function depth_first_search(k, component_arr)
         visited[k] = true
         push!(component_arr, k)
-        for p in V
-            # We need to check that the edge exists. D might be missing some keys so we need to check for that first.
-            if !visited[p] && ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
+        for p in adj[k]
+            if !visited[p]
                 depth_first_search(p, component_arr)
             end
         end
     end
-    components = []
+
+    result = Vector{Vector{eltype(V)}}()
     for p in V
         if !visited[p]
-            component_arr = []
+            component_arr = eltype(V)[]
             depth_first_search(p, component_arr)
-            push!(components, component_arr)
-            count += 1
+            push!(result, component_arr)
         end
     end
-    return components
+    return result
 end
 
 @doc raw"""

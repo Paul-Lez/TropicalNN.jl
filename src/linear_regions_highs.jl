@@ -167,7 +167,7 @@ julia> enum_linear_regions_highs(f)
 ```
 """
 function enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
-    linear_regions = Vector()
+    linear_regions = Vector{Tuple{Tuple{Matrix{Float64},Vector{Float64}},Bool}}()
     sizehint!(linear_regions, length(f.exp))
     for i in eachindex(f)
         A, b = polyhedron_highs(f, i)

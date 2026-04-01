@@ -203,19 +203,19 @@ W, b, t = random_mlp([2, 4, 1], random_thresholds=true, symbolic=false)
 """
 function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=false, symbolic::Bool=true)
     # if symbolic is set to true then we work with symbolic fractions. 
-    if symbolic 
-        # Use He initialisation, i.e. we sample weights with distribution N(0, sqrt(2/n))
-        weights = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[1])), dims[i+1], dims[i])) for i in 1:length(dims)-1]
-        biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[1])), dims[i])) for i in 2:length(dims)]
+    if symbolic
+        # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
+        weights = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i])), dims[i+1], dims[i])) for i in 1:length(dims)-1]
+        biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i-1])), dims[i])) for i in 2:length(dims)]
         if random_thresholds
             thresholds = [Rational{BigInt}.(rand(dims[i])) for i in 2:length(dims)]
-        else 
+        else
             thresholds = [Rational{BigInt}.(zeros(dims[i])) for i in 2:length(dims)]
-        end 
+        end
     else # otherwise we work with Floats
-        # Use He initialisation, i.e. we sample weights with distribution N(0, sqrt(2/n))
-        weights = [rand(Normal(0, sqrt(2/dims[1])), dims[i+1], dims[i]) for i in 1:length(dims)-1]
-        biases = [rand(Normal(0, sqrt(2/dims[1])), dims[i]) for i in 2:length(dims)]
+        # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
+        weights = [rand(Normal(0, sqrt(2/dims[i])), dims[i+1], dims[i]) for i in 1:length(dims)-1]
+        biases = [rand(Normal(0, sqrt(2/dims[i-1])), dims[i]) for i in 2:length(dims)]
         if random_thresholds
             thresholds = [rand(dims[i]) for i in 2:length(dims)]
         else 
