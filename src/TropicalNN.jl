@@ -78,20 +78,16 @@ module TropicalNN
         TropicalPuiseuxRational_identity,
         TropicalPuiseuxRational_zero,
         TropicalPuiseuxRational_one,
-        # TODO: StandardizedTropicalPoly functions not yet implemented
-        # StandardizedTropicalPoly,
-        # StandardizedTropicalPoly_const,
-        # StandardizedTropicalPoly_zero,
-        # StandardizedTropicalPoly_one,
-        # StandardizedTropicalMonomial,
-        # standardize,
-        # destandardize,
-        # convert_denominator,
-        # eval_horner,
-        # eval_horner_univariate,
-        # eval_horner_multivariate,
-        # power_standardized,
-        # scalar_mult_standardized,
+        StandardizedTropicalPoly,
+        TropicalPolyRing,
+        StandardizedTropicalPoly_const,
+        StandardizedTropicalPoly_zero,
+        StandardizedTropicalPoly_one,
+        StandardizedTropicalMonomial,
+        standardize,
+        destandardize,
+        convert_denominator,
+        eval_horner,
         string,
         evaluate,
         +,
@@ -150,6 +146,7 @@ module TropicalNN
         vertex_count
 
     include("rat_maps.jl")
+    include("standardized_poly.jl")
     include("linear_regions.jl")
     include("linear_regions_highs.jl")
     include("mlp_to_trop.jl")

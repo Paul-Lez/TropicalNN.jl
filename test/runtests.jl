@@ -20,4 +20,14 @@ using Test
 
     include("./UnitTests/linear_regions_highs.jl")
 
+    include("./UnitTests/exponentiation.jl")
+
+    include("./UnitTests/printing.jl")
+
+    include("./UnitTests/linearmap_matrices.jl")
+
+    include("./UnitTests/standardized_poly.jl")
+
+    include("./UnitTests/tropical_number.jl")
+
 end

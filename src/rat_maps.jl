@@ -72,14 +72,17 @@ julia> f = Signomial([1, 2], [[1, 2], [2, 1]])
 max(1 + x₁ + 2x₂, 2 + 2x₁ + x₂)
 ```
 """
-function Signomial(coeff::Vector, exp::Vector; sorted::Bool=false)
+function Signomial(coeff::Vector, exp::Vector, sorted::Bool)
     if !sorted
         I = sortperm(exp)
         exp = exp[I]
         coeff = coeff[I]
     end
-    # Pass sorted=true since we just sorted (or confirmed already sorted)
     return Signomial(Dict(zip(exp, coeff)), exp, true)
+end
+
+function Signomial(coeff::Vector, exp::Vector; sorted::Bool=false)
+    return Signomial(coeff, exp, sorted)
 end
 
 @doc raw"""
@@ -762,6 +765,9 @@ Scales every exponent vector by `r` and raises every coefficient to the `r`-th p
 When `r == 0`, returns the tropical-one signomial in the same number of variables.
 """
 function Base.:^(f::Signomial{T}, int::Int64) where T
+    if int == 0
+        return Base.one(Signomial{T}, nvars(f))
+    end
     new_f_coeff = Dict()
     new_f_exp::Vector{Vector{T}} = copy(f.exp)
     new_f_exp = int * new_f_exp
@@ -780,6 +786,9 @@ Scales every exponent vector by `r` and raises every coefficient to the `r`-th p
 When `r == 0`, returns the tropical-one signomial in the same number of variables.
 """
 function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
+    if int == 0
+        return Base.one(Signomial{Rational{BigInt}}, nvars(f))
+    end
     new_f_coeff = Dict()
     new_f_exp = convert(Vector{Vector{Rational{BigInt}}}, f.exp)
     new_f_exp::Vector{Vector{Rational{BigInt}}} = Vector{Rational{BigInt}}.(int * new_f_exp)

@@ -72,21 +72,21 @@ using Test, TropicalNN, Oscar
         @test const_poly.denominator == 1
         @test nvars(const_poly.ring) == 2
         # Evaluate at origin should give constant
-        @test TropicalNN.eval(const_poly, [R(0), R(0)]) == R(5)
+        @test TropicalNN.evaluate(const_poly, [R(0), R(0)]) == R(5)
 
         # Test 2: Zero polynomial
         zero_poly = TropicalNN.StandardizedTropicalPoly_zero(3, 1, R)
-        @test TropicalNN.eval(zero_poly, [R(1), R(1), R(1)]) == zero(R(0))
+        @test TropicalNN.evaluate(zero_poly, [R(1), R(1), R(1)]) == zero(R(0))
 
         # Test 3: One polynomial (multiplicative identity)
         one_poly = TropicalNN.StandardizedTropicalPoly_one(2, 1, R)
-        @test TropicalNN.eval(one_poly, [R(1), R(1)]) == R(0)  # Tropical one is 0
+        @test TropicalNN.evaluate(one_poly, [R(1), R(1)]) == R(0)  # Tropical one is 0
 
         # Test 4: Single monomial
         mono = TropicalNN.StandardizedTropicalMonomial(R(3), [2, 1], 1)
         @test mono.denominator == 1
         # Evaluate at (1, 1) should give 3 + 2*1 + 1*1 = 6 in tropical arithmetic
-        @test TropicalNN.eval(mono, [R(1), R(1)]) == R(3) * R(1)^2 * R(1)
+        @test TropicalNN.evaluate(mono, [R(1), R(1)]) == R(3) * R(1)^2 * R(1)
     end
 
     #==========================================================================
@@ -261,8 +261,8 @@ using Test, TropicalNN, Oscar
 
         point = [R(2)]
         result_horner = TropicalNN.eval_horner(f_uni_std, point)
-        result_direct = TropicalNN.eval(f_uni_std, point)
-        result_puiseux = TropicalNN.eval(f_uni, point)
+        result_direct = TropicalNN.evaluate(f_uni_std, point)
+        result_puiseux = TropicalNN.evaluate(f_uni, point)
 
         @test result_horner == result_direct
         @test result_horner == result_puiseux
@@ -277,8 +277,8 @@ using Test, TropicalNN, Oscar
 
         point2 = [R(2), R(3)]
         result_multi_horner = TropicalNN.eval_horner(f_multi_std, point2)
-        result_multi_direct = TropicalNN.eval(f_multi_std, point2)
-        result_multi_puiseux = TropicalNN.eval(f_multi, point2)
+        result_multi_direct = TropicalNN.evaluate(f_multi_std, point2)
+        result_multi_puiseux = TropicalNN.evaluate(f_multi, point2)
 
         @test result_multi_horner == result_multi_direct
         @test result_multi_horner == result_multi_puiseux
@@ -288,8 +288,8 @@ using Test, TropicalNN, Oscar
         f3_std = TropicalNN.standardize(f3)
 
         point3 = [R(4), R(27)]
-        result3_std = TropicalNN.eval(f3_std, point3)
-        result3_puiseux = TropicalNN.eval(f3, point3)
+        result3_std = TropicalNN.evaluate(f3_std, point3)
+        result3_puiseux = TropicalNN.evaluate(f3, point3)
 
         @test result3_std == result3_puiseux
     end
