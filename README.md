@@ -1,6 +1,7 @@
 # TropicalNN
 
 [![Build Status](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://paul-lez.github.io/TropicalNN.jl/dev/)
 
 ## Installation
 
@@ -72,6 +73,9 @@ If this code was useful, please consider citing [this paper](https://arxiv.org/a
   year={2024}
 }
 ```
+
+## Documentation
+Full API documentation is available at https://paul-lez.github.io/TropicalNN.jl/dev/
 
 ## References
 [1] [*Tropical Geometry of Deep Neural Networks*](https://arxiv.org/pdf/1805.07091), Liwen Zhang, Gregory Naitzat and Lek-Heng Lim.
