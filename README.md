@@ -27,6 +27,28 @@ Every fully connected multilayer perceptron (MLP) with ReLU activation can be wr
 ### Tropical Measures of Expressivity of Neural Networks
 There are various ways of measuring how *complicated* the function represented by a given neural network is. A large body of litterature has formed around using the number of *linear regions* of a neural network as such a measure. This library provides tools for computing this quantity, analysing the geometry of these linear regions, and studying another algebraic measure of expressivity, namely the number of irredundant monomials that appear in the tropical expression of a neural network. 
 
+## Quick Start
+
+The following snippet walks through the complete MLP → tropical → regions pipeline;
+for more details see [`examples/full_pipeline.jl`](examples/full_pipeline.jl).
+
+```julia
+using TropicalNN
+
+# 1. Generate a random 2-hidden-layer MLP with architecture [2, 4, 2, 1]
+W, b, t = random_mlp([2, 4, 2, 1])
+
+# 2. Convert to a tropical rational function
+trop = mlp_to_trop(W, b, t)
+
+# 3. Enumerate the linear regions of the first output
+regions = enum_linear_regions_rat(trop[1])
+println("Number of linear regions: ", length(regions))
+
+# 4. Count monomials (expressivity measure)
+println("Monomial count: ", monomial_count(trop[1]))
+```
+
 ## Examples of usage: 
 
 ### Manipulating Tropical Expressions
