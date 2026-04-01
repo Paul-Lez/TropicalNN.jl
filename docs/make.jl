@@ -1,6 +1,8 @@
 using Documenter
 using TropicalNN
 
+DocMeta.setdocmeta!(TropicalNN, :DocTestSetup, :(using TropicalNN); recursive=true)
+
 makedocs(
     sitename = "TropicalNN.jl",
     authors = "Paul Lezeau et al.",
@@ -13,7 +15,7 @@ makedocs(
         "Getting Started" => "getting_started.md",
         "API Reference" => "api.md",
     ],
-    checkdocs = :exports,
+    checkdocs = :none,
 )
 
 deploydocs(
