@@ -265,7 +265,7 @@ Efficient tropical product (sum) over array.
 function tropical_prod(arr::AbstractVector{TropicalNumber{C,T}}) where {C,T}
     isempty(arr) && return one(TropicalNumber{C,T})
     result = zero(Rational{T})
-    @inbounds @simd for i in eachindex(arr)
+    @inbounds @simd for i in Base.eachindex(arr)
         result += arr[i].value
     end
     return TropicalNumber{C,T}(result)

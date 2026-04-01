@@ -100,7 +100,7 @@ function SignomialStatic{T,N}(
     end
 
     coeff_static = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
-        exp_static[i] => coeffs[i] for i in eachindex(coeffs)
+        exp_static[i] => coeffs[i] for i in Base.eachindex(coeffs)
     )
 
     return SignomialStatic{T,N}(coeff_static, exp_static)
@@ -404,7 +404,7 @@ end
 
 function eval_poly(f::SignomialStatic{T,N}, a::Vector) where {T,N}
     ev = zero(a[1])
-    for i in eachindex(f)
+    for i in Base.eachindex(f)
         exp_i = f.exp[i]
         coeff_i = f.coeff[exp_i]
         term = one(a[1])
@@ -460,7 +460,7 @@ function Base.:^(f::SignomialStatic{T,N}, r::Base.Rational) where {T,N}
 
     new_exp = [SVector{N,T}(T(r * e) for e in exp_vec) for exp_vec in f.exp]
     new_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
-        new_exp[i] => f.coeff[f.exp[i]]^r for i in eachindex(f.exp)
+        new_exp[i] => f.coeff[f.exp[i]]^r for i in Base.eachindex(f.exp)
     )
     return SignomialStatic{T,N}(new_coeff, new_exp)
 end

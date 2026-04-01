@@ -24,8 +24,8 @@ Returns a `Dict` with keys:
 """
 function m_reps(f::Signomial)
     reps = Dict("m_reps" => [], "f_indices" => [])
-    for i in eachindex(f)
-        A = mapreduce(permutedims, vcat, [f.exp[j] - f.exp[i] for j in eachindex(f)])
+    for i in Base.eachindex(f)
+        A = mapreduce(permutedims, vcat, [f.exp[j] - f.exp[i] for j in Base.eachindex(f)])
         b = [Rational(f.coeff[f.exp[i]]) - Rational(f.coeff[j]) for j in f.exp]
         p_oscar = Oscar.polyhedron(A, b)
         if Oscar.is_fulldimensional(p_oscar)
@@ -134,7 +134,7 @@ function separate_components(linear_regions::Dict)
     region_components = Dict()
     for (linear_map, value) in linear_regions
         polys = value["polyhedra"]
-        # indetifying which polyhedra in the region have a non-trivial intersection
+        # identifying which polyhedra in the region have a non-trivial intersection
         has_intersect = Dict()
         for (poly1, poly2) in Combinatorics.combinations(polys, 2)
             intesection = Oscar.intersect(poly1, poly2)
@@ -290,7 +290,7 @@ Finds the volumes of the linear regions.
 """
 function volumes(linear_regions::Dict)
     vols = Dict()
-    # Iterate throguh the linear regions and compute their volume
+    # Iterate through the linear regions and compute their volume
     # by summing the volumes of the constituent polyhedra
     for (linear_map, components) in linear_regions
         components_vols = Vector{Float64}()
@@ -430,7 +430,7 @@ end
 @doc raw"""
     edge_gradients(edge_attributes::Dict)
 
-Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge.
+Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge.
 """
 function edge_gradients(g::MetaGraph)
     # Each vertex can only have one outgoing edge of a certain gradient.
@@ -472,7 +472,7 @@ end
 @doc raw"""
     edge_gradients(f::Union{Signomial,RationalSignomial})
 
-Identifies the gradients of the edges eminating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
+Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
 function edge_gradients(f::Union{Signomial,RationalSignomial})
     if nvars(f) != 2
@@ -519,7 +519,7 @@ end
 @doc raw"""
     edge_lengths(f::Union{Signomial,RationalSignomial})
 
-Calculates the lengths of the edges eminating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
+Calculates the lengths of the edges emanating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
 function edge_lengths(f::Union{Signomial,RationalSignomial})
     if nvars(f) != 2

@@ -4,7 +4,7 @@
 @doc raw"""
     polyhedron(f::Signomial, i::Int)
 
-Ouputs the polyhedron corresponding to points where f is given by the 
+Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f. 
 
 # Example
@@ -18,7 +18,7 @@ Polyhedron in ambient dimension 2 with Float64 type coefficients
 """
 function polyhedron(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
+    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f)])
     # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i. 
     b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
     # The polyhedron is then the set of points x such that Ax ≤ b.
@@ -26,9 +26,9 @@ function polyhedron(f::Signomial, i)
 end
 
 @doc raw"""
-    enum_linear_regions(f::Signomial) 
-    
-Outputs an array of tuples (poly, bool) indexed by the same set as the exponents of f. The tuple element poly 
+    enum_linear_regions(f::Signomial)
+
+Outputs an array of tuples (poly, bool) indexed by the same set as the exponents of f. The tuple element poly
 is the linear region corresponding to the exponent, and bool is true when this region is nonemtpy.
 
 # Example
@@ -45,7 +45,7 @@ julia> enum_linear_regions(f)
 function enum_linear_regions(f::Signomial)
     linear_regions = Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}()
     sizehint!(linear_regions, length(f.exp))
-    for i in eachindex(f)
+    for i in Base.eachindex(f)
         poly = polyhedron(f, i)
         # add the polyhedron to the list plus a bool saying whether the polyhedron is non-empty
         # TODO: this should be replaced by a check that the polyhedron is full dimensional for performance.
@@ -212,8 +212,8 @@ function enum_linear_regions_rat(q::RationalSignomial)
     # next, group full-dimensional intersections by the linear map they realise.
     function group_by_linear_map()
         groups = Dict()  # linear_map_value => Vector of polyhedra
-        for i in eachindex(f)
-            for j in eachindex(g)
+        for i in Base.eachindex(f)
+            for j in Base.eachindex(g)
                 # only process linear regions that are attained by f and g
                 if lin_f[i][2] && lin_g[j][2]
                     poly = Oscar.intersect(lin_f[i][1], lin_g[j][1])

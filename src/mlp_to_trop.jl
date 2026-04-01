@@ -42,7 +42,7 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) wher
         # the numerator is the monomial given by the positive part, with coeff b[i], plus the monomial given by the negative part 
         # with coeff t[i]
         num = SignomialMonomial(b[i], pos) + SignomialMonomial(t[i], neg)
-        # the denominator is the monomila given by the negative part, with coeff the tropical multiplicative 
+        # the denominator is the monomial given by the negative part, with coeff the tropical multiplicative 
         # unit, i.e. 0
         den = SignomialMonomial(one(t[i]), neg)
         push!(G, num/den) 
@@ -226,12 +226,25 @@ function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=fal
 end 
 
 @doc raw"""
-    random_pmap(n_vars,n_mons)
+    random_pmap(n_vars, n_mons)
 
 Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
+
+Both coefficients and exponent components are drawn i.i.d. from `Normal(0, 1/sqrt(2))`.
+This distribution is consistent with the He initialisation used in [`random_mlp`](@ref),
+where weights are sampled from `Normal(0, sqrt(2/fan_in))`.
+
+# Arguments
+- `n_vars::Integer`: Number of variables in the tropical polynomial
+- `n_mons::Integer`: Number of monomials
+
+# Returns
+- `Signomial{Rational{BigInt}}`: A random tropical polynomial with `n_mons` monomials in
+  `n_vars` variables, with coefficients and exponents drawn from `Normal(0, 1/sqrt(2))`
+  and converted to `Rational{BigInt}`
 """
-function random_pmap(n_vars,n_mons)
-    return Signomial(Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_mons)),[Rational{BigInt}.(rand(Normal(0,1/sqrt(2)),n_vars)) for _ in 1:n_mons]; sorted=false)
+function random_pmap(n_vars, n_mons)
+    return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)), [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons]; sorted=false)
 end
 
 """

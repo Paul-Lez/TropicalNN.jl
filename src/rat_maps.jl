@@ -102,8 +102,18 @@ end
 @doc raw"""
     Signomial_const(n, c, f::Signomial{T})
 
-Outputs the constant c viewed as a signomial in n variables, and exponents in the
-same type as f.
+Construct the constant `c` as a signomial in `n` variables.
+
+# Arguments
+- `n`: number of variables
+- `c`: the tropical coefficient (a `TropicalSemiringElem`)
+- `f`: a `Signomial{T}` used **only to infer the exponent type `T`**; its value is irrelevant
+
+Returns a `Signomial{T}` with a single monomial whose exponent is the zero vector and
+whose coefficient is `c`.
+
+When the type is known statically, the cleaner alternatives
+`Base.zero(Signomial{T}, n)` and `Base.one(Signomial{T}, n)` are also available.
 """
 function Signomial_const(n, c, f::Signomial{T}) where T
     exp = [Base.zeros(T, n)]
@@ -113,8 +123,18 @@ end
 
 @doc raw"""
     Signomial_zero(n, f::Signomial{T})
-Outputs the tropical zero viewed as a signomial in n variables, and exponents in the
-same type as f.
+
+Construct the tropical-zero signomial in `n` variables.
+
+Tropical zero is the identity element for tropical addition (max), i.e. the element
+that satisfies `max(a, -∞) = a`. It is represented as a monomial with coefficient
+`-∞` (the additive identity of the tropical semiring) and the zero exponent vector.
+
+The argument `f` is used **only to infer the exponent type `T`**; its value is irrelevant.
+Returns a `Signomial{T}`.
+
+When the type `T` is known statically, prefer `Base.zero(Signomial{T}, n)` for a
+type-explicit API that does not require an existing `Signomial` instance.
 """
 function Signomial_zero(n::Int64, f::Signomial{T}) where T
     return Signomial_const(n, zero(f.coeff[f.exp[1]]), f)
@@ -122,11 +142,57 @@ end
 
 @doc raw"""
     Signomial_one(n, f::Signomial{T})
-Outputs the tropical one viewed as a signomial in n variables, and exponents in the
-same type as f.
+
+Construct the tropical-one signomial in `n` variables.
+
+Tropical one is the identity element for tropical multiplication, i.e. the element
+that satisfies `a * 0 = a` in the tropical semiring. It is represented as a monomial
+with coefficient `0` and the zero exponent vector.
+
+The argument `f` is used **only to infer the exponent type `T`**; its value is irrelevant.
+Returns a `Signomial{T}`.
+
+When the type `T` is known statically, prefer `Base.one(Signomial{T}, n)` for a
+type-explicit API that does not require an existing `Signomial` instance.
 """
 function Signomial_one(n::Int64, f::Signomial{T}) where T
     return Signomial_const(n, one(f.coeff[f.exp[1]]), f)
+end
+
+"""
+    Base.zero(::Type{Signomial{T}}, n::Int) where T
+
+Construct the tropical-zero signomial in `n` variables with exponent type `T`.
+Tropical zero is the identity for tropical addition (max), i.e. the monomial with
+coefficient −∞ and zero exponent. Prefer this over `Signomial_zero` when you want
+to specify the type explicitly without needing an existing `Signomial` instance.
+"""
+function Base.zero(::Type{Signomial{T}}, n::Int) where T
+    R = Oscar.tropical_semiring(max)
+    z = Base.zeros(T, n)
+    return Signomial(Dict(z => zero(R)), [z])
+end
+
+"""
+    Base.one(::Type{Signomial{T}}, n::Int) where T
+
+Construct the tropical-one signomial in `n` variables with exponent type `T`.
+Tropical one is the identity for tropical multiplication, i.e. the monomial with
+coefficient 0 and zero exponent. Prefer this over `Signomial_one` when you want
+to specify the type explicitly without needing an existing `Signomial` instance.
+"""
+function Base.one(::Type{Signomial{T}}, n::Int) where T
+    R = Oscar.tropical_semiring(max)
+    z = Base.zeros(T, n)
+    return Signomial(Dict(z => one(R)), [z])
+end
+
+function Base.zero(::Type{RationalSignomial{T}}, n::Int) where T
+    return RationalSignomial(Base.zero(Signomial{T}, n), Base.one(Signomial{T}, n))
+end
+
+function Base.one(::Type{RationalSignomial{T}}, n::Int) where T
+    return RationalSignomial(Base.one(Signomial{T}, n), Base.one(Signomial{T}, n))
 end
 
 @doc raw"""
@@ -150,7 +216,28 @@ function signomial_to_rational(f)
 end
 
 @doc raw"""
-The identity function viewed as a rational signomial in n variables.
+    RationalSignomial_identity(n, c)
+
+Return the vector of coordinate projections `[x₁, x₂, ..., xₙ]` as rational signomials.
+
+Each `xᵢ` is represented as a `RationalSignomial` whose numerator is the monomial
+`1 * T^eᵢ` (where `eᵢ` is the `i`-th standard basis vector) and whose denominator
+is the tropical-one monomial.
+
+# Arguments
+- `n`: number of variables (length of the returned vector)
+- `c`: a tropical semiring element used **only to infer the coefficient type**; its value
+  is not otherwise used (only `one(c)` is called on it)
+
+# Returns
+`Vector{RationalSignomial}` of length `n`.
+
+# Example
+```julia
+R = Oscar.tropical_semiring(max)
+id = RationalSignomial_identity(3, one(R))
+# id[1] represents x₁, id[2] represents x₂, id[3] represents x₃
+```
 """
 function RationalSignomial_identity(n, c)
     output = Vector{RationalSignomial}()
@@ -187,14 +274,39 @@ function Oscar.nvars(f::RationalSignomial)
 end
 
 @doc raw"""
-Outputs zero, viewed as a rational signomial in n variables, and with exponents in the same type as f.
+    RationalSignomial_zero(n, f::RationalSignomial{T})
+
+Construct the tropical-zero rational signomial in `n` variables.
+
+Tropical zero is the identity for tropical addition (max), i.e. the element `−∞`.
+It is represented as the rational signomial whose numerator is the tropical-zero
+signomial and whose denominator is the tropical-one signomial.
+
+The argument `f` is used **only to infer the exponent type `T`**; its value is irrelevant.
+Returns a `RationalSignomial{T}`.
+
+You can also use `Base.zero(RationalSignomial{T}, n)` for a type-explicit API that
+does not require an existing `RationalSignomial` instance.
 """
 function RationalSignomial_zero(n::Int64, f::RationalSignomial{T}) where T
     return RationalSignomial(Signomial_zero(n, f.num), Signomial_one(n, f.den))
 end
 
 @doc raw"""
-Outputs one, viewed as a rational signomial in n variables, and with exponents in the same type as f.
+    RationalSignomial_one(n, f)
+
+Construct the tropical-one rational signomial in `n` variables.
+
+Tropical one is the identity for tropical multiplication, corresponding to the value
+`0` in the tropical semiring. It is represented as the rational signomial whose
+numerator and denominator are both the tropical-one signomial (so the quotient is
+`0 - 0 = 0` in the tropical sense, i.e. the multiplicative identity).
+
+The argument `f` is used **only to infer the exponent type `T`** via `f.num`; its
+value is irrelevant. Returns a `RationalSignomial{T}`.
+
+You can also use `Base.one(RationalSignomial{T}, n)` for a type-explicit API that
+does not require an existing `RationalSignomial` instance.
 """
 function RationalSignomial_one(n::Int64, f)
     return RationalSignomial(Signomial_one(n, f.num), Signomial_one(n, f.num))
@@ -206,7 +318,7 @@ end
 
 function Base.string(f::Signomial{T}) where T
     str = ""
-    for i in eachindex(f)
+    for i in Base.eachindex(f)
         # in dimension 1 we omit subscripts on the variables
         if nvars(f)==1
             if i == 1
@@ -564,18 +676,37 @@ function Base.:*(a::TropicalSemiringElem, f::RationalSignomial{T}) where T
     return RationalSignomial(a*f.num, f.den)
 end
 
+"""
+    ^(a::TropicalSemiringElem, b::TropicalSemiringElem)
+
+Tropical semiring exponentiation: `a^b` computes the product of the underlying values.
+In the max-plus semiring this corresponds to `a ⊗ b` (i.e. `a + b` in classical arithmetic).
+"""
 # Exponentiation in the tropical semiring
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::TropicalSemiringElem{typeof(max)})
     R = tropical_semiring(max)
     return R(Rational(a)*Rational(b))
 end
 
+"""
+    ^(a::TropicalSemiringElem, b::Rational)
+
+Tropical semiring exponentiation: `a^b` computes the product of the underlying values.
+In the max-plus semiring this corresponds to `a ⊗ b` (i.e. `a + b` in classical arithmetic).
+"""
 # Exponentiation of element of tropical semiring by rational number.
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Rational{T}) where T<:Integer
     R = tropical_semiring(max)
     return R(Rational(a)*b)
 end
 
+"""
+    ^(a::TropicalSemiringElem, b::Float64)
+
+Tropical semiring exponentiation: `a^b` computes the product of the underlying values.
+In the max-plus semiring this corresponds to `a ⊗ b` (i.e. `a + b` in classical arithmetic).
+The `Float64` variant uses `rationalize` internally to convert back to rational.
+"""
 # Exponentiation of element of tropical semiring by float
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Float64)
     R = tropical_semiring(max)
@@ -583,6 +714,14 @@ function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Float64)
     return R(rationalize(result_val))
 end
 
+"""
+    ^(f::Signomial, rat::Float64)
+
+Raise a signomial to the power `r` (tropical exponentiation).
+Scales every exponent vector by `r` and raises every coefficient to the `r`-th power
+(i.e., multiplies the underlying tropical value by `r`).
+When `r == 0`, returns the tropical-one signomial in the same number of variables.
+"""
 # exponentiation of a signomial by a positive rational
 function Base.:^(f::Signomial, rat::Float64)
     if rat == 0
@@ -598,6 +737,13 @@ function Base.:^(f::Signomial, rat::Float64)
     end
 end
 
+"""
+    ^(f::RationalSignomial, rat::Float64)
+
+Raise a rational signomial to the power `r`.
+Raises numerator and denominator each to the `r`-th power (tropical exponentiation).
+When `r == 0`, returns the tropical-one rational signomial.
+"""
 # exponentiation of a rational signomial by a positive rational
 function Base.:^(f::RationalSignomial, rat::Float64)
     if rat == 0
@@ -607,6 +753,14 @@ function Base.:^(f::RationalSignomial, rat::Float64)
     end
 end
 
+"""
+    ^(f::Signomial, int::Int64)
+
+Raise a signomial to the power `r` (tropical exponentiation).
+Scales every exponent vector by `r` and raises every coefficient to the `r`-th power
+(i.e., multiplies the underlying tropical value by `r`).
+When `r == 0`, returns the tropical-one signomial in the same number of variables.
+"""
 function Base.:^(f::Signomial{T}, int::Int64) where T
     new_f_coeff = Dict()
     new_f_exp::Vector{Vector{T}} = copy(f.exp)
@@ -617,6 +771,14 @@ function Base.:^(f::Signomial{T}, int::Int64) where T
     return Signomial(new_f_coeff, new_f_exp; sorted=true)
 end
 
+"""
+    ^(f::Signomial, int::Rational)
+
+Raise a signomial to the power `r` (tropical exponentiation).
+Scales every exponent vector by `r` and raises every coefficient to the `r`-th power
+(i.e., multiplies the underlying tropical value by `r`).
+When `r == 0`, returns the tropical-one signomial in the same number of variables.
+"""
 function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
     new_f_coeff = Dict()
     new_f_exp = convert(Vector{Vector{Rational{BigInt}}}, f.exp)
@@ -627,6 +789,13 @@ function Base.:^(f::Signomial, int::Rational{T}) where T<:Integer
     return Signomial(new_f_coeff, new_f_exp; sorted=true)
 end
 
+"""
+    ^(f::RationalSignomial, int::Int64)
+
+Raise a rational signomial to the power `r`.
+Raises numerator and denominator each to the `r`-th power (tropical exponentiation).
+When `r == 0`, returns the tropical-one rational signomial.
+"""
 # exponentiation of a rational signomial by a positive integer
 function Base.:^(f::RationalSignomial, int::Int64)
     if int == 0
@@ -636,6 +805,13 @@ function Base.:^(f::RationalSignomial, int::Int64)
     end
 end
 
+"""
+    ^(f::RationalSignomial, int::Rational)
+
+Raise a rational signomial to the power `r`.
+Raises numerator and denominator each to the `r`-th power (tropical exponentiation).
+When `r == 0`, returns the tropical-one rational signomial.
+"""
 # exponentiation of a rational signomial by a positive integer
 function Base.:^(f::RationalSignomial, int::Rational{T}) where T<:Integer
     if int == 0
@@ -648,7 +824,7 @@ end
 function Base.:*(a::TropicalSemiringElem, f::Signomial{T}) where T
     new_f_coeff = copy(f.coeff)
     new_f_exp = copy(f.exp)
-    for i in eachindex(f)
+    for i in Base.eachindex(f)
         new_f_coeff[f.exp[i]] = a*f.coeff[f.exp[i]]
     end
     return Signomial(new_f_coeff, new_f_exp; sorted=true)

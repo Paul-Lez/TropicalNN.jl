@@ -142,7 +142,7 @@ julia> size(A)
 """
 function polyhedron_highs(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in eachindex(f)])
+    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f)])
     # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
     b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
     # The polyhedron is then the set of points x such that Ax ≤ b.
@@ -170,7 +170,7 @@ julia> length(enum_linear_regions_highs(f))
 function enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
     linear_regions = Vector{Tuple{Tuple{Matrix{Float64},Vector{Float64}},Bool}}()
     sizehint!(linear_regions, length(f.exp))
-    for i in eachindex(f)
+    for i in Base.eachindex(f)
         A, b = polyhedron_highs(f, i)
         # Check if the polyhedron is non-empty by checking if it's feasible
         is_feasible = !highs_is_empty(A, b)
@@ -209,8 +209,8 @@ function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_T
     # map_to_regions: (c, α) -> Vector of (A, b) pairs
     map_to_regions = Dict()
 
-    for i in eachindex(f)
-        for j in eachindex(g)
+    for i in Base.eachindex(f)
+        for j in Base.eachindex(g)
             if lin_f[i][2] && lin_g[j][2]
                 A1, b1 = lin_f[i][1]
                 A2, b2 = lin_g[j][1]
