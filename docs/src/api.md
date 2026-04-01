@@ -27,13 +27,6 @@ RationalSignomial_one
 ```@docs
 evaluate
 quicksum
-mul_with_quicksum
-add_with_quicksum
-div_with_quicksum
-comp
-comp_with_quicksum
-dedup_monomials
-monomial_count
 ```
 
 ## MLP Conversion
@@ -56,7 +49,6 @@ polyhedron_highs
 enum_linear_regions_highs
 enum_linear_regions_rat_highs
 components
-n_components
 ```
 
 ## Statistics
@@ -97,14 +89,16 @@ positive_component
 The following names are aliases for the primary types and constructors above,
 using the terminology of the companion paper (arXiv:2405.20174).
 
-```@docs
-TropicalPuiseuxPoly
-TropicalPuiseuxRational
-TropicalPuiseuxPoly_const
-TropicalPuiseuxPoly_zero
-TropicalPuiseuxPoly_one
-TropicalPuiseuxMonomial
-TropicalPuiseuxRational_identity
-TropicalPuiseuxRational_zero
-TropicalPuiseuxRational_one
-```
+The following names are exported as aliases pointing to the same objects as the primary names above:
+
+| Alias | Primary name |
+|---|---|
+| `TropicalPuiseuxPoly` | [`Signomial`](@ref) |
+| `TropicalPuiseuxRational` | [`RationalSignomial`](@ref) |
+| `TropicalPuiseuxPoly_const` | [`Signomial_const`](@ref) |
+| `TropicalPuiseuxPoly_zero` | [`Signomial_zero`](@ref) |
+| `TropicalPuiseuxPoly_one` | [`Signomial_one`](@ref) |
+| `TropicalPuiseuxMonomial` | [`SignomialMonomial`](@ref) |
+| `TropicalPuiseuxRational_identity` | [`RationalSignomial_identity`](@ref) |
+| `TropicalPuiseuxRational_zero` | [`RationalSignomial_zero`](@ref) |
+| `TropicalPuiseuxRational_one` | [`RationalSignomial_one`](@ref) |

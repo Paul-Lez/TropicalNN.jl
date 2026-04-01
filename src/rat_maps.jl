@@ -69,7 +69,7 @@ already in lexicographic order.
 
 ```jldoctest
 julia> f = Signomial([1, 2], [[1, 2], [2, 1]])
-  Signomial{Int64}(Dict([2, 1] => 2, [1, 2] => 1), [[1, 2], [2, 1]])
+max(1 + x₁ + 2x₂, 2 + 2x₁ + x₂)
 ```
 """
 function Signomial(coeff::Vector, exp::Vector; sorted::Bool=false)

@@ -12,7 +12,7 @@ Output the polyhedron where f = max(x, y) is equal to x
 ```jldoctest
 julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
-julia> polyhedron(f, [1, 0])
+julia> polyhedron(f, 1)
 Polyhedron in ambient dimension 2 with Float64 type coefficients
 ```
 """
@@ -37,9 +37,9 @@ Enumerates the linear regions of f = max(x, y).
 julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
 julia> enum_linear_regions(f)
-2-element Vector{Any}:
- (Polyhedron in ambient dimension 2 with Float64 type coefficients, true)
- (Polyhedron in ambient dimension 2 with Float64 type coefficients, true)
+2-element Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}:
+ (Polyhedron in ambient dimension 2 with Float64 type coefficients, 1)
+ (Polyhedron in ambient dimension 2 with Float64 type coefficients, 1)
 ```
 """
 function enum_linear_regions(f::Signomial)
@@ -190,11 +190,9 @@ in one `LinearRegion`.
 Enumerates the linear regions of `f/g` where `f = max(x, y)` and `g = 0`.
 `f/g` has two linear regions (one per monomial of `f`), each a single half-plane.
 ```jldoctest
-julia> R = tropical_semiring(max);
+julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
-julia> f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false);
-
-julia> g = Signomial([R(0)], [[0//1, 0//1]]; sorted=false);
+julia> g = Signomial(Dict([0, 0] => 0), [[0, 0]]);
 
 julia> lr = enum_linear_regions_rat(f / g);
 

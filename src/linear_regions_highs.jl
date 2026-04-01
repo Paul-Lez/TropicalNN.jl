@@ -134,7 +134,10 @@ Output the polyhedron where f = max(x, y) is equal to x
 ```jldoctest
 julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
-julia> A, b = polyhedron_highs(f, [1, 0])
+julia> A, b = polyhedron_highs(f, 1);
+
+julia> size(A)
+(2, 2)
 ```
 """
 function polyhedron_highs(f::Signomial, i)
@@ -160,10 +163,8 @@ Enumerates the linear regions of f = max(x, y).
 ```jldoctest
 julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 
-julia> enum_linear_regions_highs(f)
-2-element Vector{Any}:
- ((A, b), true)
- ((A, b), true)
+julia> length(enum_linear_regions_highs(f))
+2
 ```
 """
 function enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
