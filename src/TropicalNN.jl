@@ -106,6 +106,7 @@ module TropicalNN
         comp_with_quicksum,
         dedup_monomials,
         monomial_count,
+        nvars,
         single_to_trop,
         mlp_to_trop,
         random_mlp,
