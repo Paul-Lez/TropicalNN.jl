@@ -59,10 +59,6 @@ TropicalMax(num::T, den::T=one(T)) where {T<:Integer} =
 TropicalMin(r::Rational{T}) where {T<:Integer} = TropicalMin{T}(r)
 TropicalMax(r::Rational{T}) where {T<:Integer} = TropicalMax{T}(r)
 
-# From Integer
-TropicalMin(n::Integer) = TropicalMin(Rational{Int64}(n))
-TropicalMax(n::Integer) = TropicalMax(Rational{Int64}(n))
-
 # Promote constructor
 TropicalNumber{C,T}(n::Integer) where {C,T<:Integer} =
     TropicalNumber{C,T}(Rational{T}(n))
@@ -76,10 +72,10 @@ TropicalNumber{C,T}(n::Integer) where {C,T<:Integer} =
 
 Return the convention (min or max) of the tropical number.
 """
-convention(::TropicalNumber{typeof(min),T}) where T = min
-convention(::TropicalNumber{typeof(max),T}) where T = max
-convention(::Type{TropicalNumber{typeof(min),T}}) where T = min
-convention(::Type{TropicalNumber{typeof(max),T}}) where T = max
+Oscar.convention(::TropicalNumber{typeof(min),T}) where T = min
+Oscar.convention(::TropicalNumber{typeof(max),T}) where T = max
+Oscar.convention(::Type{TropicalNumber{typeof(min),T}}) where T = min
+Oscar.convention(::Type{TropicalNumber{typeof(max),T}}) where T = max
 
 # ==============================================================================
 # Tropical arithmetic (overload standard operators)
@@ -323,4 +319,4 @@ Base.max(x::TropicalNumber{C,T}, y::TropicalNumber{C,T}) where {C,T} =
 # ==============================================================================
 
 export TropicalNumber, TropicalMin, TropicalMax
-export tropical_inf, convention, tropical_sum, tropical_prod
+export tropical_inf, tropical_sum, tropical_prod

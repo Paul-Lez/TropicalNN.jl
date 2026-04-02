@@ -54,8 +54,10 @@ module TropicalNN
     using MetaGraphsNext
 
     import Base: string, +, *, /
+    import Oscar: convention
 
     export
+        convention,
         # Abstract type and concrete implementations
         AbstractSignomial,
         SignomialStatic,
