@@ -23,8 +23,8 @@ polynomials with many monomials.
 The parallel version requires Julia to be started with multiple threads
 (e.g., `julia -t auto` or `JULIA_NUM_THREADS=4 julia`).
 """
-function monomial_strong_elim(f::Signomial{T}; parallel::Bool=true) where T
-    n = length(f.exp)
+function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true) where T
+    n = length(f)
 
     if parallel && Threads.nthreads() > 1 && n > 1
         # Parallel version: check full-dimensionality for all monomials in parallel
@@ -36,37 +36,37 @@ function monomial_strong_elim(f::Signomial{T}; parallel::Bool=true) where T
         end
 
         # Collect results based on keep vector
-        new_exp = Vector{Vector{T}}()
+        new_exp   = Vector{Vector{T}}()
         sizehint!(new_exp, count(keep))
         new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
 
         for i in 1:n
             if keep[i]
-                e = f.exp[i]
+                e = Vector{T}(get_exp(f, i))
                 push!(new_exp, e)
-                new_coeff[e] = f.coeff[e]
+                new_coeff[e] = get_coeff(f, i)
             end
         end
 
         return Signomial(new_coeff, new_exp)
     else
         # Sequential version (original algorithm)
-        new_exp = Vector{Vector{T}}()
+        new_exp   = Vector{Vector{T}}()
         sizehint!(new_exp, n)
         new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
 
-        for i in Base.eachindex(f.exp)
+        for i in Base.eachindex(f)
             poly = polyhedron(f, i)
             if Oscar.is_fulldimensional(poly)
-                e = f.exp[i]
+                e = Vector{T}(get_exp(f, i))
                 push!(new_exp, e)
-                new_coeff[e] = f.coeff[e]
+                new_coeff[e] = get_coeff(f, i)
             end
         end
 
         return Signomial(new_coeff, new_exp)
     end
-end 
+end
 
 @doc raw"""
     monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true)
@@ -78,7 +78,7 @@ Puiseux rational function.
 - `f::RationalSignomial{T}`: The rational function to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true) where T
+function monomial_strong_elim(f::RationalSignomial; parallel::Bool=true)
     return RationalSignomial(
         monomial_strong_elim(f.num; parallel=parallel),
         monomial_strong_elim(f.den; parallel=parallel)
@@ -94,7 +94,7 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 - `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true) where T
+function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool=true)
     return [monomial_strong_elim(f; parallel=parallel) for f in F]
 end
 

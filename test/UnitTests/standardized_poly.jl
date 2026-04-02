@@ -17,7 +17,7 @@ using Test, TropicalNN, Oscar
 
         # Test 2: Round-trip conversion
         f_back = TropicalNN.destandardize(g)
-        @test f_back isa Signomial{Rational{Int64}}
+        @test f_back isa AbstractSignomial
         @test Set(f_back.exp) == Set(f.exp)
         @test f_back.coeff == f.coeff
 

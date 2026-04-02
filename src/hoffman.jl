@@ -5,27 +5,30 @@
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
-function linearmap_matrices(f::Signomial)
-    linear_maps  = Vector{Vector{Any}}()
-    exponents    = Vector{Vector{Float64}}()
-    coefficients = Vector{Any}()
+function linearmap_matrices(f::AbstractSignomial)
+    linear_maps_acc  = Vector{Vector{Any}}()
+    exponents_acc    = Vector{Vector{Float64}}()
+    coefficients_acc = Vector{Any}()
     for i in Base.eachindex(f)
-        A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f)])
-        b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
+        exp_i   = get_exp(f, i)
+        coeff_i = get_coeff(f, i)
+        rows_hoff = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f)]
+        A = Matrix{Float64}(mapreduce(permutedims, vcat, rows_hoff))
+        b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f)]
         p = Oscar.polyhedron(A, b)
-        # we only want the linear map that are realised
+        # we only want the linear maps that are realised
         if Oscar.is_fulldimensional(p)
-            linear_map = [Rational(f.coeff[f.exp[i]]), f.exp[i]]
+            linear_map = [Rational(coeff_i), collect(exp_i)]
             # we are only interested in the unique linear map
-            if !(linear_map in linear_maps)
-                push!(exponents, linear_map[2])
-                push!(coefficients, linear_map[1])
-                push!(linear_maps, linear_map)
+            if !(linear_map in linear_maps_acc)
+                push!(exponents_acc, linear_map[2])
+                push!(coefficients_acc, linear_map[1])
+                push!(linear_maps_acc, linear_map)
             end
         end
     end
-    A = mapreduce(permutedims, vcat, [Float64.(row) for row in exponents])
-    b = vec(coefficients)
+    A = mapreduce(permutedims, vcat, [Float64.(row) for row in exponents_acc])
+    b = vec(coefficients_acc)
     return A, b
 end
 
@@ -220,11 +223,11 @@ end
 
 
 @doc raw"""
-    exact_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+    exact_hoff(f::Union{AbstractSignomial,RationalSignomial};return_matrices::Bool=false)
 
 Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function exact_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool=false)
+function exact_hoff(f::Union{AbstractSignomial,RationalSignomial}; return_matrices::Bool=false)
     hoff_const = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -239,11 +242,11 @@ function exact_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool
 end
 
 @doc raw"""
-    upper_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+    upper_hoff(f::Union{AbstractSignomial,RationalSignomial};return_matrices::Bool=false)
 
 Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function upper_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool=false)
+function upper_hoff(f::Union{AbstractSignomial,RationalSignomial}; return_matrices::Bool=false)
     hoff_upper = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -258,11 +261,11 @@ function upper_hoff(f::Union{Signomial,RationalSignomial}; return_matrices::Bool
 end
 
 @doc raw"""
-    lower_hoff(f::Union{Signomial,RationalSignomial},num_samples::Int=10)
+    lower_hoff(f::Union{AbstractSignomial,RationalSignomial},num_samples::Int=10)
 
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function lower_hoff(f::Union{Signomial,RationalSignomial}, num_samples::Int=10; return_matrices::Bool=false)
+function lower_hoff(f::Union{AbstractSignomial,RationalSignomial}, num_samples::Int=10; return_matrices::Bool=false)
     A, b = linearmap_matrices(f)
     t_matrices = tilde_matrices(A)
     # if we are taking more samples than there are submatrices we are using exact
@@ -289,7 +292,7 @@ end
 
 Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
 """
-function exact_er(f::Signomial)
+function exact_er(f::AbstractSignomial)
     hoff_const, A, b = exact_hoff(f, return_matrices=true)
     tilde_bs = tilde_vectors(b)
     return hoff_const * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
@@ -300,7 +303,7 @@ end
 
 Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
 """
-function upper_er(f::Signomial)
+function upper_er(f::AbstractSignomial)
     hoff_upper, A, b = upper_hoff(f, return_matrices=true)
     tilde_bs = tilde_vectors(b)
     return hoff_upper * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])

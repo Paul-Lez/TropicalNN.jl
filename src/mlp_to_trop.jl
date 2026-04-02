@@ -17,7 +17,7 @@ Convert a single ReLU layer to tropical Puiseux rational functions.
 - `DimensionMismatch`: If dimensions don't match (A has size(A,1) rows, b and t must have the same length)
 """
 function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
-    G = Vector{RationalSignomial{T}}()
+    G = RationalSignomial[]
 
     # Check dimensions match
     if size(A, 1) != length(b) || size(A, 1) != length(t)
