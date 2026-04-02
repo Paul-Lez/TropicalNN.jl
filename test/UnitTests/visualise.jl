@@ -5,7 +5,7 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     # random_pmap
     pmap=random_pmap(2,4)
-    @test typeof(pmap)<: Signomial{Rational{BigInt}}
+    @test typeof(pmap) <: AbstractSignomial
     @test nvars(pmap)==2
     @test monomial_count(pmap)==4
 

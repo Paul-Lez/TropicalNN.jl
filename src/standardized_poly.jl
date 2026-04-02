@@ -72,21 +72,21 @@ f = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//3]]; sorted=false)
 g = standardize(f)   # g.denominator == 6
 ```
 """
-function standardize(f::Signomial{Rational{T}}) where T<:Integer
+function standardize(f::AbstractSignomial{Rational{T}}) where T<:Integer
     n = Oscar.nvars(f)
     # compute LCM of all exponent denominators
     d = one(T)
-    for e in f.exp
+    for e in exponents(f)
         for a in e
             d = lcm(d, denominator(a))
         end
     end
     # scale every exponent vector by d → all components become integers
-    int_exps = [Int.(numerator.(d .* e)) for e in f.exp]
+    int_exps = [Int.(numerator.(d .* collect(e))) for e in exponents(f)]
     # build coeff dict
     coeff = Dict{Vector{Int}, Oscar.TropicalSemiringElem{typeof(max)}}()
-    for (old_e, new_e) in zip(f.exp, int_exps)
-        coeff[new_e] = f.coeff[old_e]
+    for (new_e, c) in zip(int_exps, coefficients(f))
+        coeff[new_e] = c
     end
     ring = TropicalPolyRing(n)
     return StandardizedTropicalPoly{T}(coeff, int_exps, d, ring)

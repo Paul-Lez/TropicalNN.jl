@@ -22,13 +22,22 @@ julia> polyhedron(f, 1)
 Polyhedron in ambient dimension 2 with Float64 type coefficients
 ```
 """
-function polyhedron(f::Signomial, i)
+function polyhedron(f::AbstractSignomial, i)
+    exp_i   = get_exp(f, i)
+    coeff_i = get_coeff(f, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f) if j != i])
-    # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
-    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp if j != f.exp[i]]
+    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f) if j != i]
+    # Single-monomial polynomial: the whole R^n is the unique region.
+    # Use a trivially-satisfied constraint (0·x ≤ 0) to keep the Float64 type.
+    if isempty(rows)
+        n = nvars(f)
+        return Oscar.polyhedron(zeros(Float64, 1, n), [0.0])
+    end
+    A = mapreduce(permutedims, vcat, rows)
+    # and b the vector whose j-th entry is f.coeff[αᵢ] - f.coeff[αⱼ] for all j ≠ i.
+    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f) if j != i]
     # The polyhedron is then the set of points x such that Ax ≤ b.
-    return Oscar.polyhedron(A, b)
+    return Oscar.polyhedron(Matrix{Float64}(A), b)
 end
 
 @doc raw"""
@@ -48,9 +57,9 @@ julia> enum_linear_regions(f)
  (Polyhedron in ambient dimension 2 with Float64 type coefficients, 1)
 ```
 """
-function enum_linear_regions(f::Signomial)
+function enum_linear_regions(f::AbstractSignomial)
     linear_regions = Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}()
-    sizehint!(linear_regions, length(f.exp))
+    sizehint!(linear_regions, length(f))
     for i in Base.eachindex(f)
         poly = polyhedron(f, i)
         # add the polyhedron to the list plus a bool saying whether the polyhedron is non-empty
@@ -224,7 +233,8 @@ function enum_linear_regions_rat(q::RationalSignomial)
                 if lin_f[i][2] && lin_g[j][2]
                     poly = Oscar.intersect(lin_f[i][1], lin_g[j][1])
                     if Oscar.is_fulldimensional(poly)
-                        lm = (Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]]), f.exp[i] - g.exp[j])
+                        lm = (Rational(get_coeff(f, i)) - Rational(get_coeff(g, j)),
+                              collect(get_exp(f, i)) - collect(get_exp(g, j)))
                         if haskey(groups, lm)
                             push!(groups[lm], poly)
                         else

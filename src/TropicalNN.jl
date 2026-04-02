@@ -56,6 +56,11 @@ module TropicalNN
     import Base: string, +, *, /
 
     export
+        # Abstract type and concrete implementations
+        AbstractSignomial,
+        SignomialStatic,
+        SignomialMatrix,
+        OptimalTropicalPoly,
         # Primary names (used throughout the module)
         Signomial,
         RationalSignomial,
@@ -67,6 +72,13 @@ module TropicalNN
         RationalSignomial_identity,
         RationalSignomial_zero,
         RationalSignomial_one,
+        # Internal accessor API
+        get_exp,
+        get_coeff,
+        get_coeff_by_exp,
+        exponents,
+        coefficients,
+        monomial_pairs,
         # Paper-consistent aliases — TropicalPuiseuxPoly / TropicalPuiseuxRational
         # are the names used in the associated publication; both resolve to the same types.
         TropicalPuiseuxPoly,
@@ -145,7 +157,7 @@ module TropicalNN
         vertex_collection,
         vertex_count
 
-    include("rat_maps.jl")
+    include("tropical_poly_interface.jl")
     include("standardized_poly.jl")
     include("tropical_number.jl")
     include("linear_regions.jl")

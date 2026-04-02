@@ -10,8 +10,13 @@ using Test, TropicalNN, Oscar
     g = Signomial([R(0), R(4), R(-5)], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]]; sorted=false) 
 
     # test addition and multiplication
-    @test f + g == Signomial{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[1, 1] => R(3), Rational{Int64}[1, 0] => R(1), Rational{Int64}[1, 7] => R(0), Rational{Int64}[9, 1] => R(-5), Rational{Int64}[0, 1] => R(4)), Vector{Rational{Int64}}[[0, 1], [1, 0], [1, 1], [1, 7], [9, 1]])
-    @test f * g == Signomial{Rational{Int64}}(Dict{Any, Any}(Rational{Int64}[2, 8] => R(3), Rational{Int64}[9, 2] => R(-3), Rational{Int64}[1, 8] => R(2), Rational{Int64}[10, 1] => R(-4), Rational{Int64}[0, 2] => R(6), Rational{Int64}[1, 1] => R(5), Rational{Int64}[10, 2] => R(-2), Rational{Int64}[2, 7] => R(1), Rational{Int64}[1, 2] => R(7)), Vector{Rational{Int64}}[[0, 2], [1, 1], [1, 2], [1, 8], [2, 7], [2, 8], [9, 2], [10, 1], [10, 2]])
+    expected_sum = Signomial([R(4), R(1), R(3), R(0), R(-5)],
+        [Rational{Int64}[0,1], Rational{Int64}[1,0], Rational{Int64}[1,1], Rational{Int64}[1,7], Rational{Int64}[9,1]]; sorted=true)
+    @test f + g == expected_sum
+    expected_prod = Signomial([R(6), R(5), R(7), R(2), R(1), R(3), R(-3), R(-4), R(-2)],
+        [Rational{Int64}[0,2], Rational{Int64}[1,1], Rational{Int64}[1,2], Rational{Int64}[1,8],
+         Rational{Int64}[2,7], Rational{Int64}[2,8], Rational{Int64}[9,2], Rational{Int64}[10,1], Rational{Int64}[10,2]]; sorted=true)
+    @test f * g == expected_prod
 
 
     # test components

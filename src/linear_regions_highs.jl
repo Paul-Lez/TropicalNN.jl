@@ -131,11 +131,19 @@ julia> size(A)
 (1, 2)
 ```
 """
-function polyhedron_highs(f::Signomial, i)
+function polyhedron_highs(f::AbstractSignomial, i)
+    exp_i   = get_exp(f, i)
+    coeff_i = get_coeff(f, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f) if j != i])
-    # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
-    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp if j != f.exp[i]]
+    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f) if j != i]
+    # Single-monomial polynomial: the whole R^n is the unique region.
+    if isempty(rows)
+        n = nvars(f)
+        return (Matrix{Float64}(undef, 0, n), Float64[])
+    end
+    A = Matrix{Float64}(mapreduce(permutedims, vcat, rows))
+    # and b the vector whose j-th entry is f.coeff[αᵢ] - f.coeff[αⱼ] for all j ≠ i.
+    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f) if j != i]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return (A, b)
 end
@@ -158,9 +166,9 @@ julia> length(enum_linear_regions_highs(f))
 2
 ```
 """
-function enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
+function enum_linear_regions_highs(f::AbstractSignomial; tol=HIGHS_DEFAULT_TOL)
     linear_regions = Vector{Tuple{Tuple{Matrix{Float64},Vector{Float64}},Bool}}()
-    sizehint!(linear_regions, length(f.exp))
+    sizehint!(linear_regions, length(f))
     for i in Base.eachindex(f)
         A, b = polyhedron_highs(f, i)
         # Check if the polyhedron is non-empty by checking if it's feasible
@@ -208,8 +216,8 @@ function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_T
 
                 if highs_intersect_is_full_dimensional(A1, b1, A2, b2; tol=tol)
                     Ab = (vcat(A1, A2), vcat(b1, b2))
-                    c = Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]])
-                    α = f.exp[i] - g.exp[j]
+                    c = Rational(get_coeff(f, i)) - Rational(get_coeff(g, j))
+                    α = collect(get_exp(f, i)) - collect(get_exp(g, j))
                     key = (c, α)
                     if haskey(map_to_regions, key)
                         push!(map_to_regions[key], Ab)

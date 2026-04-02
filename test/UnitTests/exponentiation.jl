@@ -28,7 +28,7 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
 
         g2 = f ^ Int64(2)
-        @test g2 isa Signomial
+        @test g2 isa AbstractSignomial
         @test length(g2.exp) == 2
         @test haskey(g2.coeff, Rational{Int64}[2, 0])
         @test haskey(g2.coeff, Rational{Int64}[0, 2])
@@ -44,7 +44,7 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
 
         g = f ^ 2.0
-        @test g isa Signomial
+        @test g isa AbstractSignomial
         @test length(g.exp) == 2
 
         g0 = f ^ 0.0
@@ -55,7 +55,7 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted=false)
 
         g = f ^ (1//2)
-        @test g isa Signomial
+        @test g isa AbstractSignomial
         @test length(g.exp) == 2
         @test any(e -> e == Rational{BigInt}[1, 0], g.exp)
         @test any(e -> e == Rational{BigInt}[0, 1], g.exp)

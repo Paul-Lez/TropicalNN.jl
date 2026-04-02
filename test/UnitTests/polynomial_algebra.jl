@@ -201,7 +201,7 @@ using Test, TropicalNN, Oscar
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted=false)
         rat = RationalSignomial(num, den)
         rat_dedup = TropicalNN.dedup_monomials(rat)
-        @test rat_dedup.num isa Signomial
+        @test rat_dedup.num isa AbstractSignomial
     end
 
     #==========================================================================
@@ -227,7 +227,7 @@ using Test, TropicalNN, Oscar
         # Test 4: Large number of variables
         large_exp = [i//1 for i in 1:20]
         f_large = Signomial([R(1)], [large_exp]; sorted=false)
-        @test length(f_large.exp[1]) == 20
+        @test length(get_exp(f_large, 1)) == 20
     end
 
     #==========================================================================

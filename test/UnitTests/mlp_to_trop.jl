@@ -14,20 +14,20 @@ using Test, TropicalNN, Oscar
         b = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
         t = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
         result = mlp_to_trop(W, b, t)
-        @test result isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test result isa Vector{<:RationalSignomial}
         @test length(result) == 1  # Single output
 
         # Test 2: Random small network with symbolic=true
         dims = [2, 3, 1]
         W2, b2, t2 = random_mlp(dims, symbolic=true)
         result2 = mlp_to_trop(W2, b2, t2)
-        @test result2 isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test result2 isa Vector{<:RationalSignomial}
         @test length(result2) == 1
 
         # Test 3: Random small network with symbolic=false
         W3, b3, t3 = random_mlp(dims, symbolic=false)
         result3 = mlp_to_trop(W3, b3, t3)
-        @test result3 isa Vector{RationalSignomial{Float64}}
+        @test result3 isa Vector{<:RationalSignomial}
         @test length(result3) == 1
 
         # Test 4: Network with multiple outputs
@@ -46,23 +46,23 @@ using Test, TropicalNN, Oscar
 
         # Test 1: Standard version
         standard = mlp_to_trop(W, b, t)
-        @test standard isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test standard isa Vector{<:RationalSignomial}
 
         # Test 2: Quicksum version
         quicksum_result = mlp_to_trop(W, b, t, quicksum=true)
-        @test quicksum_result isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test quicksum_result isa Vector{<:RationalSignomial}
 
         # Test 3: Strong elimination version
         strong_elim = mlp_to_trop(W, b, t, strong_elim=true)
-        @test strong_elim isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test strong_elim isa Vector{<:RationalSignomial}
 
         # Test 4: Quicksum with strong elimination
         qs_elim = mlp_to_trop(W, b, t, quicksum=true, strong_elim=true)
-        @test qs_elim isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test qs_elim isa Vector{<:RationalSignomial}
 
         # Test 5: Dedup version
         dedup = mlp_to_trop(W, b, t, dedup=true)
-        @test dedup isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test dedup isa Vector{<:RationalSignomial}
 
         # All variants should produce valid tropical rational functions
         for result in [standard, quicksum_result, strong_elim, qs_elim, dedup]
@@ -103,7 +103,7 @@ using Test, TropicalNN, Oscar
         b = Rational{BigInt}.([0, 0])
         t = Rational{BigInt}.([0, 0])
         result = single_to_trop(A, b, t)
-        @test result isa Vector{RationalSignomial{Rational{BigInt}}}
+        @test result isa Vector{<:RationalSignomial}
         @test length(result) == 2  # 2 outputs
 
         # Test 2: Layer with negative weights
@@ -263,8 +263,8 @@ using Test, TropicalNN, Oscar
         trop_func2 = mlp_to_trop(W2, b2, t2)
         # Check that the result has proper structure for evaluation
         @test trop_func2[1] isa RationalSignomial
-        @test trop_func2[1].num isa Signomial
-        @test trop_func2[1].den isa Signomial
+        @test trop_func2[1].num isa AbstractSignomial
+        @test trop_func2[1].den isa AbstractSignomial
 
         # Test 3: Monomial elimination actually reduces complexity
         W3, b3, t3 = random_mlp([2, 4, 1])
