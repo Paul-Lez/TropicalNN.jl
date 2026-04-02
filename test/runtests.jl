@@ -6,6 +6,8 @@ using Test
 
     include("./UnitTests/polynomial_algebra.jl")
 
+    include("./UnitTests/signomial_matrix.jl")
+
     include("./UnitTests/mlp_to_trop.jl")
 
     # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.

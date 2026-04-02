@@ -168,11 +168,23 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.evaluate(composed_known, [R_comp(3), R_comp(5)]) == R_comp(7)
         # At [y₁ = R(10), y₂ = R(0)]: max(1+10, 2+0) = max(11, 2) = R(11)
         @test TropicalNN.evaluate(composed_known, [R_comp(10), R_comp(0)]) == R_comp(11)
+        # Additional evaluation points for broader coverage
+        @test TropicalNN.evaluate(composed_known, [R_comp(0), R_comp(0)]) == R_comp(2)
+        @test TropicalNN.evaluate(composed_known, [R_comp(5), R_comp(2)]) == R_comp(6)
+        @test TropicalNN.evaluate(composed_known, [R_comp(1), R_comp(1)]) == R_comp(3)
+        @test TropicalNN.evaluate(composed_known, [R_comp(-1), R_comp(5)]) == R_comp(7)
+        @test TropicalNN.evaluate(composed_known, [R_comp(100), R_comp(100)]) == R_comp(102)
 
         # Test 4: comp_with_quicksum gives same result as comp on the same inputs
         composed_qs_known = comp_with_quicksum(f_comp, [g1, g2])
         @test TropicalNN.evaluate(composed_qs_known, [R_comp(3), R_comp(5)]) == R_comp(7)
         @test TropicalNN.evaluate(composed_qs_known, [R_comp(10), R_comp(0)]) == R_comp(11)
+        # Additional evaluation points for broader coverage
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(0), R_comp(0)]) == R_comp(2)
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(5), R_comp(2)]) == R_comp(6)
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(1), R_comp(1)]) == R_comp(3)
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(-1), R_comp(5)]) == R_comp(7)
+        @test TropicalNN.evaluate(composed_qs_known, [R_comp(100), R_comp(100)]) == R_comp(102)
     end
 
     #==========================================================================

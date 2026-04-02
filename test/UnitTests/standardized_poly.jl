@@ -293,4 +293,142 @@ using Test, TropicalNN, Oscar
 
         @test result3_std == result3_puiseux
     end
+
+    #==========================================================================
+    # Round-trip Arithmetic Consistency Tests
+    ==========================================================================#
+    @testset "Round-trip Arithmetic Consistency" begin
+        # --- Addition round-trips ---
+
+        # Addition 1: Two 2-term polys, same denominator (1//2)
+        f_a1 = Signomial([R(1), R(3)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_a1 = Signomial([R(2), R(4)], [[1//2, 1//2], [0//1, 1//1]]; sorted=false)
+        rt_a1 = TropicalNN.destandardize(TropicalNN.standardize(f_a1) + TropicalNN.standardize(g_a1))
+        direct_a1 = f_a1 + g_a1
+        @test Set(rt_a1.exp) == Set(direct_a1.exp)
+        @test rt_a1.coeff == direct_a1.coeff
+
+        # Addition 2: Two 3-term polys, same denominator (1//4)
+        f_a2 = Signomial(
+            [R(1), R(2), R(5)],
+            [[1//4, 0//1], [0//1, 3//4], [1//2, 1//4]],
+            false
+        )
+        g_a2 = Signomial(
+            [R(3), R(0), R(7)],
+            [[3//4, 1//4], [1//4, 1//2], [0//1, 1//4]],
+            false
+        )
+        rt_a2 = TropicalNN.destandardize(TropicalNN.standardize(f_a2) + TropicalNN.standardize(g_a2))
+        direct_a2 = f_a2 + g_a2
+        @test Set(rt_a2.exp) == Set(direct_a2.exp)
+        @test rt_a2.coeff == direct_a2.coeff
+
+        # Addition 3: Different denominators (1//2 vs 1//3)
+        f_a3 = Signomial([R(2), R(6)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_a3 = Signomial([R(1), R(4)], [[1//3, 0//1], [0//1, 2//3]]; sorted=false)
+        rt_a3 = TropicalNN.destandardize(TropicalNN.standardize(f_a3) + TropicalNN.standardize(g_a3))
+        direct_a3 = f_a3 + g_a3
+        @test Set(rt_a3.exp) == Set(direct_a3.exp)
+        @test rt_a3.coeff == direct_a3.coeff
+
+        # Addition 4: Different denominators (1//3 vs 1//5), 3-term polys
+        f_a4 = Signomial(
+            [R(0), R(3), R(1)],
+            [[1//3, 2//3], [2//3, 1//3], [0//1, 1//3]],
+            false
+        )
+        g_a4 = Signomial(
+            [R(2), R(5)],
+            [[1//5, 0//1], [0//1, 3//5]],
+            false
+        )
+        rt_a4 = TropicalNN.destandardize(TropicalNN.standardize(f_a4) + TropicalNN.standardize(g_a4))
+        direct_a4 = f_a4 + g_a4
+        @test Set(rt_a4.exp) == Set(direct_a4.exp)
+        @test rt_a4.coeff == direct_a4.coeff
+
+        # --- Multiplication round-trips ---
+
+        # Multiplication 1: Two 2-term polys, same denominator
+        f_m1 = Signomial([R(1), R(3)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_m1 = Signomial([R(2), R(4)], [[1//2, 1//2], [0//1, 1//1]]; sorted=false)
+        rt_m1 = TropicalNN.destandardize(TropicalNN.standardize(f_m1) * TropicalNN.standardize(g_m1))
+        direct_m1 = f_m1 * g_m1
+        @test Set(rt_m1.exp) == Set(direct_m1.exp)
+        for exp_vec in rt_m1.exp
+            @test rt_m1.coeff[exp_vec] == direct_m1.coeff[exp_vec]
+        end
+
+        # Multiplication 2: Different denominators (1//2 vs 1//3)
+        f_m2 = Signomial([R(2), R(5)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_m2 = Signomial([R(1), R(3)], [[1//3, 0//1], [0//1, 2//3]]; sorted=false)
+        rt_m2 = TropicalNN.destandardize(TropicalNN.standardize(f_m2) * TropicalNN.standardize(g_m2))
+        direct_m2 = f_m2 * g_m2
+        @test Set(rt_m2.exp) == Set(direct_m2.exp)
+        for exp_vec in rt_m2.exp
+            @test rt_m2.coeff[exp_vec] == direct_m2.coeff[exp_vec]
+        end
+
+        # Multiplication 3: 3-term by 2-term, different denominators (1//4 vs 1//3)
+        f_m3 = Signomial(
+            [R(1), R(2), R(0)],
+            [[1//4, 1//2], [1//2, 0//1], [0//1, 3//4]],
+            false
+        )
+        g_m3 = Signomial([R(3), R(1)], [[1//3, 0//1], [0//1, 1//3]]; sorted=false)
+        rt_m3 = TropicalNN.destandardize(TropicalNN.standardize(f_m3) * TropicalNN.standardize(g_m3))
+        direct_m3 = f_m3 * g_m3
+        @test Set(rt_m3.exp) == Set(direct_m3.exp)
+        for exp_vec in rt_m3.exp
+            @test rt_m3.coeff[exp_vec] == direct_m3.coeff[exp_vec]
+        end
+
+        # --- Quicksum round-trips ---
+
+        # Quicksum 1: Three 2-term polys, same denominator
+        f_q1 = Signomial([R(1), R(2)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_q1 = Signomial([R(3), R(0)], [[1//1, 0//1], [0//1, 1//2]]; sorted=false)
+        h_q1 = Signomial([R(4), R(1)], [[1//2, 1//2], [0//1, 1//1]]; sorted=false)
+        rt_q1 = TropicalNN.destandardize(
+            TropicalNN.quicksum([TropicalNN.standardize(f_q1), TropicalNN.standardize(g_q1), TropicalNN.standardize(h_q1)])
+        )
+        direct_q1 = TropicalNN.quicksum([f_q1, g_q1, h_q1])
+        @test Set(rt_q1.exp) == Set(direct_q1.exp)
+        @test rt_q1.coeff == direct_q1.coeff
+
+        # Quicksum 2: Three polys with different denominators (1//2, 1//3, 1//5)
+        f_q2 = Signomial([R(1), R(4)], [[1//2, 0//1], [0//1, 1//2]]; sorted=false)
+        g_q2 = Signomial([R(2), R(3)], [[1//3, 0//1], [0//1, 2//3]]; sorted=false)
+        h_q2 = Signomial([R(0), R(5)], [[1//5, 0//1], [0//1, 3//5]]; sorted=false)
+        rt_q2 = TropicalNN.destandardize(
+            TropicalNN.quicksum([TropicalNN.standardize(f_q2), TropicalNN.standardize(g_q2), TropicalNN.standardize(h_q2)])
+        )
+        direct_q2 = TropicalNN.quicksum([f_q2, g_q2, h_q2])
+        @test Set(rt_q2.exp) == Set(direct_q2.exp)
+        @test rt_q2.coeff == direct_q2.coeff
+
+        # Quicksum 3: Three 3-term polys, mixed denominators (1//2, 1//3, 1//4)
+        f_q3 = Signomial(
+            [R(1), R(2), R(3)],
+            [[1//2, 0//1], [0//1, 1//2], [1//2, 1//2]],
+            false
+        )
+        g_q3 = Signomial(
+            [R(4), R(0), R(2)],
+            [[1//3, 0//1], [0//1, 1//3], [2//3, 1//3]],
+            false
+        )
+        h_q3 = Signomial(
+            [R(1), R(5), R(3)],
+            [[1//4, 0//1], [0//1, 3//4], [1//2, 1//4]],
+            false
+        )
+        rt_q3 = TropicalNN.destandardize(
+            TropicalNN.quicksum([TropicalNN.standardize(f_q3), TropicalNN.standardize(g_q3), TropicalNN.standardize(h_q3)])
+        )
+        direct_q3 = TropicalNN.quicksum([f_q3, g_q3, h_q3])
+        @test Set(rt_q3.exp) == Set(direct_q3.exp)
+        @test rt_q3.coeff == direct_q3.coeff
+    end
 end
