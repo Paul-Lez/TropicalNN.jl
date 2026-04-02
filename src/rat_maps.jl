@@ -708,7 +708,11 @@ end
 
 Tropical semiring exponentiation: `a^b` computes the product of the underlying values.
 In the max-plus semiring this corresponds to `a ⊗ b` (i.e. `a + b` in classical arithmetic).
-The `Float64` variant uses `rationalize` internally to convert back to rational.
+
+!!! note "Precision"
+    The `Float64` variant computes `Float64(Rational(a)) * b` and then applies `rationalize`
+    to convert back, which can introduce some numerical errors. For exact arithmetic (e.g. when `T = Rational{BigInt}`),
+    prefer exponentiation by `Rational` values (e.g. `a^(1//2)`) to avoid this precision loss.
 """
 # Exponentiation of element of tropical semiring by float
 function Base.:^(a::TropicalSemiringElem{typeof(max)}, b::Float64)

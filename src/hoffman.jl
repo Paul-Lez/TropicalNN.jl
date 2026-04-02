@@ -139,7 +139,12 @@ end
 @doc raw"""
     exact_hoff(A::Matrix)
 
-Computes the Hoffman constant of the matrix `A` using a brute force approach.
+Computes the exact Hoffman constant of the matrix `A` by iterating over all subsets of rows
+and solving an A-surjectivity LP for each subset.
+
+!!! warning "Exponential complexity"
+    This function iterates over all ``2^m`` subsets of the ``m`` rows of `A`.
+    Use [`upper_hoff`](@ref) or [`lower_hoff`](@ref) for large matrices.
 """
 function exact_hoff(A::Matrix)
     m = size(A, 1)
@@ -202,7 +207,7 @@ function lower_hoff(A::Matrix, num_samples::Int=10)
         for i in 1:num_samples
             # consider random sub-matrices
             K = rand(1:m)
-            J = rand(1:m, K)
+            J = sort(unique(rand(1:m, K)))
             AJ = A[J, :]
             x, t = surjectivity_test(AJ)
             if t > 0

@@ -5,7 +5,13 @@
     polyhedron(f::Signomial, i::Int)
 
 Outputs the polyhedron corresponding to points where f is given by the
-linear map corresponding to the i-th monomial of f. 
+linear map corresponding to the i-th monomial of f.
+
+!!! note
+    The constraint matrix and right-hand side are converted to `Float64` regardless of the
+    type parameter `T` of `f`. For `T = Rational{BigInt}`, this conversion can silently lose
+    precision when the numerator or denominator are large. Use results involving
+    `Rational{BigInt}` inputs with care.
 
 # Example
 Output the polyhedron where f = max(x, y) is equal to x
@@ -18,9 +24,9 @@ Polyhedron in ambient dimension 2 with Float64 type coefficients
 """
 function polyhedron(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f)])
-    # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i. 
-    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
+    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f) if j != i])
+    # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
+    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp if j != f.exp[i]]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return Oscar.polyhedron(A, b)
 end
@@ -218,7 +224,7 @@ function enum_linear_regions_rat(q::RationalSignomial)
                 if lin_f[i][2] && lin_g[j][2]
                     poly = Oscar.intersect(lin_f[i][1], lin_g[j][1])
                     if Oscar.is_fulldimensional(poly)
-                        lm = [Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]]), f.exp[i] - g.exp[j]]
+                        lm = (Rational(f.coeff[f.exp[i]]) - Rational(g.coeff[g.exp[j]]), f.exp[i] - g.exp[j])
                         if haskey(groups, lm)
                             push!(groups[lm], poly)
                         else

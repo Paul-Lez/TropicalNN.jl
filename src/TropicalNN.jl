@@ -147,6 +147,7 @@ module TropicalNN
 
     include("rat_maps.jl")
     include("standardized_poly.jl")
+    include("tropical_number.jl")
     include("linear_regions.jl")
     include("linear_regions_highs.jl")
     include("mlp_to_trop.jl")

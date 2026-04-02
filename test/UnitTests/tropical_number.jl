@@ -2,10 +2,7 @@
 Unit tests for TropicalNumber type
 """
 
-using Test
-
-# Load the implementation
-include("../../src/tropical_number.jl")
+using Test, TropicalNN
 
 @testset "TropicalNumber" begin
 

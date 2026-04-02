@@ -18,7 +18,14 @@ Oscar = "f1435218-dba5-11e9-1e4d-f1a5fab5fc13"
 Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+[weakdeps]
+AppleAccelerate = "13e28ba4-7ad8-5781-acae-3021b1ed3924"
+
+[extensions]
+TropicalNNAppleAccelerateExt = "AppleAccelerate"
+
 [compat]
+AppleAccelerate = "0.5, 0.6"
 BenchmarkTools = "1"
 CDDLib = "0.9.4"
 Combinatorics = "1.0.2"

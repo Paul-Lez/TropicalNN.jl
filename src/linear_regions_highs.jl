@@ -5,15 +5,6 @@
 # in linear_regions.jl by using HiGHS LP solver directly without creating
 # polyhedron objects.
 
-# Use AppleAccelerate on macOS for better performance
-if Sys.isapple()
-    try
-        @eval using AppleAccelerate
-    catch
-        @warn "AppleAccelerate not available, HiGHS will use default BLAS"
-    end
-end
-
 using HiGHS
 using JuMP
 
@@ -137,14 +128,14 @@ julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
 julia> A, b = polyhedron_highs(f, 1);
 
 julia> size(A)
-(2, 2)
+(1, 2)
 ```
 """
 function polyhedron_highs(f::Signomial, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f)])
+    A = mapreduce(permutedims, vcat, [Float64.(f.exp[j]) - Float64.(f.exp[i]) for j in Base.eachindex(f) if j != i])
     # and b the vector whose j-th entry is f.coeff[αⱼ] - f.coeff[αᵢ] for all j ≠ i.
-    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp]
+    b = [Float64(Rational(f.coeff[f.exp[i]])) - Float64(Rational(f.coeff[j])) for j in f.exp if j != f.exp[i]]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return (A, b)
 end
