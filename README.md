@@ -3,6 +3,8 @@
 [![Build Status](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://paul-lez.github.io/TropicalNN.jl/dev/)
 
+# WARNING: the library is currently being refactored, so is not usable at `HEAD`.
+
 ## Installation
 
 This package requires Julia 1.10. To install, open the Julia REPL, press `]` to enter Pkg mode, and run:
