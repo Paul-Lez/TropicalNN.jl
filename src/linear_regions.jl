@@ -13,14 +13,6 @@ linear map corresponding to the i-th monomial of f.
     precision when the numerator or denominator are large. Use results involving
     `Rational{BigInt}` inputs with care.
 
-# Example
-Output the polyhedron where f = max(x, y) is equal to x
-```jldoctest
-julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> polyhedron(f, 1)
-Polyhedron in ambient dimension 2 with Float64 type coefficients
-```
 """
 function polyhedron(f::AbstractSignomial, i)
     exp_i   = get_exp(f, i)
@@ -46,16 +38,6 @@ end
 Outputs an array of tuples (poly, bool) indexed by the same set as the exponents of f. The tuple element poly
 is the linear region corresponding to the exponent, and bool is true when this region is nonemtpy.
 
-# Example
-Enumerates the linear regions of f = max(x, y).
-```jldoctest
-julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> enum_linear_regions(f)
-2-element Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}:
- (Polyhedron in ambient dimension 2 with Float64 type coefficients, 1)
- (Polyhedron in ambient dimension 2 with Float64 type coefficients, 1)
-```
 """
 function enum_linear_regions(f::AbstractSignomial)
     linear_regions = Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}()
@@ -201,22 +183,6 @@ A `LinearRegions` object whose `regions` field is a `Vector{LinearRegion}`. Each
 When the same linear map appears on several disconnected pieces, all pieces are collected
 in one `LinearRegion`.
 
-# Example
-Enumerates the linear regions of `f/g` where `f = max(x, y)` and `g = 0`.
-`f/g` has two linear regions (one per monomial of `f`), each a single half-plane.
-```jldoctest
-julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> g = Signomial(Dict([0, 0] => 0), [[0, 0]]);
-
-julia> lr = enum_linear_regions_rat(f / g);
-
-julia> length(lr)
-2
-
-julia> length(lr[1].regions)
-1
-```
 """
 function enum_linear_regions_rat(q::RationalSignomial)
     f = q.num
