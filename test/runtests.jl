@@ -28,7 +28,6 @@ using Test
 
     include("./UnitTests/linearmap_matrices.jl")
 
-    include("./UnitTests/standardized_poly.jl")
 
     include("./UnitTests/tropical_number.jl")
 

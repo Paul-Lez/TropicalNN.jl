@@ -50,8 +50,6 @@ module TropicalNN
         exponents,
         coefficients,
         monomial_pairs,
-        # Paper-consistent aliases — TropicalPuiseuxPoly / TropicalPuiseuxRational
-        # are the names used in the associated publication; both resolve to the same types.
         TropicalPuiseuxPoly,
         TropicalPuiseuxRational,
         TropicalPuiseuxPoly_const,
@@ -61,16 +59,6 @@ module TropicalNN
         TropicalPuiseuxRational_identity,
         TropicalPuiseuxRational_zero,
         TropicalPuiseuxRational_one,
-        StandardizedTropicalPoly,
-        TropicalPolyRing,
-        StandardizedTropicalPoly_const,
-        StandardizedTropicalPoly_zero,
-        StandardizedTropicalPoly_one,
-        StandardizedTropicalMonomial,
-        standardize,
-        destandardize,
-        convert_denominator,
-        eval_horner,
         string,
         evaluate,
         +,
@@ -129,7 +117,6 @@ module TropicalNN
         vertex_count
 
     include("tropical_poly_interface.jl")
-    include("standardized_poly.jl")
     include("tropical_number.jl")
     include("linear_regions.jl")
     include("linear_regions_highs.jl")
