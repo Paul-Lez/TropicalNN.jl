@@ -115,21 +115,8 @@ end
 @doc raw"""
     polyhedron_highs(f::Signomial, i::Int)
 
-Outputs the (A, b) matrix representation of the polyhedron corresponding to
-points where f is given by the linear map corresponding to the i-th monomial of f.
-
-Returns a tuple (A, b) where the polyhedron is {x : Ax ≤ b}.
-
-# Example
-Output the polyhedron where f = max(x, y) is equal to x
-```jldoctest
-julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> A, b = polyhedron_highs(f, 1);
-
-julia> size(A)
-(1, 2)
-```
+Return `(A, b)` for the region where the `i`th monomial of `f` dominates,
+encoded as `{x : Ax <= b}`.
 """
 function polyhedron_highs(f::AbstractSignomial, i)
     exp_i   = get_exp(f, i)
@@ -151,20 +138,8 @@ end
 @doc raw"""
     enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL)
 
-Outputs an array of tuples ((A, b), bool) indexed by the same set as the exponents of f.
-The tuple element (A, b) is the matrix representation of the linear region corresponding
-to the exponent, and bool is true when this region is nonempty.
-
-Uses HiGHS LP solver for fast feasibility checks.
-
-# Example
-Enumerates the linear regions of f = max(x, y).
-```jldoctest
-julia> f = Signomial(Dict([1, 0] => 0, [0, 1] => 0), [[1, 0], [0, 1]]);
-
-julia> length(enum_linear_regions_highs(f))
-2
-```
+Return `((A, b), is_feasible)` for each monomial region of `f`, using HiGHS
+for feasibility checks. `(A, b)` encodes `{x : Ax <= b}`.
 """
 function enum_linear_regions_highs(f::AbstractSignomial; tol=HIGHS_DEFAULT_TOL)
     linear_regions = Vector{Tuple{Tuple{Matrix{Float64},Vector{Float64}},Bool}}()
@@ -181,21 +156,11 @@ end
 @doc raw"""
     enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_TOL)
 
-Computes the linear regions of a tropical Puiseux rational function f/g using HiGHS.
+Compute the linear regions of `q` using HiGHS LP checks.
 
-Faster alternative to `enum_linear_regions_rat`: uses the HiGHS LP solver directly
-instead of building Oscar `Polyhedron` objects. The return type mirrors that of
-`enum_linear_regions_rat` — a `LinearRegions` object — so both backends can be used
-interchangeably. Each `LinearRegion` stores one or more `(A, b)` matrix pairs (instead
-of `Oscar.Polyhedron` objects) representing the convex pieces of that region.
-
-# Arguments
-- `q::RationalSignomial`: The rational function whose linear regions are computed.
-- `tol`: Numerical tolerance for LP feasibility and full-dimensionality checks.
-
-# Returns
-A `LinearRegions` object. Each element is a `LinearRegion` whose `regions` field holds
-the `(A, b)` pairs (where the polyhedron is `{x : Ax ≤ b}`) making up that region.
+Returns a `LinearRegions` object whose entries store `(A, b)` pairs for convex
+pieces `{x : Ax <= b}`. `tol` is used for feasibility and full-dimensionality
+checks.
 """
 function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_TOL)
     f = q.num

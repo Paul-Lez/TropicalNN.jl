@@ -3,25 +3,9 @@
 @doc raw"""
     monomial_strong_elim(f::Signomial{T}; parallel::Bool=true)
 
-Removes redundant monomials from a tropical Puiseux polynomial f.
-
-A monomial is considered redundant if its corresponding polyhedron (the region
-where that monomial dominates) is not full-dimensional.
-
-When `parallel=true` (default), uses multithreading to parallelize the
-full-dimensionality checks, which can provide significant speedup for
-polynomials with many monomials.
-
-# Arguments
-- `f::Signomial{T}`: The polynomial to simplify
-- `parallel::Bool=true`: Whether to use parallel computation
-
-# Returns
-- `Signomial{T}`: A new polynomial with redundant monomials removed
-
-# Note
-The parallel version requires Julia to be started with multiple threads
-(e.g., `julia -t auto` or `JULIA_NUM_THREADS=4 julia`).
+Return a copy of `f` without monomials whose dominance polyhedron is not
+full-dimensional. If `parallel=true` and multiple Julia threads are available,
+the full-dimensionality checks run with `Threads.@threads`.
 """
 function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true) where T
     n = length(f)
@@ -101,10 +85,7 @@ end
 """
     mlp_to_trop_with_strong_elim(linear_maps, bias, thresholds)
 
-**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)` instead.
-
-Computes the tropical Puiseux rational function associated to a multilayer perceptron,
-and runs monomial_strong_elim at each layer to remove redundant monomials.
+Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)`.
 """
 function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     @warn "mlp_to_trop_with_strong_elim is deprecated, use mlp_to_trop(..., strong_elim=true, dedup=true) instead" maxlog=1
@@ -114,10 +95,7 @@ end
 """
     mlp_to_trop_with_quicksum_with_strong_elim(linear_maps, bias, thresholds)
 
-**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)` instead.
-
-Computes the tropical Puiseux rational function associated to a multilayer perceptron.
-Runs monomial_strong_elim at each layer, and uses quicksum operations for tropical objects.
+Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)`.
 """
 function mlp_to_trop_with_quicksum_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     @warn "mlp_to_trop_with_quicksum_with_strong_elim is deprecated, use mlp_to_trop(..., quicksum=true, strong_elim=true) instead" maxlog=1

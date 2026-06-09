@@ -1,26 +1,8 @@
 """
     TropicalNumber{Convention,T<:Integer}
 
-Lightweight wrapper for tropical arithmetic with exact rational arithmetic.
-Zero runtime overhead compared to plain Rational{T}.
-
-# Type Parameters
-- `Convention`: Either `typeof(min)` or `typeof(max)` to distinguish semiring
-- `T`: Integer type for numerator/denominator (typically Int64 or Int128)
-
-# Examples
-```julia
-# Min-plus semiring
-x = TropicalMin(3, 2)  # 3/2
-y = TropicalMin(5, 3)  # 5/3
-x + y  # TropicalMin(3//2) = min(3/2, 5/3)
-x * y  # TropicalMin(19//6) = 3/2 + 5/3
-
-# Max-plus semiring
-a = TropicalMax(1, 2)  # 1/2
-b = TropicalMax(2, 3)  # 2/3
-a + b  # TropicalMax(2//3) = max(1/2, 2/3)
-```
+Tropical number with exact rational storage. `Convention` is `typeof(min)` or
+`typeof(max)`; `T` is the integer type of the stored `Rational{T}`.
 """
 struct TropicalNumber{Convention,T<:Integer}
     value::Rational{T}

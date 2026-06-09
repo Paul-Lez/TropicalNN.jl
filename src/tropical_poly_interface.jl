@@ -1,11 +1,10 @@
 # Unified interface for tropical Puiseux polynomials
 #
-# This module provides a unified API for tropical polynomials that automatically
-# selects the optimal internal representation based on dimension:
-#   - Dimensions 1-5:  StaticArrays (stack-allocated, ~1.4x speedup)
-#   - Dimensions >5:   Matrix storage (cache-efficient, ~2-3x speedup)
+# This module provides a unified API for tropical polynomials. The constructor
+# stores low-dimensional exponents in StaticArrays and larger exponent sets in
+# matrix form.
 #
-# The user-facing API is dimension-agnostic; implementation details are hidden.
+# The user-facing API is dimension-agnostic - the goal here is that implementation details are hidden.
 
 using Oscar
 using StaticArrays
@@ -40,17 +39,12 @@ abstract type AbstractSignomial{T} end
 """
     SignomialStatic{T, N}
 
-Tropical Puiseux polynomial using StaticArrays for exponent storage.
-Optimal for dimensions 1-5, providing ~1.3-1.5x speedup over vector storage.
+Tropical Puiseux polynomial whose exponent vectors are stored as
+`SVector{N,T}` values.
 
-# Type Parameters
-- `T`: Numeric type for exponents (typically Float64 or Rational)
-- `N`: Dimension (number of variables) - known at compile time
-
-# Performance
-- Stack-allocated exponent vectors (no heap allocation)
-- Efficient comparison and hashing for small tuples
-- Best for visualization (2D/3D) and small MLPs
+# Fields
+- `coeff`: Map from exponent vectors to tropical coefficients
+- `exp`: Exponent vectors in iteration order
 """
 struct SignomialStatic{T, N} <: AbstractSignomial{T}
     coeff::Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}
@@ -113,18 +107,13 @@ end
 """
     SignomialMatrix{T}
 
-Tropical Puiseux polynomial using matrix-based exponent storage.
-Optimal for dimensions >5, providing ~1.5-3x speedup over vector storage.
+Tropical Puiseux polynomial whose exponent vectors are stored as columns of a
+matrix.
 
 # Fields
 - `exp::Matrix{T}`: Exponent matrix (dim × n_monomials), each column is one exponent
 - `coeff::Vector{TropicalSemiringElem}`: Coefficients parallel to exp columns
 - `dim::Int`: Dimension (number of variables)
-
-# Performance
-- Excellent cache locality from contiguous memory
-- No per-vector allocation overhead
-- Better for medium/large MLPs (10-100+ input dimensions)
 """
 struct SignomialMatrix{T} <: AbstractSignomial{T}
     exp::Matrix{T}
@@ -806,28 +795,9 @@ end
 """
     OptimalTropicalPoly(coeff, exp, sorted=false)
 
-Create a tropical Puiseux polynomial using the optimal internal representation
-for the given dimension:
-- Dimensions 1-5: Uses StaticArrays (~1.4x faster)
-- Dimensions >5:  Uses Matrix storage (~2-3x faster at high dims)
-
-The returned type varies based on dimension, but all types conform to the
-`AbstractSignomial` interface.
-
-# Example
-```julia
-R = tropical_semiring(max)
-
-# 2D polynomial - uses StaticArrays internally
-f = OptimalTropicalPoly([R(1), R(2)], [[1.0, 2.0], [2.0, 1.0]], false)
-
-# 20D polynomial - uses Matrix storage internally
-g = OptimalTropicalPoly([R(1), R(2)], [rand(20) for _ in 1:2], false)
-
-# Both work with the same API
-h = f * f  # StaticArrays multiplication
-k = g * g  # Matrix multiplication
-```
+Construct a tropical Puiseux polynomial from coefficients and exponent vectors.
+For dimensions 1-5 this returns a `SignomialStatic`; for larger dimensions it
+returns a `SignomialMatrix`.
 """
 function OptimalTropicalPoly(
     coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
@@ -840,7 +810,7 @@ function OptimalTropicalPoly(
 
     dim = length(exp_vecs[1])
 
-    # Choose optimal representation based on dimension
+    # Choose representation based on dimension
     if dim == 1
         return SignomialStatic{T,1}(coeffs, exp_vecs, sorted)
     elseif dim == 2
@@ -872,7 +842,7 @@ end
 
 # Note: Conversion functions to/from baseline Signomial are defined
 # in a separate extension file that loads when TropicalNN is available.
-# For standalone use, the optimal representations work independently.
+# For standalone use, these representations work independently.
 
 #==============================================================================#
 #                    RATIONAL FUNCTIONS                                         #
@@ -892,7 +862,7 @@ struct RationalSignomial{P<:AbstractSignomial}
     end
 end
 
-# Smart constructor
+# Constructor from numerator and denominator data
 function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted=false)
     num = OptimalTropicalPoly(num_coeffs, num_exp, sorted)
     den = OptimalTropicalPoly(den_coeffs, den_exp, sorted)
@@ -938,12 +908,7 @@ export poly_const, poly_zero, poly_one, poly_monomial
     Signomial(coeffs, exp_vecs, sorted=false)
     Signomial(coeff_dict, exp_vecs, sorted=false)
 
-Smart constructor for tropical Puiseux polynomials. Picks the optimal internal
-representation based on dimension:
-- Dimensions 1–5: `SignomialStatic` (StaticArrays-backed)
-- Dimensions > 5: `SignomialMatrix` (matrix-backed)
-
-This is the primary user-facing constructor, equivalent to `OptimalTropicalPoly`.
+Alias for `OptimalTropicalPoly`.
 """
 const Signomial = OptimalTropicalPoly
 

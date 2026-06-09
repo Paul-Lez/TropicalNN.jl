@@ -53,58 +53,14 @@ end
 """
     mlp_to_trop(linear_maps, bias, thresholds; quicksum=false, strong_elim=false, dedup=false)
 
-Convert a ReLU multilayer perceptron to a tropical Puiseux rational function.
+Convert a ReLU MLP to tropical rational functions, one per output neuron.
+`linear_maps`, `bias`, and `thresholds` are layer-wise weights, biases, and
+activation thresholds.
 
-This function converts a neural network with ReLU-like activation functions (max(x,t))
-into an exact tropical geometric representation, enabling analysis of linear regions
-and network expressivity.
-
-# Arguments
-- `linear_maps::Vector{Matrix{T}}`: Weight matrices for each layer
-- `bias`: Bias vectors for each layer
-- `thresholds`: Activation threshold vectors for each layer (standard ReLU uses zeros)
-
-where `T<:Union{Oscar.scalar_types, Rational{BigInt}}`
-
-# Keyword Arguments
-- `quicksum::Bool=false`: Use faster but less accurate quicksum operations for composition
-- `strong_elim::Bool=false`: Apply monomial elimination to remove non-full-dimensional polyhedra at each layer
-- `dedup::Bool=false`: Apply deduplication to remove duplicate monomials at each layer
-
-# Returns
-- `Vector{RationalSignomial{T}}`: Tropical rational functions representing the MLP outputs
-
-# Throws
-- `DimensionMismatch`: If matrix/vector dimensions don't match at any layer
-
-# Performance Notes
-- `quicksum=true`: Faster for large networks (>3 layers, >10 neurons), defers sorting
-- `strong_elim=true`: Reduces complexity by removing redundant monomials, but adds computational overhead
-- `dedup=true`: Removes duplicate monomials, useful when composition creates duplicates
-
-# Examples
-```julia
-# Convert a random 2-3-1 MLP (standard)
-W, b, t = random_mlp([2, 3, 1])
-f = mlp_to_trop(W, b, t)
-
-# Convert with quicksum for better performance
-f_fast = mlp_to_trop(W, b, t, quicksum=true)
-
-# Convert with monomial elimination for reduced complexity
-f_reduced = mlp_to_trop(W, b, t, strong_elim=true)
-
-# Combine options for large networks
-f_optimized = mlp_to_trop(W, b, t, quicksum=true, strong_elim=true)
-
-# Analyze linear regions
-regions = enum_linear_regions_rat(f[1])
-```
-
-# See Also
-- `single_to_trop`: Convert a single layer
-- `comp`, `comp_with_quicksum`: Composition functions
-- `monomial_strong_elim`, `dedup_monomials`: Simplification functions
+Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
+monomials with non-full-dimensional regions after each layer; `dedup` calls
+`dedup_monomials` after each layer. Throws `DimensionMismatch` for inconsistent
+layer sizes.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
                       quicksum::Bool=false, strong_elim::Bool=false, dedup::Bool=false) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
@@ -149,15 +105,12 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
     end
 
     return output
-end 
+end
 
 """
     mlp_to_trop_with_quicksum(linear_maps, bias, thresholds)
 
-**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)` instead.
-
-Computes the tropical Puiseux rational function associated to a multilayer perceptron
-using quicksum operations for tropical objects.
+Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)`.
 """
 function mlp_to_trop_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     @warn "mlp_to_trop_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
@@ -167,10 +120,7 @@ end
 """
     mlp_to_trop_with_mul_with_quicksum(linear_maps, bias, thresholds)
 
-**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)` instead.
-
-Computes the tropical Puiseux rational function associated to a multilayer perceptron
-using mul_with_quicksum version of multiplication for tropical objects.
+Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)`.
 """
 function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     @warn "mlp_to_trop_with_mul_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
@@ -180,26 +130,10 @@ end
 """
     random_mlp(dims; random_thresholds=false, symbolic=true)
 
-Generate a random multilayer perceptron with specified architecture.
-
-# Arguments
-- `dims::AbstractVector{<:Integer}`: Array of integers specifying the width of each layer (e.g., [2, 3, 1] for 2 inputs, 3 hidden neurons, 1 output)
-
-# Keyword Arguments
-- `random_thresholds::Bool=false`: If true, activation thresholds are chosen randomly. If false, all thresholds are 0 (standard ReLU)
-- `symbolic::Bool=true`: If true, use exact rational arithmetic (Rational{BigInt}). If false, use floating point
-
-# Returns
-- `Tuple{Vector{Matrix}, Vector{Vector}, Vector{Vector}}`: (weights, biases, thresholds) for the MLP
-
-# Examples
-```julia
-# Create a 2-3-1 MLP with ReLU activations
-W, b, t = random_mlp([2, 3, 1])
-
-# Create with random thresholds using floating point
-W, b, t = random_mlp([2, 4, 1], random_thresholds=true, symbolic=false)
-```
+Generate random weights, biases, and thresholds for layer widths `dims`.
+Returns `(weights, biases, thresholds)`. If `symbolic=true`, entries are
+converted to `Rational{BigInt}`; otherwise they are floating-point values.
+When `random_thresholds=false`, all thresholds are zero.
 """
 function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=false, symbolic::Bool=true)
     # if symbolic is set to true then we work with symbolic fractions. 
@@ -228,20 +162,9 @@ end
 @doc raw"""
     random_pmap(n_vars, n_mons)
 
-Returns a random tropical polynomial in `n_vars` variables with `n_mons` monomials.
-
-Both coefficients and exponent components are drawn i.i.d. from `Normal(0, 1/sqrt(2))`.
-This distribution is consistent with the He initialisation used in [`random_mlp`](@ref),
-where weights are sampled from `Normal(0, sqrt(2/fan_in))`.
-
-# Arguments
-- `n_vars::Integer`: Number of variables in the tropical polynomial
-- `n_mons::Integer`: Number of monomials
-
-# Returns
-- `Signomial{Rational{BigInt}}`: A random tropical polynomial with `n_mons` monomials in
-  `n_vars` variables, with coefficients and exponents drawn from `Normal(0, 1/sqrt(2))`
-  and converted to `Rational{BigInt}`
+Generate a random tropical polynomial with `n_vars` variables and `n_mons`
+monomials. Coefficients and exponents are sampled from `Normal(0, 1/sqrt(2))`
+and converted to `Rational{BigInt}`.
 """
 function random_pmap(n_vars, n_mons)
     return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)), [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons]; sorted=false)
@@ -250,12 +173,9 @@ end
 """
     mlp_to_trop_with_dedup(linear_maps, bias, thresholds)
 
-**DEPRECATED**: Use `mlp_to_trop(linear_maps, bias, thresholds, dedup=true)` instead.
-
-Computes the tropical Puiseux rational function associated to a multilayer perceptron.
-Runs a deduplication function to remove duplicate monomials at each layer.
+Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, dedup=true)`.
 """
 function mlp_to_trop_with_dedup(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
     @warn "mlp_to_trop_with_dedup is deprecated, use mlp_to_trop(..., dedup=true) instead" maxlog=1
     return mlp_to_trop(linear_maps, bias, thresholds, dedup=true)
-end 
+end
