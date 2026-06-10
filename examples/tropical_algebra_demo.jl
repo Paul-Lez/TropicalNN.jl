@@ -29,12 +29,12 @@ println()
 
 f = TropicalPuiseuxPoly(
     [0, 0, 0],
-    [Rational{Int64}[1, 0], Rational{Int64}[0, 2], Rational{Int64}[1, 1//2]]
+    [Rational{Int64}[1, 0], Rational{Int64}[0, 2], Rational{Int64}[1, 1 // 2]]
 )
 
 g = TropicalPuiseuxPoly(
     [0, 0],
-    [Rational{Int64}[1//2, 1], Rational{Int64}[0, 3]]
+    [Rational{Int64}[1 // 2, 1], Rational{Int64}[0, 3]]
 )
 
 println("f = ", f)

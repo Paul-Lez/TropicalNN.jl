@@ -7,7 +7,7 @@ Return a copy of `f` without monomials whose dominance polyhedron is not
 full-dimensional. If `parallel=true` and multiple Julia threads are available,
 the full-dimensionality checks run with `Threads.@threads`.
 """
-function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true) where T
+function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool = true) where {T}
     n = length(f)
 
     if parallel && Threads.nthreads() > 1 && n > 1
@@ -20,7 +20,7 @@ function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true) wher
         end
 
         # Collect results based on keep vector
-        new_exp   = Vector{Vector{T}}()
+        new_exp = Vector{Vector{T}}()
         sizehint!(new_exp, count(keep))
         new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
 
@@ -35,7 +35,7 @@ function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true) wher
         return Signomial(new_coeff, new_exp)
     else
         # Sequential version (original algorithm)
-        new_exp   = Vector{Vector{T}}()
+        new_exp = Vector{Vector{T}}()
         sizehint!(new_exp, n)
         new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
 
@@ -62,10 +62,10 @@ Puiseux rational function.
 - `f::RationalSignomial{T}`: The rational function to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(f::RationalSignomial; parallel::Bool=true)
+function monomial_strong_elim(f::RationalSignomial; parallel::Bool = true)
     return RationalSignomial(
-        monomial_strong_elim(f.num; parallel=parallel),
-        monomial_strong_elim(f.den; parallel=parallel)
+        monomial_strong_elim(f.num; parallel = parallel),
+        monomial_strong_elim(f.den; parallel = parallel)
     )
 end
 
@@ -78,8 +78,8 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 - `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool=true)
-    return [monomial_strong_elim(f; parallel=parallel) for f in F]
+function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool = true)
+    return [monomial_strong_elim(f; parallel = parallel) for f in F]
 end
 
 """
@@ -87,17 +87,19 @@ end
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)`.
 """
-function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_strong_elim is deprecated, use mlp_to_trop(..., strong_elim=true, dedup=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)
-end 
+    return mlp_to_trop(linear_maps, bias, thresholds, strong_elim = true, dedup = true)
+end
 
 """
     mlp_to_trop_with_quicksum_with_strong_elim(linear_maps, bias, thresholds)
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)`.
 """
-function mlp_to_trop_with_quicksum_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mlp_to_trop_with_quicksum_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_quicksum_with_strong_elim is deprecated, use mlp_to_trop(..., quicksum=true, strong_elim=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true, strong_elim = true)
 end

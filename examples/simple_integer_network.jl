@@ -15,8 +15,8 @@ W2 = Rational{BigInt}[1 -1]
 b2 = Rational{BigInt}[0]
 t2 = Rational{BigInt}[0]
 
-weights    = [W1, W2]
-biases     = [b1, b2]
+weights = [W1, W2]
+biases = [b1, b2]
 thresholds = [t1, t2]
 
 # Convert to tropical representation

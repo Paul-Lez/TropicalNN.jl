@@ -15,7 +15,7 @@ using TropicalNN
 #   exponent [0, 1]  →  y
 #   exponent [1, 1]  →  x + y
 
-num_exps   = [[1, 0], [0, 1], [1, 1]]
+num_exps = [[1, 0], [0, 1], [1, 1]]
 num_coeffs = [0, 0, 0]
 f = TropicalPuiseuxPoly(num_coeffs, num_exps)
 
@@ -23,7 +23,7 @@ f = TropicalPuiseuxPoly(num_coeffs, num_exps)
 #   exponent [1, -1]  →  x - y
 #   exponent [1,  2]  →  x + 2y
 
-den_exps   = [[1, -1], [1, 2]]
+den_exps = [[1, -1], [1, 2]]
 den_coeffs = [0, 0]
 g = TropicalPuiseuxPoly(den_coeffs, den_exps)
 

@@ -24,7 +24,7 @@ using TropicalNN
 
 # --- Define the polynomial ---------------------------------------------------
 
-exps   = [[1, 0], [0, 1], [2, 2], [1, 1], [2, 0], [0, 2]]
+exps = [[1, 0], [0, 1], [2, 2], [1, 1], [2, 0], [0, 2]]
 coeffs = [0, 0, 0, 0, 0, 0]
 
 f = TropicalPuiseuxPoly(coeffs, exps)

@@ -53,7 +53,7 @@ If optimal ε > tol, polyhedron has nonempty interior (is full dimensional).
 Note: Filters out trivial constraints (all-zero rows) before checking, as these
 don't restrict the polyhedron but prevent the inflation test from working.
 """
-function highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol=HIGHS_DEFAULT_TOL)
+function highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol = HIGHS_DEFAULT_TOL)
     m, n = size(A)
 
     # Filter out trivial constraints (rows that are all zeros)
@@ -100,8 +100,8 @@ Check if intersection of two polyhedra is full dimensional via LP using HiGHS.
 Concatenates constraints and checks if the combined polyhedron is full dimensional.
 """
 function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Float64},
-                                             A2::Matrix{Float64}, b2::Vector{Float64};
-                                             tol=HIGHS_DEFAULT_TOL)
+        A2::Matrix{Float64}, b2::Vector{Float64};
+        tol = HIGHS_DEFAULT_TOL)
     @assert size(A1, 2) == size(A2, 2) "Ambient dimensions must match"
 
     # Compute intersection by concatenating constraints
@@ -109,7 +109,7 @@ function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Flo
     b_combined = vcat(b1, b2)
 
     # Check if the intersection is full dimensional
-    return highs_is_full_dimensional(A_combined, b_combined; tol=tol)
+    return highs_is_full_dimensional(A_combined, b_combined; tol = tol)
 end
 
 @doc raw"""
@@ -119,10 +119,11 @@ Return `(A, b)` for the region where the `i`th monomial of `f` dominates,
 encoded as `{x : Ax <= b}`.
 """
 function polyhedron_highs(f::AbstractSignomial, i)
-    exp_i   = get_exp(f, i)
+    exp_i = get_exp(f, i)
     coeff_i = get_coeff(f, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f) if j != i]
+    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i)
+            for j in Base.eachindex(f) if j != i]
     # Single-monomial polynomial: the whole R^n is the unique region.
     if isempty(rows)
         n = nvars(f)
@@ -130,7 +131,8 @@ function polyhedron_highs(f::AbstractSignomial, i)
     end
     A = Matrix{Float64}(mapreduce(permutedims, vcat, rows))
     # and b the vector whose j-th entry is f.coeff[αᵢ] - f.coeff[αⱼ] for all j ≠ i.
-    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f) if j != i]
+    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j)))
+         for j in Base.eachindex(f) if j != i]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return (A, b)
 end
@@ -141,8 +143,8 @@ end
 Return `((A, b), is_feasible)` for each monomial region of `f`, using HiGHS
 for feasibility checks. `(A, b)` encodes `{x : Ax <= b}`.
 """
-function enum_linear_regions_highs(f::AbstractSignomial; tol=HIGHS_DEFAULT_TOL)
-    linear_regions = Vector{Tuple{Tuple{Matrix{Float64},Vector{Float64}},Bool}}()
+function enum_linear_regions_highs(f::AbstractSignomial; tol = HIGHS_DEFAULT_TOL)
+    linear_regions = Vector{Tuple{Tuple{Matrix{Float64}, Vector{Float64}}, Bool}}()
     sizehint!(linear_regions, length(f))
     for i in Base.eachindex(f)
         A, b = polyhedron_highs(f, i)
@@ -162,12 +164,12 @@ Returns a `LinearRegions` object whose entries store `(A, b)` pairs for convex
 pieces `{x : Ax <= b}`. `tol` is used for feasibility and full-dimensionality
 checks.
 """
-function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_TOL)
+function enum_linear_regions_rat_highs(q::RationalSignomial; tol = HIGHS_DEFAULT_TOL)
     f = q.num
     g = q.den
     # first, compute the linear regions of f and g.
-    lin_f = enum_linear_regions_highs(f; tol=tol)
-    lin_g = enum_linear_regions_highs(g; tol=tol)
+    lin_f = enum_linear_regions_highs(f; tol = tol)
+    lin_g = enum_linear_regions_highs(g; tol = tol)
 
     # Group all full-dimensional intersections by the linear map they realise.
     # map_to_regions: (c, α) -> Vector of (A, b) pairs
@@ -179,7 +181,7 @@ function enum_linear_regions_rat_highs(q::RationalSignomial; tol=HIGHS_DEFAULT_T
                 A1, b1 = lin_f[i][1]
                 A2, b2 = lin_g[j][1]
 
-                if highs_intersect_is_full_dimensional(A1, b1, A2, b2; tol=tol)
+                if highs_intersect_is_full_dimensional(A1, b1, A2, b2; tol = tol)
                     Ab = (vcat(A1, A2), vcat(b1, b2))
                     c = Rational(get_coeff(f, i)) - Rational(get_coeff(g, j))
                     α = collect(get_exp(f, i)) - collect(get_exp(g, j))
