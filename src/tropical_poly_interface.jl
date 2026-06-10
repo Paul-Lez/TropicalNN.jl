@@ -47,28 +47,28 @@ Tropical Puiseux polynomial whose exponent vectors are stored as
 - `exp`: Exponent vectors in iteration order
 """
 struct SignomialStatic{T, N} <: AbstractSignomial{T}
-    coeff::Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}
-    exp::Vector{SVector{N,T}}
+    coeff::Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}
+    exp::Vector{SVector{N, T}}
 
-    function SignomialStatic{T,N}(
-        coeff::Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}},
-        exp::Vector{SVector{N,T}}
-    ) where {T,N}
-        new{T,N}(coeff, exp)
+    function SignomialStatic{T, N}(
+            coeff::Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}},
+            exp::Vector{SVector{N, T}}
+    ) where {T, N}
+        new{T, N}(coeff, exp)
     end
 end
 
 # Constructor from vector-of-vectors
-function SignomialStatic{T,N}(
-    coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where {T,N}
+function SignomialStatic{T, N}(
+        coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T, N}
     # Convert to static vectors
-    exp_static = [SVector{N,T}(e) for e in exp_vecs]
-    coeff_static = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    exp_static = [SVector{N, T}(e) for e in exp_vecs]
+    coeff_static = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}()
     for (k, v) in coeff_dict
-        coeff_static[SVector{N,T}(k)] = v
+        coeff_static[SVector{N, T}(k)] = v
     end
 
     # Sort if needed
@@ -76,16 +76,16 @@ function SignomialStatic{T,N}(
         sort!(exp_static)
     end
 
-    return SignomialStatic{T,N}(coeff_static, exp_static)
+    return SignomialStatic{T, N}(coeff_static, exp_static)
 end
 
 # Constructor from coefficient vector and exponent vector
-function SignomialStatic{T,N}(
-    coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where {T,N}
-    exp_static = [SVector{N,T}(e) for e in exp_vecs]
+function SignomialStatic{T, N}(
+        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T, N}
+    exp_static = [SVector{N, T}(e) for e in exp_vecs]
 
     if !sorted
         perm = sortperm(exp_static)
@@ -93,11 +93,11 @@ function SignomialStatic{T,N}(
         coeffs = coeffs[perm]
     end
 
-    coeff_static = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
+    coeff_static = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         exp_static[i] => coeffs[i] for i in Base.eachindex(coeffs)
     )
 
-    return SignomialStatic{T,N}(coeff_static, exp_static)
+    return SignomialStatic{T, N}(coeff_static, exp_static)
 end
 
 #==============================================================================#
@@ -121,9 +121,9 @@ struct SignomialMatrix{T} <: AbstractSignomial{T}
     dim::Int
 
     function SignomialMatrix{T}(
-        exp::Matrix{T},
-        coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
-    ) where T
+            exp::Matrix{T},
+            coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
+    ) where {T}
         dim, n_monomials = size(exp)
         @assert length(coeff) == n_monomials "Coefficient count must match monomial count"
         new{T}(exp, coeff, dim)
@@ -132,10 +132,10 @@ end
 
 # Constructor from vector-of-vectors
 function SignomialMatrix{T}(
-    coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where T
+        coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T}
     if isempty(exp_vecs)
         return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), eltype(values(coeff_dict))[])
     end
@@ -164,10 +164,10 @@ end
 
 # Constructor from coefficient vector and exponent vector
 function SignomialMatrix{T}(
-    coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where T
+        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T}
     if isempty(exp_vecs)
         return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), coeffs)
     end
@@ -196,7 +196,7 @@ end
 #==============================================================================#
 
 # Number of variables
-Oscar.nvars(f::SignomialStatic{T,N}) where {T,N} = N
+Oscar.nvars(f::SignomialStatic{T, N}) where {T, N} = N
 Oscar.nvars(f::SignomialMatrix) = f.dim
 
 # Number of monomials
@@ -207,7 +207,7 @@ Base.length(f::SignomialMatrix) = size(f.exp, 2)
 Base.eachindex(f::AbstractSignomial) = Base.OneTo(length(f))
 
 # Get exponent vector (returns view for matrix, copy for static)
-function get_exp(f::SignomialStatic{T,N}, i::Int) where {T,N}
+function get_exp(f::SignomialStatic{T, N}, i::Int) where {T, N}
     return f.exp[i]
 end
 
@@ -228,12 +228,12 @@ end
 #                    ARITHMETIC: STATIC IMPLEMENTATION                          #
 #==============================================================================#
 
-function Base.:+(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
+function Base.:+(f::SignomialStatic{T, N}, g::SignomialStatic{T, N}) where {T, N}
     lf, lg = length(f.exp), length(g.exp)
 
-    h_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    h_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}()
     sizehint!(h_coeff, lf + lg)
-    h_exp = Vector{SVector{N,T}}()
+    h_exp = Vector{SVector{N, T}}()
     sizehint!(h_exp, lf + lg)
 
     trop_zero = zero(first(values(f.coeff)))
@@ -289,15 +289,15 @@ function Base.:+(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
         j += 1
     end
 
-    return SignomialStatic{T,N}(h_coeff, h_exp)
+    return SignomialStatic{T, N}(h_coeff, h_exp)
 end
 
-function Base.:*(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
+function Base.:*(f::SignomialStatic{T, N}, g::SignomialStatic{T, N}) where {T, N}
     m, n = length(f.exp), length(g.exp)
     result_size = m * n
 
-    result_exp = Vector{SVector{N,T}}(undef, result_size)
-    result_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    result_exp = Vector{SVector{N, T}}(undef, result_size)
+    result_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}()
     sizehint!(result_coeff, result_size)
 
     idx = 1
@@ -321,14 +321,14 @@ function Base.:*(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
 
     # Sort and deduplicate
     sorted_exp = sort(collect(keys(result_coeff)))
-    return SignomialStatic{T,N}(result_coeff, sorted_exp)
+    return SignomialStatic{T, N}(result_coeff, sorted_exp)
 end
 
 #==============================================================================#
 #                    ARITHMETIC: MATRIX IMPLEMENTATION                          #
 #==============================================================================#
 
-function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
+function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -350,14 +350,14 @@ function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
     combined_coeff = vcat(f.coeff, g.coeff)
 
     # Sort
-    perm = sortperm([combined_exp[:, i] for i in 1:(m+n)])
+    perm = sortperm([combined_exp[:, i] for i in 1:(m + n)])
     sorted_exp = combined_exp[:, perm]
     sorted_coeff = combined_coeff[perm]
 
     return SignomialMatrix{T}(sorted_exp, sorted_coeff)
 end
 
-function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
+function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -391,7 +391,7 @@ end
 #                         EVALUATION                                            #
 #==============================================================================#
 
-function eval_poly(f::SignomialStatic{T,N}, a::Vector) where {T,N}
+function eval_poly(f::SignomialStatic{T, N}, a::Vector) where {T, N}
     ev = zero(a[1])
     for i in Base.eachindex(f)
         exp_i = f.exp[i]
@@ -405,7 +405,7 @@ function eval_poly(f::SignomialStatic{T,N}, a::Vector) where {T,N}
     return ev
 end
 
-function eval_poly(f::SignomialMatrix{T}, a::Vector) where T
+function eval_poly(f::SignomialMatrix{T}, a::Vector) where {T}
     ev = zero(a[1])
     dim = f.dim
     for i in 1:length(f)
@@ -424,37 +424,37 @@ end
 #==============================================================================#
 
 # Scalar multiplication
-function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialStatic{T,N}) where {T,N}
-    new_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
+function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialStatic{T, N}) where {T, N}
+    new_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         k => c * v for (k, v) in f.coeff
     )
-    return SignomialStatic{T,N}(new_coeff, copy(f.exp))
+    return SignomialStatic{T, N}(new_coeff, copy(f.exp))
 end
 
-function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialMatrix{T}) where T
+function Base.:*(c::Oscar.TropicalSemiringElem, f::SignomialMatrix{T}) where {T}
     return SignomialMatrix{T}(copy(f.exp), c .* f.coeff)
 end
 
 # Exponentiation by rational
-function Base.:^(f::SignomialStatic{T,N}, r::Base.Rational) where {T,N}
+function Base.:^(f::SignomialStatic{T, N}, r::Base.Rational) where {T, N}
     if r == 0
         # Return one polynomial
         R = parent(first(values(f.coeff)))
-        one_exp = SVector{N,T}(zeros(T, N))
-        return SignomialStatic{T,N}(
+        one_exp = SVector{N, T}(zeros(T, N))
+        return SignomialStatic{T, N}(
             Dict(one_exp => one(R(0))),
             [one_exp]
         )
     end
 
-    new_exp = [SVector{N,T}(T(r * e) for e in exp_vec) for exp_vec in f.exp]
-    new_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}(
+    new_exp = [SVector{N, T}(T(r * e) for e in exp_vec) for exp_vec in f.exp]
+    new_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         new_exp[i] => f.coeff[f.exp[i]]^r for i in Base.eachindex(f.exp)
     )
-    return SignomialStatic{T,N}(new_coeff, new_exp)
+    return SignomialStatic{T, N}(new_coeff, new_exp)
 end
 
-function Base.:^(f::SignomialMatrix{T}, r::Base.Rational) where T
+function Base.:^(f::SignomialMatrix{T}, r::Base.Rational) where {T}
     if r == 0
         # Return one polynomial
         R = parent(f.coeff[1])
@@ -491,15 +491,15 @@ Base.:^(f::AbstractSignomial, n::Int) = f^Base.Rational(n)
 Fast summation that defers sorting and deduplication until the end.
 Trades accuracy for speed in intermediate steps.
 """
-function quicksum(F::Vector{SignomialStatic{T,N}}) where {T,N}
+function quicksum(F::Vector{SignomialStatic{T, N}}) where {T, N}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     # Estimate total terms
     total_terms = sum(length(f.exp) for f in F)
 
-    h_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    h_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}()
     sizehint!(h_coeff, total_terms)
-    h_exp = Vector{SVector{N,T}}()
+    h_exp = Vector{SVector{N, T}}()
     sizehint!(h_exp, total_terms)
 
     # Collect all exponents
@@ -522,10 +522,10 @@ function quicksum(F::Vector{SignomialStatic{T,N}}) where {T,N}
         end
     end
 
-    return SignomialStatic{T,N}(h_coeff, h_exp)
+    return SignomialStatic{T, N}(h_coeff, h_exp)
 end
 
-function quicksum(F::Vector{SignomialMatrix{T}}) where T
+function quicksum(F::Vector{SignomialMatrix{T}}) where {T}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     dim = F[1].dim
@@ -560,12 +560,12 @@ end
 Multiplication that defers sorting and deduplication.
 Faster but less accurate for intermediate results.
 """
-function mul_with_quicksum(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
+function mul_with_quicksum(f::SignomialStatic{T, N}, g::SignomialStatic{T, N}) where {T, N}
     m, n = length(f.exp), length(g.exp)
     result_size = m * n
 
-    result_exp = Vector{SVector{N,T}}(undef, result_size)
-    result_coeff = Dict{SVector{N,T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    result_exp = Vector{SVector{N, T}}(undef, result_size)
+    result_coeff = Dict{SVector{N, T}, Oscar.TropicalSemiringElem{typeof(max)}}()
     sizehint!(result_coeff, result_size)
 
     idx = 1
@@ -587,10 +587,10 @@ function mul_with_quicksum(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) whe
         end
     end
 
-    return SignomialStatic{T,N}(result_coeff, result_exp)
+    return SignomialStatic{T, N}(result_coeff, result_exp)
 end
 
-function mul_with_quicksum(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
+function mul_with_quicksum(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
     # Same as regular multiplication for matrix version
     return f * g
 end
@@ -605,7 +605,7 @@ end
 Compose polynomial f with vector of polynomials G.
 Computes f(G[1], G[2], ..., G[n]).
 """
-function comp(f::SignomialStatic{T,N}, G::Vector{<:AbstractSignomial}) where {T,N}
+function comp(f::SignomialStatic{T, N}, G::Vector{<:AbstractSignomial}) where {T, N}
     @assert length(G) == N "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
@@ -635,7 +635,7 @@ function comp(f::SignomialStatic{T,N}, G::Vector{<:AbstractSignomial}) where {T,
 end
 
 # Similar implementation for matrix version
-function comp(f::SignomialMatrix{T}, G::Vector{<:AbstractSignomial}) where T
+function comp(f::SignomialMatrix{T}, G::Vector{<:AbstractSignomial}) where {T}
     @assert length(G) == f.dim "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
@@ -673,7 +673,7 @@ end
 
 Create a constant polynomial in n variables.
 """
-function poly_const(n::Int, c::Oscar.TropicalSemiringElem, ::Type{T}=Float64) where T
+function poly_const(n::Int, c::Oscar.TropicalSemiringElem, ::Type{T} = Float64) where {T}
     return OptimalTropicalPoly([c], [zeros(T, n)], true)
 end
 
@@ -682,7 +682,7 @@ end
 
 Create the zero polynomial (tropical negative infinity) in n variables.
 """
-function poly_zero(n::Int, R, ::Type{T}=Float64) where T
+function poly_zero(n::Int, R, ::Type{T} = Float64) where {T}
     return poly_const(n, zero(R(0)), T)
 end
 
@@ -691,7 +691,7 @@ end
 
 Create the one polynomial (multiplicative identity, tropical zero) in n variables.
 """
-function poly_one(n::Int, R, ::Type{T}=Float64) where T
+function poly_one(n::Int, R, ::Type{T} = Float64) where {T}
     return poly_const(n, one(R(0)), T)
 end
 
@@ -700,7 +700,7 @@ end
 
 Create a monomial polynomial.
 """
-function poly_monomial(c::Oscar.TropicalSemiringElem, exp::Vector{T}) where T
+function poly_monomial(c::Oscar.TropicalSemiringElem, exp::Vector{T}) where {T}
     return OptimalTropicalPoly([c], [exp], true)
 end
 
@@ -708,15 +708,15 @@ end
 #                    EQUALITY AND STRING REPRESENTATION                         #
 #==============================================================================#
 
-function Base.:(==)(f::SignomialStatic{T,N}, g::SignomialStatic{T,N}) where {T,N}
+function Base.:(==)(f::SignomialStatic{T, N}, g::SignomialStatic{T, N}) where {T, N}
     return f.coeff == g.coeff && f.exp == g.exp
 end
 
-function Base.:(==)(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where T
+function Base.:(==)(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
     return f.exp == g.exp && f.coeff == g.coeff
 end
 
-function Base.string(f::SignomialStatic{T,N}) where {T,N}
+function Base.string(f::SignomialStatic{T, N}) where {T, N}
     str = ""
     for (i, exp) in enumerate(f.exp)
         if i > 1
@@ -730,7 +730,7 @@ function Base.string(f::SignomialStatic{T,N}) where {T,N}
     return str
 end
 
-function Base.string(f::SignomialMatrix{T}) where T
+function Base.string(f::SignomialMatrix{T}) where {T}
     str = ""
     for i in 1:length(f)
         if i > 1
@@ -752,18 +752,18 @@ Base.repr(f::AbstractSignomial) = string(f)
 
 # Keyword-argument convenience wrappers (preserves API compatibility)
 function OptimalTropicalPoly(
-    coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{<:AbstractVector{T}};
-    sorted::Bool=false
-) where T
+        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{<:AbstractVector{T}};
+        sorted::Bool = false
+) where {T}
     return OptimalTropicalPoly(coeffs, [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
 function OptimalTropicalPoly(
-    coeff_dict::Dict{<:AbstractVector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{<:AbstractVector{T}};
-    sorted::Bool=false
-) where T
+        coeff_dict::Dict{<:AbstractVector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{<:AbstractVector{T}};
+        sorted::Bool = false
+) where {T}
     plain_exps = [Vector{T}(e) for e in exp_vecs]
     plain_dict = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         Vector{T}(k) => v for (k, v) in coeff_dict
@@ -773,23 +773,25 @@ end
 
 # Convenience constructor: plain Real coefficients → wrapped in tropical semiring
 function OptimalTropicalPoly(
-    coeffs::Vector{<:Real},
-    exp_vecs::Vector{<:AbstractVector{T}};
-    sorted::Bool=false
-) where T
+        coeffs::Vector{<:Real},
+        exp_vecs::Vector{<:AbstractVector{T}};
+        sorted::Bool = false
+) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly(Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
-                               [Vector{T}(e) for e in exp_vecs], sorted)
+    return OptimalTropicalPoly(
+        Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
+        [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
 function OptimalTropicalPoly(
-    coeffs::Vector{<:Real},
-    exp_vecs::Vector{<:AbstractVector{T}},
-    sorted::Bool
-) where T
+        coeffs::Vector{<:Real},
+        exp_vecs::Vector{<:AbstractVector{T}},
+        sorted::Bool
+) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly(Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
-                               [Vector{T}(e) for e in exp_vecs], sorted)
+    return OptimalTropicalPoly(
+        Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
+        [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
 """
@@ -800,10 +802,10 @@ For dimensions 1-5 this returns a `SignomialStatic`; for larger dimensions it
 returns a `SignomialMatrix`.
 """
 function OptimalTropicalPoly(
-    coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where T
+        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T}
     if isempty(exp_vecs)
         return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), coeffs)
     end
@@ -812,15 +814,15 @@ function OptimalTropicalPoly(
 
     # Choose representation based on dimension
     if dim == 1
-        return SignomialStatic{T,1}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T, 1}(coeffs, exp_vecs, sorted)
     elseif dim == 2
-        return SignomialStatic{T,2}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T, 2}(coeffs, exp_vecs, sorted)
     elseif dim == 3
-        return SignomialStatic{T,3}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T, 3}(coeffs, exp_vecs, sorted)
     elseif dim == 4
-        return SignomialStatic{T,4}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T, 4}(coeffs, exp_vecs, sorted)
     elseif dim == 5
-        return SignomialStatic{T,5}(coeffs, exp_vecs, sorted)
+        return SignomialStatic{T, 5}(coeffs, exp_vecs, sorted)
     else
         return SignomialMatrix{T}(coeffs, exp_vecs, sorted)
     end
@@ -828,10 +830,10 @@ end
 
 # Convenience constructor from Dict
 function OptimalTropicalPoly(
-    coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-    exp_vecs::Vector{Vector{T}},
-    sorted::Bool=false
-) where T
+        coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
+        exp_vecs::Vector{Vector{T}},
+        sorted::Bool = false
+) where {T}
     coeffs = [coeff_dict[e] for e in exp_vecs]
     return OptimalTropicalPoly(coeffs, exp_vecs, sorted)
 end
@@ -853,34 +855,34 @@ end
 
 Tropical Puiseux rational function, represented as a quotient of two signomials.
 """
-struct RationalSignomial{P<:AbstractSignomial}
+struct RationalSignomial{P <: AbstractSignomial}
     num::P
     den::P
 
-    function RationalSignomial(num::P, den::P) where P<:AbstractSignomial
+    function RationalSignomial(num::P, den::P) where {P <: AbstractSignomial}
         new{P}(num, den)
     end
 end
 
 # Constructor from numerator and denominator data
-function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted=false)
+function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted = false)
     num = OptimalTropicalPoly(num_coeffs, num_exp, sorted)
     den = OptimalTropicalPoly(den_coeffs, den_exp, sorted)
     return RationalSignomial(num, den)
 end
 
 # Arithmetic
-function Base.:+(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
+function Base.:+(f::RationalSignomial{P}, g::RationalSignomial{P}) where {P}
     num = f.num * g.den + f.den * g.num
     den = f.den * g.den
     return RationalSignomial(num, den)
 end
 
-function Base.:*(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
+function Base.:*(f::RationalSignomial{P}, g::RationalSignomial{P}) where {P}
     return RationalSignomial(f.num * g.num, f.den * g.den)
 end
 
-function Base.:/(f::RationalSignomial{P}, g::RationalSignomial{P}) where P
+function Base.:/(f::RationalSignomial{P}, g::RationalSignomial{P}) where {P}
     return RationalSignomial(f.num * g.den, f.den * g.num)
 end
 
@@ -923,11 +925,11 @@ Return the coefficient for exponent vector `e`.
 For `SignomialStatic`, `e` is converted to an `SVector` before lookup; for
 `SignomialMatrix`, the columns are scanned until a match is found.
 """
-function get_coeff_by_exp(f::SignomialStatic{T,N}, e) where {T,N}
-    return f.coeff[SVector{N,T}(e)]
+function get_coeff_by_exp(f::SignomialStatic{T, N}, e) where {T, N}
+    return f.coeff[SVector{N, T}(e)]
 end
 
-function get_coeff_by_exp(f::SignomialMatrix{T}, e) where T
+function get_coeff_by_exp(f::SignomialMatrix{T}, e) where {T}
     for i in 1:length(f)
         if f.exp[:, i] == e
             return f.coeff[i]
@@ -947,7 +949,7 @@ function exponents(f::SignomialStatic)
     return f.exp
 end
 
-function exponents(f::SignomialMatrix{T}) where T
+function exponents(f::SignomialMatrix{T}) where {T}
     return [Vector{T}(f.exp[:, i]) for i in 1:length(f)]
 end
 
@@ -983,7 +985,7 @@ end
 Construct the constant `c` as a signomial in `n` variables.
 `f` is used only to infer the exponent numeric type `T`.
 """
-function Signomial_const(n, c, f::AbstractSignomial{T}) where T
+function Signomial_const(n, c, f::AbstractSignomial{T}) where {T}
     return OptimalTropicalPoly([c], [zeros(T, n)], true)
 end
 
@@ -1012,7 +1014,7 @@ end
 
 Construct a single-monomial signomial with coefficient `c` and exponent vector `exp`.
 """
-function SignomialMonomial(c, exp::Vector{T}) where T
+function SignomialMonomial(c, exp::Vector{T}) where {T}
     return OptimalTropicalPoly([c], [exp], true)
 end
 
@@ -1071,7 +1073,7 @@ end
 #==============================================================================#
 
 # Division: AbstractSignomial / AbstractSignomial  →  RationalSignomial
-function Base.:/(f::P, g::P) where P<:AbstractSignomial
+function Base.:/(f::P, g::P) where {P <: AbstractSignomial}
     return RationalSignomial(f, g)
 end
 
@@ -1189,7 +1191,8 @@ function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Oscar.TropicalSe
 end
 
 # TropicalSemiringElem ^ Rational
-function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Rational{T}) where T<:Integer
+function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Rational{T}) where {T <:
+                                                                                    Integer}
     R = tropical_semiring(max)
     return R(Rational(a) * b)
 end
@@ -1217,7 +1220,7 @@ function Base.:^(f::RationalSignomial, int::Int)
     end
 end
 
-function Base.:^(f::RationalSignomial, r::Rational{T}) where T<:Integer
+function Base.:^(f::RationalSignomial, r::Rational{T}) where {T <: Integer}
     if r == 0
         return RationalSignomial_one(nvars(f), f)
     else
@@ -1270,7 +1273,7 @@ function quicksum(F::Vector{<:RationalSignomial})
     summands = map(Base.eachindex(F)) do i
         others = [denoms[j] for j in Base.eachindex(F) if j != i]
         isempty(others) ? F[i].num :
-            mul_with_quicksum(vcat([F[i].num], others))
+        mul_with_quicksum(vcat([F[i].num], others))
     end
     return RationalSignomial(quicksum(summands), den)
 end
@@ -1414,21 +1417,21 @@ end
 #                    PRETTY PRINTING                                            #
 #==============================================================================#
 
-const _SUBSCRIPT_DIGITS = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉']
+const _SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
 
 function _subscript(n::Integer)
-    return join(_SUBSCRIPT_DIGITS[d+1] for d in reverse(digits(n)))
+    return join(_SUBSCRIPT_DIGITS[d + 1] for d in reverse(digits(n)))
 end
 
 _exp_str(α::AbstractFloat) = isinteger(α) ? "$(Int(α))" : "$(α)"
-_exp_str(α::Rational)      = denominator(α) == 1 ? "$(numerator(α))" : "$(α)"
-_exp_str(α::Integer)       = "$(α)"
-_exp_str(α)                = "$(α)"
+_exp_str(α::Rational) = denominator(α) == 1 ? "$(numerator(α))" : "$(α)"
+_exp_str(α::Integer) = "$(α)"
+_exp_str(α) = "$(α)"
 
 _coeff_str(c::AbstractFloat) = isinteger(c) ? "$(Int(c))" : "$(c)"
-_coeff_str(c::Rational)      = denominator(c) == 1 ? "$(numerator(c))" : "$(c)"
-_coeff_str(c::Integer)       = "$(c)"
-_coeff_str(c)                = "$(c)"
+_coeff_str(c::Rational) = denominator(c) == 1 ? "$(numerator(c))" : "$(c)"
+_coeff_str(c::Integer) = "$(c)"
+_coeff_str(c) = "$(c)"
 
 function _monomial_str(coeff::Oscar.TropicalSemiringElem, exp)
     c = Oscar.data(coeff)
@@ -1474,12 +1477,12 @@ end
 #                    BASE.ZERO / BASE.ONE (AbstractSignomial type)             #
 #==============================================================================#
 
-function Base.zero(::Type{<:AbstractSignomial{T}}, n::Int) where T
+function Base.zero(::Type{<:AbstractSignomial{T}}, n::Int) where {T}
     R = Oscar.tropical_semiring(max)
     return OptimalTropicalPoly([zero(R(0))], [zeros(T, n)], true)
 end
 
-function Base.one(::Type{<:AbstractSignomial{T}}, n::Int) where T
+function Base.one(::Type{<:AbstractSignomial{T}}, n::Int) where {T}
     R = Oscar.tropical_semiring(max)
     return OptimalTropicalPoly([one(R(0))], [zeros(T, n)], true)
 end

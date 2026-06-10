@@ -34,6 +34,7 @@ GLPK = "1.2.1"
 Graphs = "1.12.0"
 HiGHS = "1"
 JuMP = "1.23.5"
+JuliaFormatter = "2"
 LinearAlgebra = "<0.0.1, 1"
 MetaGraphsNext = "0.7.1"
 Oscar = "1.0.2"
@@ -42,8 +43,9 @@ StaticArrays = "1"
 julia = "1.10, 1.11, 1.12"
 
 [extras]
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random"]
+test = ["Test", "Random", "JuliaFormatter"]

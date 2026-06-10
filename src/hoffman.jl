@@ -6,15 +6,17 @@
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
 function linearmap_matrices(f::AbstractSignomial)
-    linear_maps_acc  = Vector{Vector{Any}}()
-    exponents_acc    = Vector{Vector{Float64}}()
+    linear_maps_acc = Vector{Vector{Any}}()
+    exponents_acc = Vector{Vector{Float64}}()
     coefficients_acc = Vector{Any}()
     for i in Base.eachindex(f)
-        exp_i   = get_exp(f, i)
+        exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
-        rows_hoff = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f)]
+        rows_hoff = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i)
+                     for j in Base.eachindex(f)]
         A = Matrix{Float64}(mapreduce(permutedims, vcat, rows_hoff))
-        b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f)]
+        b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j)))
+             for j in Base.eachindex(f)]
         p = Oscar.polyhedron(A, b)
         # we only want the linear maps that are realised
         if Oscar.is_fulldimensional(p)
@@ -59,11 +61,13 @@ end
 
 Finds all of the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical rational map.
 """
-function tilde_matrices(As::Tuple{Matrix,Matrix})
+function tilde_matrices(As::Tuple{Matrix, Matrix})
     m_1, n = size(As[1])
     m_2 = size(As[2])[1]
     ones_matrix = ones(m_1 + m_2, 2)
-    return [vcat(As[1], As[2]) - ones_matrix * vcat(As[1][row_num:row_num, :], As[2][row_den:row_den, :]) for row_den in 1:m_2, row_num in 1:m_1]
+    return [vcat(As[1], As[2]) -
+            ones_matrix * vcat(As[1][row_num:row_num, :], As[2][row_den:row_den, :])
+            for row_den in 1:m_2, row_num in 1:m_1]
 end
 
 @doc raw"""
@@ -199,7 +203,7 @@ end
 
 Computes a lower bound on Hoffman constant of the matrix `A` by only considering a fixed number of random sub-matrices of A.
 """
-function lower_hoff(A::Matrix, num_samples::Int=10)
+function lower_hoff(A::Matrix, num_samples::Int = 10)
     m, n = size(A)
     HL = 0.0
     # if the number of sub-matrices we are considering exceeds the total number of sub-matrices in A
@@ -221,13 +225,12 @@ function lower_hoff(A::Matrix, num_samples::Int=10)
     return HL
 end
 
-
 @doc raw"""
     exact_hoff(f::Union{AbstractSignomial,RationalSignomial};return_matrices::Bool=false)
 
 Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function exact_hoff(f::Union{AbstractSignomial,RationalSignomial}; return_matrices::Bool=false)
+function exact_hoff(f::Union{AbstractSignomial, RationalSignomial}; return_matrices::Bool = false)
     hoff_const = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -246,7 +249,7 @@ end
 
 Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function upper_hoff(f::Union{AbstractSignomial,RationalSignomial}; return_matrices::Bool=false)
+function upper_hoff(f::Union{AbstractSignomial, RationalSignomial}; return_matrices::Bool = false)
     hoff_upper = 0
     A, b = linearmap_matrices(f)
     for tilde_matrix in tilde_matrices(A)
@@ -265,7 +268,8 @@ end
 
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function lower_hoff(f::Union{AbstractSignomial,RationalSignomial}, num_samples::Int=10; return_matrices::Bool=false)
+function lower_hoff(f::Union{AbstractSignomial, RationalSignomial},
+        num_samples::Int = 10; return_matrices::Bool = false)
     A, b = linearmap_matrices(f)
     t_matrices = tilde_matrices(A)
     # if we are taking more samples than there are submatrices we are using exact
@@ -293,9 +297,10 @@ end
 Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
 """
 function exact_er(f::AbstractSignomial)
-    hoff_const, A, b = exact_hoff(f, return_matrices=true)
+    hoff_const, A, b = exact_hoff(f, return_matrices = true)
     tilde_bs = tilde_vectors(b)
-    return hoff_const * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
+    return hoff_const *
+           maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
 end
 
 @doc raw"""
@@ -304,9 +309,10 @@ end
 Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
 """
 function upper_er(f::AbstractSignomial)
-    hoff_upper, A, b = upper_hoff(f, return_matrices=true)
+    hoff_upper, A, b = upper_hoff(f, return_matrices = true)
     tilde_bs = tilde_vectors(b)
-    return hoff_upper * maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
+    return hoff_upper *
+           maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
 end
 
 @doc raw"""
@@ -315,7 +321,7 @@ end
 Provides an upper bound on the effective radius of a tropical rational map using exact Hoffman constant computations.
 """
 function exact_er(f::RationalSignomial)
-    hoff_const, A, b = exact_hoff(f, return_matrices=true)
+    hoff_const, A, b = exact_hoff(f, return_matrices = true)
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
@@ -325,6 +331,6 @@ end
 Provides an upper bound on the effective radius of a tropical rational map using upper bound approximations of the Hoffman constant.
 """
 function upper_er(f::RationalSignomial)
-    hoff_upper, A, b = upper_hoff(f, return_matrices=true)
+    hoff_upper, A, b = upper_hoff(f, return_matrices = true)
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end

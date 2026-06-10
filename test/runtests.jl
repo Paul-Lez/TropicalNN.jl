@@ -1,34 +1,35 @@
 using Test
 
-@testset "TropicalNN.jl" begin
+if "format" in ARGS
+    include("formatting.jl")
+else
+    @testset "TropicalNN.jl" begin
+        include("./UnitTests/main.jl")
 
-    include("./UnitTests/main.jl")
+        include("./UnitTests/polynomial_algebra.jl")
 
-    include("./UnitTests/polynomial_algebra.jl")
+        include("./UnitTests/signomial_matrix.jl")
 
-    include("./UnitTests/signomial_matrix.jl")
+        include("./UnitTests/mlp_to_trop.jl")
 
-    include("./UnitTests/mlp_to_trop.jl")
+        # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
+        # Commented out until visualise.jl is integrated into the module.
+        # if Base.find_package("CairoMakie") !== nothing
+        #     include("./UnitTests/visualise.jl")
+        # end
 
-    # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
-    # Commented out until visualise.jl is integrated into the module.
-    # if Base.find_package("CairoMakie") !== nothing
-    #     include("./UnitTests/visualise.jl")
-    # end
+        include("./UnitTests/hoffman.jl")
 
-    include("./UnitTests/hoffman.jl")
+        include("./UnitTests/statistics.jl")
 
-    include("./UnitTests/statistics.jl")
+        include("./UnitTests/linear_regions_highs.jl")
 
-    include("./UnitTests/linear_regions_highs.jl")
+        include("./UnitTests/exponentiation.jl")
 
-    include("./UnitTests/exponentiation.jl")
+        include("./UnitTests/printing.jl")
 
-    include("./UnitTests/printing.jl")
+        include("./UnitTests/linearmap_matrices.jl")
 
-    include("./UnitTests/linearmap_matrices.jl")
-
-
-    include("./UnitTests/tropical_number.jl")
-
+        include("./UnitTests/tropical_number.jl")
+    end
 end

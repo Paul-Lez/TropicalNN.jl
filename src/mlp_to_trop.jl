@@ -16,7 +16,8 @@ Convert a single ReLU layer to tropical Puiseux rational functions.
 # Throws
 - `DimensionMismatch`: If dimensions don't match (A has size(A,1) rows, b and t must have the same length)
 """
-function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function single_to_trop(A::Matrix{T}, b::AbstractVector,
+        t::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     G = RationalSignomial[]
 
     # Check dimensions match
@@ -24,7 +25,7 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) wher
         throw(DimensionMismatch(
             "Dimension mismatch: A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
         ))
-    end 
+    end
     R = tropical_semiring(max)
     # first make sure that the entries of b are elements of the tropical semiring
     b = [R(Rational(i)) for i in b]
@@ -45,10 +46,10 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector, t::AbstractVector) wher
         # the denominator is the monomial given by the negative part, with coeff the tropical multiplicative 
         # unit, i.e. 0
         den = SignomialMonomial(one(t[i]), neg)
-        push!(G, num/den) 
-    end 
+        push!(G, num/den)
+    end
     return G
-end     
+end
 
 """
     mlp_to_trop(linear_maps, bias, thresholds; quicksum=false, strong_elim=false, dedup=false)
@@ -63,7 +64,8 @@ monomials with non-full-dimensional regions after each layer; `dedup` calls
 layer sizes.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
-                      quicksum::Bool=false, strong_elim::Bool=false, dedup::Bool=false) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+        quicksum::Bool = false, strong_elim::Bool = false,
+        dedup::Bool = false) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     R = tropical_semiring(max)
 
     # Initialisation: the first vector of tropical rational functions
@@ -92,7 +94,8 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
             ith_tropical = single_to_trop(A, b, t)
 
             # Compose with the output of the previous layer
-            output = quicksum ? comp_with_quicksum(ith_tropical, output) : comp(ith_tropical, output)
+            output = quicksum ? comp_with_quicksum(ith_tropical, output) :
+                     comp(ith_tropical, output)
 
             # Apply simplification if requested
             if strong_elim
@@ -112,20 +115,22 @@ end
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)`.
 """
-function mlp_to_trop_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mlp_to_trop_with_quicksum(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)
-end 
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true)
+end
 
 """
     mlp_to_trop_with_mul_with_quicksum(linear_maps, bias, thresholds)
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)`.
 """
-function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_mul_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)
-end 
+    return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true)
+end
 
 """
     random_mlp(dims; random_thresholds=false, symbolic=true)
@@ -135,12 +140,14 @@ Returns `(weights, biases, thresholds)`. If `symbolic=true`, entries are
 converted to `Rational{BigInt}`; otherwise they are floating-point values.
 When `random_thresholds=false`, all thresholds are zero.
 """
-function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=false, symbolic::Bool=true)
+function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = false, symbolic::Bool = true)
     # if symbolic is set to true then we work with symbolic fractions. 
     if symbolic
         # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
-        weights = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i])), dims[i+1], dims[i])) for i in 1:length(dims)-1]
-        biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i-1])), dims[i])) for i in 2:length(dims)]
+        weights = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i])), dims[i + 1], dims[i]))
+                   for i in 1:(length(dims) - 1)]
+        biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]))
+                  for i in 2:length(dims)]
         if random_thresholds
             thresholds = [Rational{BigInt}.(rand(dims[i])) for i in 2:length(dims)]
         else
@@ -148,16 +155,17 @@ function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool=fal
         end
     else # otherwise we work with Floats
         # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
-        weights = [rand(Normal(0, sqrt(2/dims[i])), dims[i+1], dims[i]) for i in 1:length(dims)-1]
-        biases = [rand(Normal(0, sqrt(2/dims[i-1])), dims[i]) for i in 2:length(dims)]
+        weights = [rand(Normal(0, sqrt(2/dims[i])), dims[i + 1], dims[i])
+                   for i in 1:(length(dims) - 1)]
+        biases = [rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]) for i in 2:length(dims)]
         if random_thresholds
             thresholds = [rand(dims[i]) for i in 2:length(dims)]
-        else 
+        else
             thresholds = [zeros(dims[i]) for i in 2:length(dims)]
-        end 
-    end 
+        end
+    end
     return (weights, biases, thresholds)
-end 
+end
 
 @doc raw"""
     random_pmap(n_vars, n_mons)
@@ -167,7 +175,9 @@ monomials. Coefficients and exponents are sampled from `Normal(0, 1/sqrt(2))`
 and converted to `Rational{BigInt}`.
 """
 function random_pmap(n_vars, n_mons)
-    return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)), [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons]; sorted=false)
+    return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)),
+        [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons];
+        sorted = false)
 end
 
 """
@@ -175,7 +185,8 @@ end
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, dedup=true)`.
 """
-function mlp_to_trop_with_dedup(linear_maps::Vector{Matrix{T}}, bias, thresholds) where T<:Union{Oscar.scalar_types, Rational{BigInt}}
+function mlp_to_trop_with_dedup(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_dedup is deprecated, use mlp_to_trop(..., dedup=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, dedup=true)
+    return mlp_to_trop(linear_maps, bias, thresholds, dedup = true)
 end

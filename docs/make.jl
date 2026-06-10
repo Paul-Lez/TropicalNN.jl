@@ -1,7 +1,7 @@
 using Documenter
 using TropicalNN
 
-DocMeta.setdocmeta!(TropicalNN, :DocTestSetup, :(using TropicalNN); recursive=true)
+DocMeta.setdocmeta!(TropicalNN, :DocTestSetup, :(using TropicalNN); recursive = true)
 
 makedocs(
     sitename = "TropicalNN.jl",
@@ -13,12 +13,12 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",
-        "API Reference" => "api.md",
+        "API Reference" => "api.md"
     ],
-    checkdocs = :none,
+    checkdocs = :none
 )
 
 deploydocs(
     repo = "github.com/Paul-Lez/TropicalNN.jl",
-    devbranch = "main",
+    devbranch = "main"
 )

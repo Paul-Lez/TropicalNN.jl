@@ -25,7 +25,7 @@ Returns a `Dict` with keys:
 function m_reps(f::AbstractSignomial)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for i in Base.eachindex(f)
-        exp_i   = get_exp(f, i)
+        exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
         rows_stat = [collect(get_exp(f, j)) - collect(exp_i) for j in Base.eachindex(f)]
         A = mapreduce(permutedims, vcat, rows_stat)
@@ -75,11 +75,12 @@ Convert a collection of H-representations (as returned by [`m_reps`](@ref)) into
 - `oscar=true`: returns `Oscar.Polyhedron` objects (Float64 coefficients, fast).
 - `oscar=false` (default): returns `Polyhedra.jl` polyhedra via CDDLib with exact rational arithmetic.
 """
-function polyhedra_from_reps(reps, oscar::Bool=false)
+function polyhedra_from_reps(reps, oscar::Bool = false)
     if oscar
         return [Oscar.polyhedron(m_rep[1], m_rep[2]) for m_rep in reps["m_reps"]]
     else
-        return [Polyhedra.polyhedron(Polyhedra.hrep(m_rep[1], m_rep[2]), CDDLib.Library(:exact)) for m_rep in reps["m_reps"]]
+        return [Polyhedra.polyhedron(Polyhedra.hrep(m_rep[1], m_rep[2]), CDDLib.Library(:exact))
+                for m_rep in reps["m_reps"]]
     end
 end
 
@@ -92,15 +93,16 @@ identified by `f_indices` (as returned by [`m_reps`](@ref)).
 For a `Signomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
 For a `RationalSignomial`, it is `(c_num(αᵢ) - c_den(αⱼ)) + (αᵢ - αⱼ) · x` for index pair `[i, j]`.
 """
-function get_linear_maps(f::Union{AbstractSignomial,RationalSignomial}, f_indices)
+function get_linear_maps(f::Union{AbstractSignomial, RationalSignomial}, f_indices)
     linear_maps = Vector{Vector{Any}}()
     for f_idx in f_indices
         if length(f_idx) == 1
             push!(linear_maps, [Rational(get_coeff(f, f_idx)), collect(get_exp(f, f_idx))])
         else
             numr, denr = f.num, f.den
-            push!(linear_maps, [Rational(get_coeff(numr, f_idx[1])) - Rational(get_coeff(denr, f_idx[2])),
-                                 collect(get_exp(numr, f_idx[1])) - collect(get_exp(denr, f_idx[2]))])
+            push!(linear_maps,
+                [Rational(get_coeff(numr, f_idx[1])) - Rational(get_coeff(denr, f_idx[2])),
+                    collect(get_exp(numr, f_idx[1])) - collect(get_exp(denr, f_idx[2]))])
         end
     end
     return linear_maps
@@ -162,7 +164,7 @@ Applies a statistic function to a tropical polynomial or tropical rational map b
 # Returns
 - Result of applying `statistic` to the identified linear regions
 """
-function map_statistic(statistic::Function, f::Union{AbstractSignomial,RationalSignomial})
+function map_statistic(statistic::Function, f::Union{AbstractSignomial, RationalSignomial})
     # Obtain the unbounded matrix representations
     reps = m_reps(f)
     # Obtain the corresponding polyhedron representations
@@ -223,7 +225,7 @@ end
 
 Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function interior_points(f::Union{AbstractSignomial,RationalSignomial})
+function interior_points(f::Union{AbstractSignomial, RationalSignomial})
     return map_statistic(interior_points, f)
 end
 
@@ -261,7 +263,7 @@ end
 
 Determines whether the polyhedra constituting the linear region of a tropical polynomial or a tropical rational map are bounded.
 """
-function bounds(f::Union{AbstractSignomial,RationalSignomial})
+function bounds(f::Union{AbstractSignomial, RationalSignomial})
     return map_statistic(bounds, f)
 end
 
@@ -313,7 +315,7 @@ end
 
 Finds the volumes of the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function volumes(f::Union{AbstractSignomial,RationalSignomial})
+function volumes(f::Union{AbstractSignomial, RationalSignomial})
     return map_statistic(volumes, f)
 end
 
@@ -326,7 +328,8 @@ Returns the number of polyhedra in each linear region.
 """
 function polyhedron_counts(linear_regions::Dict)
     # Count the number of polyhedra within each component for each linear map
-    poly_counts = Dict(linear_map => [length(component) for component in components] for (linear_map, components) in linear_regions)
+    poly_counts = Dict(linear_map => [length(component) for component in components]
+    for (linear_map, components) in linear_regions)
     return poly_counts
 end
 
@@ -335,7 +338,7 @@ end
 
 Returns the number of polyhedra in each linear region of the tropical polynomial or tropical rational map.
 """
-function polyhedron_counts(f::Union{AbstractSignomial,RationalSignomial})
+function polyhedron_counts(f::Union{AbstractSignomial, RationalSignomial})
     return map_statistic(polyhedron_counts, f)
 end
 
@@ -363,7 +366,7 @@ function get_graph(linear_regions::Dict)
     end
     # Collect the regions and their corresponding linear maps
     region_polys = Vector{Any}()
-    linear_maps  = Vector{Any}()
+    linear_maps = Vector{Any}()
     for (linear_map, components) in linear_regions
         for component in components
             push!(region_polys, component)
@@ -373,7 +376,8 @@ function get_graph(linear_regions::Dict)
 
     # Consider the graph with dictionary data such that we can populate
     # them with various measures
-    g = MetaGraph(Graphs.Graph(); label_type=Int, vertex_data_type=Dict, edge_data_type=Dict, graph_data=nothing)
+    g = MetaGraph(Graphs.Graph(); label_type = Int, vertex_data_type = Dict,
+        edge_data_type = Dict, graph_data = nothing)
 
     num_regions = length(region_polys)
 
@@ -381,16 +385,18 @@ function get_graph(linear_regions::Dict)
     for k in 1:num_regions
         # Populate the node data with an interior point 
         # and the volume of the corresponding region
-        g[k] = Dict("interior_point" => interior_points(region_polys[k]), "volume" => volumes(region_polys[k]))
+        g[k] = Dict("interior_point" => interior_points(region_polys[k]), "volume" =>
+            volumes(region_polys[k]))
     end
     # Add the edges between regions that are connected
-    for k in 1:(num_regions-1)
-        for j in 1:length(region_polys[k+1:end])
-            int = connection(region_polys[k], region_polys[k+1:end][j])
+    for k in 1:(num_regions - 1)
+        for j in 1:length(region_polys[(k + 1):end])
+            int = connection(region_polys[k], region_polys[(k + 1):end][j])
             if int != nothing
                 # Populate the node data with the linear maps 
                 # and the intersection of the connected regions
-                g[k, k+j] = Dict("linear maps" => [linear_maps[k], linear_maps[k+j]], "intersection" => int)
+                g[k, k + j] = Dict("linear maps" => [linear_maps[k], linear_maps[k + j]], "intersection" =>
+                    int)
             end
         end
     end
@@ -402,7 +408,7 @@ end
 
 Constructs a graph of linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function get_graph(f::Union{AbstractSignomial,RationalSignomial})
+function get_graph(f::Union{AbstractSignomial, RationalSignomial})
     return map_statistic(get_graph, f)
 end
 
@@ -422,7 +428,7 @@ end
 
 Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
 """
-function edge_count(f::Union{AbstractSignomial,RationalSignomial})
+function edge_count(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
         throw(ArgumentError("edge_count is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
@@ -478,7 +484,7 @@ end
 
 Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_gradients(f::Union{AbstractSignomial,RationalSignomial})
+function edge_gradients(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
         throw(ArgumentError("edge_gradients is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
@@ -525,7 +531,7 @@ end
 
 Calculates the lengths of the edges emanating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_lengths(f::Union{AbstractSignomial,RationalSignomial})
+function edge_lengths(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
         throw(ArgumentError("edge_lengths is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
@@ -583,7 +589,7 @@ end
 
 Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
 """
-function edge_directions(f::Union{AbstractSignomial,RationalSignomial})
+function edge_directions(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
         throw(ArgumentError("edge_directions is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
     end
@@ -599,7 +605,8 @@ Collects the vertices of the linear regions, along with their multiplicities, th
 """
 function vertex_collection(g::MetaGraph)
     # Here we collect all the vertices of the graph
-    vs = reduce(vcat, [Oscar.vertices(g[e[1], e[2]]["intersection"]) for e in collect(edge_labels(g))])
+    vs = reduce(vcat, [Oscar.vertices(g[e[1], e[2]]["intersection"])
+                       for e in collect(edge_labels(g))])
     # We then count the multiplicities of each vertex byinterating through vs
     vs_with_mult = Dict()
     for v in vs
@@ -617,7 +624,7 @@ end
 
 Collects the vertices of the linear regions corresponding to the tropical polynomial or tropical rational map, along with their multiplicities, that is, how many regions share that vertex. 
 """
-function vertex_collection(f::Union{AbstractSignomial,RationalSignomial})
+function vertex_collection(f::Union{AbstractSignomial, RationalSignomial})
     return vertex_collection(get_graph(f))
 end
 
@@ -637,6 +644,6 @@ end
 
 Counts the number of vertices in the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function vertex_count(f::Union{AbstractSignomial,RationalSignomial})
+function vertex_count(f::Union{AbstractSignomial, RationalSignomial})
     return vertex_count(get_graph(f))
 end

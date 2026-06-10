@@ -5,7 +5,6 @@ Unit tests for TropicalNumber type
 using Test, TropicalNN
 
 @testset "TropicalNumber" begin
-
     @testset "Constructors" begin
         # Min-plus
         x = TropicalMin(3, 2)

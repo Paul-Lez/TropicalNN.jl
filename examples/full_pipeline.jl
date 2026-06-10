@@ -31,7 +31,7 @@ println()
 # quicksum=true uses a faster polynomial addition (slight accuracy trade-off);
 # strong_elim=true removes redundant monomials whose region is not full-dimensional.
 tropical_funcs = mlp_to_trop(weights, biases, thresholds;
-                              quicksum=true, strong_elim=true)
+    quicksum = true, strong_elim = true)
 f = tropical_funcs[1]   # single output neuron
 
 println("Tropical rational function:")
@@ -54,7 +54,7 @@ println()
 # ---------------------------------------------------------------------------
 # Step 4: Summary statistics
 # ---------------------------------------------------------------------------
-n_connected    = sum(1 for r in regions if length(r) == 1)
+n_connected = sum(1 for r in regions if length(r) == 1)
 n_disconnected = length(regions) - n_connected
 
 println("Summary:")

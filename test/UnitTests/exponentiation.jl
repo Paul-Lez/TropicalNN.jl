@@ -12,9 +12,9 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "TropicalSemiringElem ^ Rational" begin
-        @test Float64(Rational(R(4)  ^ (1//2))) == 2.0   # 4 * 1/2 = 2
-        @test Float64(Rational(R(6)  ^ (2//3))) == 4.0   # 6 * 2/3 = 4
-        @test Float64(Rational(R(0)  ^ (3//2))) == 0.0
+        @test Float64(Rational(R(4) ^ (1//2))) == 2.0   # 4 * 1/2 = 2
+        @test Float64(Rational(R(6) ^ (2//3))) == 4.0   # 6 * 2/3 = 4
+        @test Float64(Rational(R(0) ^ (3//2))) == 0.0
         @test Float64(Rational(R(10) ^ (1//5))) == 2.0   # 10 * 1/5 = 2
     end
 
@@ -25,7 +25,7 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "Signomial ^ Int64" begin
-        f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+        f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g2 = f ^ Int64(2)
         @test g2 isa AbstractSignomial
@@ -41,7 +41,7 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "Signomial ^ Float64" begin
-        f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
+        f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g = f ^ 2.0
         @test g isa AbstractSignomial
@@ -52,7 +52,7 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "Signomial ^ Rational" begin
-        f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted=false)
+        f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
 
         g = f ^ (1//2)
         @test g isa AbstractSignomial
@@ -69,8 +69,8 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "RationalSignomial ^ Int64" begin
-        num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
-        den = Signomial([R(0)],        [[0//1, 0//1]]; sorted=false)
+        num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
+        den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
         q2 = q ^ Int64(2)
@@ -83,8 +83,8 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "RationalSignomial ^ Float64" begin
-        num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted=false)
-        den = Signomial([R(0)],        [[0//1, 0//1]]; sorted=false)
+        num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
+        den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
         qf = q ^ 2.0
@@ -97,8 +97,8 @@ using Test, TropicalNN, Oscar
     end
 
     @testset "RationalSignomial ^ Rational" begin
-        num = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted=false)
-        den = Signomial([R(0)],        [[0//1, 0//1]]; sorted=false)
+        num = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
+        den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
         qr = q ^ (1//2)

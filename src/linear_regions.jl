@@ -15,10 +15,11 @@ linear map corresponding to the i-th monomial of f.
 
 """
 function polyhedron(f::AbstractSignomial, i)
-    exp_i   = get_exp(f, i)
+    exp_i = get_exp(f, i)
     coeff_i = get_coeff(f, i)
     # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i) for j in Base.eachindex(f) if j != i]
+    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i)
+            for j in Base.eachindex(f) if j != i]
     # Single-monomial polynomial: the whole R^n is the unique region.
     # Use a trivially-satisfied constraint (0·x ≤ 0) to keep the Float64 type.
     if isempty(rows)
@@ -27,7 +28,8 @@ function polyhedron(f::AbstractSignomial, i)
     end
     A = mapreduce(permutedims, vcat, rows)
     # and b the vector whose j-th entry is f.coeff[αᵢ] - f.coeff[αⱼ] for all j ≠ i.
-    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j))) for j in Base.eachindex(f) if j != i]
+    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j)))
+         for j in Base.eachindex(f) if j != i]
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return Oscar.polyhedron(Matrix{Float64}(A), b)
 end
@@ -62,7 +64,8 @@ function n_components(V, D)
     function depth_first_search(k)
         visited[k] = true
         for p in V
-            if !visited[p] && ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
+            if !visited[p] &&
+               ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
                 depth_first_search(p)
             end
         end
@@ -200,7 +203,7 @@ function enum_linear_regions_rat(q::RationalSignomial)
                     poly = Oscar.intersect(lin_f[i][1], lin_g[j][1])
                     if Oscar.is_fulldimensional(poly)
                         lm = (Rational(get_coeff(f, i)) - Rational(get_coeff(g, j)),
-                              collect(get_exp(f, i)) - collect(get_exp(g, j)))
+                            collect(get_exp(f, i)) - collect(get_exp(g, j)))
                         if haskey(groups, lm)
                             push!(groups[lm], poly)
                         else
