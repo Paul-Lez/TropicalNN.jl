@@ -1,4 +1,5 @@
 using Test, TropicalNN, Graphs, MetaGraphsNext
+using Oscar: QQFieldElem, tropical_semiring
 
 @testset "Statistics" begin
 
@@ -212,10 +213,7 @@ using Test, TropicalNN, Graphs, MetaGraphsNext
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         result = interior_points(f_1d)
         # Collect all interior points across all regions and components
-        all_pts = [Float64.(pt)
-                   for (_, comps) in result
-                   for comp in comps
-                   for pt in comp]
+        all_pts = [Float64.(pt) for (_, comps) in result for comp in comps for pt in comp]
         # The bounded region [-1, 0] has centroid -0.5; check it appears in the results
         @test any(p ≈ [-0.5] for p in all_pts)
     end

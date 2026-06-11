@@ -153,7 +153,19 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.highs_is_empty(A_feasible, b_feasible) == false
     end
 
-    # Test 9: Full dimensional check
+    # Test 9: Invalid HiGHS options
+    @testset "Invalid HiGHS options" begin
+        @test_throws ArgumentError TropicalNN.highs_is_full_dimensional(
+            Float64[1.0;;], Float64[1.0]; tol = 0.0)
+        @test_throws DimensionMismatch TropicalNN.highs_intersect_is_full_dimensional(
+            zeros(Float64, 0, 1),
+            Float64[],
+            zeros(Float64, 0, 2),
+            Float64[]
+        )
+    end
+
+    # Test 10: Full dimensional check
     @testset "Full dimensional check" begin
         A = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
         b = [1.0; 1.0; 1.0; 1.0]
@@ -162,5 +174,15 @@ using Test, TropicalNN, Oscar
         A_line = [1.0 0.0; -1.0 0.0]
         b_line = [0.0; 0.0]
         @test TropicalNN.highs_is_full_dimensional(A_line, b_line) == false
+
+        A_infeasible_zero = zeros(Float64, 1, 1)
+        b_infeasible_zero = [-1.0]
+        @test TropicalNN.highs_is_empty(A_infeasible_zero, b_infeasible_zero) == true
+        @test TropicalNN.highs_is_full_dimensional(
+            A_infeasible_zero, b_infeasible_zero) == false
+
+        A_tiny_line = [1e-7; -1e-7;;]
+        b_tiny_line = [0.0; 0.0]
+        @test TropicalNN.highs_is_full_dimensional(A_tiny_line, b_tiny_line) == false
     end
 end

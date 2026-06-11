@@ -84,9 +84,11 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
 
         # Check dimensions match
         if size(A, 1) != length(b) || size(A, 1) != length(t)
-            throw(DimensionMismatch(
-                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
-            ))
+            throw(
+                DimensionMismatch(
+                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match.",
+            ),
+            )
         end
 
         if i != 1

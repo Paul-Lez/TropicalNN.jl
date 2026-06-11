@@ -1,37 +1,54 @@
 # This file contains code to compute 
 # the linear regions of tropical Puiseux polynomials and rational functions.
 
+# TODO: perhaps we want to allow this to vary?
+const OSCAR_POLYHEDRON_COEFF_TYPE = Rational{BigInt}
+
+function _constraint_scalar(::Type{Float64}, x)
+    return Float64(Rational(x))
+end
+
+function _constraint_scalar(::Type{OSCAR_POLYHEDRON_COEFF_TYPE}, x)
+    return OSCAR_POLYHEDRON_COEFF_TYPE(Rational(x))
+end
+
+function _constraint_vector(::Type{T}, values) where {T}
+    return T[_constraint_scalar(T, value) for value in values]
+end
+
+function _constraint_matrix(::Type{T}, values) where {T}
+    return Matrix{T}(map(value -> _constraint_scalar(T, value), values))
+end
+
+function _linear_region_constraints(
+        f::AbstractSignomial,
+        i,
+        ::Type{T};
+        include_self::Bool = false,
+        empty_rows::Int = 1
+) where {T}
+    indices = [j for j in Base.eachindex(f) if include_self || j != i]
+    if isempty(indices)
+        return zeros(T, empty_rows, nvars(f)), zeros(T, empty_rows)
+    end
+
+    exp_i = _constraint_vector(T, get_exp(f, i))
+    coeff_i = _constraint_scalar(T, get_coeff(f, i))
+    rows = [_constraint_vector(T, get_exp(f, j)) - exp_i for j in indices]
+    A = Matrix{T}(mapreduce(permutedims, vcat, rows))
+    b = T[coeff_i - _constraint_scalar(T, get_coeff(f, j)) for j in indices]
+    return A, b
+end
+
 @doc raw"""
     polyhedron(f::Signomial, i::Int)
 
 Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f.
-
-!!! note
-    The constraint matrix and right-hand side are converted to `Float64` regardless of the
-    type parameter `T` of `f`. For `T = Rational{BigInt}`, this conversion can silently lose
-    precision when the numerator or denominator are large. Use results involving
-    `Rational{BigInt}` inputs with care.
-
 """
 function polyhedron(f::AbstractSignomial, i)
-    exp_i = get_exp(f, i)
-    coeff_i = get_coeff(f, i)
-    # take A to be the matrix with rows αⱼ - αᵢ for all j ≠ i, where the αᵢ are the exponents of f.
-    rows = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i)
-            for j in Base.eachindex(f) if j != i]
-    # Single-monomial polynomial: the whole R^n is the unique region.
-    # Use a trivially-satisfied constraint (0·x ≤ 0) to keep the Float64 type.
-    if isempty(rows)
-        n = nvars(f)
-        return Oscar.polyhedron(zeros(Float64, 1, n), [0.0])
-    end
-    A = mapreduce(permutedims, vcat, rows)
-    # and b the vector whose j-th entry is f.coeff[αᵢ] - f.coeff[αⱼ] for all j ≠ i.
-    b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j)))
-         for j in Base.eachindex(f) if j != i]
-    # The polyhedron is then the set of points x such that Ax ≤ b.
-    return Oscar.polyhedron(Matrix{Float64}(A), b)
+    A, b = _linear_region_constraints(f, i, OSCAR_POLYHEDRON_COEFF_TYPE)
+    return Oscar.polyhedron(A, b)
 end
 
 @doc raw"""
@@ -42,15 +59,12 @@ is the linear region corresponding to the exponent, and bool is true when this r
 
 """
 function enum_linear_regions(f::AbstractSignomial)
-    linear_regions = Vector{Tuple{Oscar.Polyhedron{Float64}, Bool}}()
-    sizehint!(linear_regions, length(f))
-    for i in Base.eachindex(f)
-        poly = polyhedron(f, i)
+    return map(Base.eachindex(f)) do i
+        region = polyhedron(f, i)
         # add the polyhedron to the list plus a bool saying whether the polyhedron is non-empty
         # TODO: this should be replaced by a check that the polyhedron is full dimensional for performance.
-        push!(linear_regions, (poly, Oscar.is_feasible(poly)))
+        return (region, Oscar.is_feasible(region))
     end
-    return linear_regions
 end
 
 # Computes the number of equivalence classes of the transitive closure of a 

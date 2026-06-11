@@ -346,8 +346,10 @@ function RationalSignomial_identity(n, c)
     output = Vector{RationalSignomial}()
     sizehint!(output, n)
     for i in 1:n
-        push!(output, signomial_to_rational(
-            SignomialMonomial(one(c), [j == i ? 1 : 0 for j in 1:n])))
+        push!(
+            output,
+            signomial_to_rational(SignomialMonomial(one(c), [j == i ? 1 : 0 for j in 1:n]))
+        )
     end
     return output
 end
@@ -489,7 +491,10 @@ end
 #==============================================================================#
 
 # TropicalSemiringElem ^ TropicalSemiringElem
-function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Oscar.TropicalSemiringElem{typeof(max)})
+function Base.:^(
+        a::Oscar.TropicalSemiringElem{typeof(max)},
+        b::Oscar.TropicalSemiringElem{typeof(max)}
+)
     R = tropical_semiring(max)
     return R(Rational(a) * Rational(b))
 end
@@ -602,7 +607,10 @@ end
 Quicksum multiplication of two rational signomials.
 """
 function mul_with_quicksum(f::RationalSignomial, g::RationalSignomial)
-    return RationalSignomial(mul_with_quicksum(f.num, g.num), mul_with_quicksum(f.den, g.den))
+    return RationalSignomial(
+        mul_with_quicksum(f.num, g.num),
+        mul_with_quicksum(f.den, g.den)
+    )
 end
 
 # AbstractSignomial fallback for mul_with_quicksum

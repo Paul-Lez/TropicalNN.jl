@@ -25,11 +25,12 @@ Returns a `Dict` with keys:
 function m_reps(f::AbstractSignomial)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for i in Base.eachindex(f)
-        exp_i = get_exp(f, i)
-        coeff_i = get_coeff(f, i)
-        rows_stat = [collect(get_exp(f, j)) - collect(exp_i) for j in Base.eachindex(f)]
-        A = mapreduce(permutedims, vcat, rows_stat)
-        b = [Rational(coeff_i) - Rational(get_coeff(f, j)) for j in Base.eachindex(f)]
+        A, b = _linear_region_constraints(
+            f,
+            i,
+            OSCAR_POLYHEDRON_COEFF_TYPE;
+            include_self = true
+        )
         p_oscar = Oscar.polyhedron(A, b)
         if Oscar.is_fulldimensional(p_oscar)
             push!(reps["m_reps"], [A, b])
@@ -72,7 +73,7 @@ end
 
 Convert a collection of H-representations (as returned by [`m_reps`](@ref)) into polyhedron objects.
 
-- `oscar=true`: returns `Oscar.Polyhedron` objects (Float64 coefficients, fast).
+- `oscar=true`: returns `Oscar.Polyhedron` objects using exact rational coefficients.
 - `oscar=false` (default): returns `Polyhedra.jl` polyhedra via CDDLib with exact rational arithmetic.
 """
 function polyhedra_from_reps(reps, oscar::Bool = false)
@@ -430,7 +431,11 @@ Counts the number of edges in the graph constructed from the linear regions of t
 """
 function edge_count(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
-        throw(ArgumentError("edge_count is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
+        throw(
+            ArgumentError(
+            "edge_count is only supported for bivariate (2-variable) tropical polynomials or rational maps.",
+        ),
+        )
     end
     return Graphs.ne(get_graph(f))
 end
@@ -486,7 +491,11 @@ Identifies the gradients of the edges emanating from each vertex, along with pro
 """
 function edge_gradients(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
-        throw(ArgumentError("edge_gradients is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
+        throw(
+            ArgumentError(
+            "edge_gradients is only supported for bivariate (2-variable) tropical polynomials or rational maps.",
+        ),
+        )
     end
     return edge_gradients(get_graph(f))
 end
@@ -533,7 +542,11 @@ Calculates the lengths of the edges emanating from each vertex, along with provi
 """
 function edge_lengths(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
-        throw(ArgumentError("edge_lengths is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
+        throw(
+            ArgumentError(
+            "edge_lengths is only supported for bivariate (2-variable) tropical polynomials or rational maps.",
+        ),
+        )
     end
     return edge_lengths(get_graph(f))
 end
@@ -591,7 +604,11 @@ Calculate the direction vector of the edges at the intersection of linear region
 """
 function edge_directions(f::Union{AbstractSignomial, RationalSignomial})
     if nvars(f) != 2
-        throw(ArgumentError("edge_directions is only supported for bivariate (2-variable) tropical polynomials or rational maps."))
+        throw(
+            ArgumentError(
+            "edge_directions is only supported for bivariate (2-variable) tropical polynomials or rational maps.",
+        ),
+        )
     end
     return edge_directions(get_graph(f))
 end

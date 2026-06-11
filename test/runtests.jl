@@ -22,6 +22,8 @@ else
 
         include("./UnitTests/statistics.jl")
 
+        include("./UnitTests/linear_regions_calculation_general.jl")
+
         include("./UnitTests/linear_regions_highs.jl")
 
         include("./UnitTests/exponentiation.jl")

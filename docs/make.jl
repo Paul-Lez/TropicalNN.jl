@@ -7,9 +7,7 @@ makedocs(
     sitename = "TropicalNN.jl",
     authors = "Paul Lezeau et al.",
     modules = [TropicalNN],
-    format = Documenter.HTML(
-        prettyurls = get(ENV, "CI", nothing) == "true",
-    ),
+    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
     pages = [
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",

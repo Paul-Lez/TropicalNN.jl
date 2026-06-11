@@ -12,14 +12,8 @@ function linearmap_matrices(f::AbstractSignomial)
     for i in Base.eachindex(f)
         exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
-        rows_hoff = [Vector{Float64}(get_exp(f, j)) - Vector{Float64}(exp_i)
-                     for j in Base.eachindex(f)]
-        A = Matrix{Float64}(mapreduce(permutedims, vcat, rows_hoff))
-        b = [Float64(Rational(coeff_i)) - Float64(Rational(get_coeff(f, j)))
-             for j in Base.eachindex(f)]
-        p = Oscar.polyhedron(A, b)
         # we only want the linear maps that are realised
-        if Oscar.is_fulldimensional(p)
+        if Oscar.is_fulldimensional(polyhedron(f, i))
             linear_map = [Rational(coeff_i), collect(exp_i)]
             # we are only interested in the unique linear map
             if !(linear_map in linear_maps_acc)

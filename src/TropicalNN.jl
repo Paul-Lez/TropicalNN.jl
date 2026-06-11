@@ -113,6 +113,7 @@ export
 include("tropical_poly_interface.jl")
 include("tropical_number.jl")
 include("linear_regions.jl")
+include("linear_regions_calculation_general.jl")
 include("linear_regions_highs.jl")
 include("mlp_to_trop.jl")
 include("mlp_to_trop_with_elim.jl")

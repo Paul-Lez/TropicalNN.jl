@@ -91,7 +91,9 @@ avg_lower_time=round(sum(lower_times)/length(lower_times), digits = 6)
 avg_exact_time=round(sum(exact_times)/length(exact_times), digits = 6)
 avg_upper_time=round(sum(upper_times)/length(upper_times), digits = 6)
 
-println("Avg time for lower bound $avg_lower_time\nAvg time for exact constant $avg_exact_time\nAvg time for upper bound $avg_upper_time\n")
+println(
+    "Avg time for lower bound $avg_lower_time\nAvg time for exact constant $avg_exact_time\nAvg time for upper bound $avg_upper_time\n",
+)
 
 # The lower and upper bound approximations for tropical polynomials and tropical rational 
 # maps are not as tight, as they are are respectively taken to be the minimum or maximum
