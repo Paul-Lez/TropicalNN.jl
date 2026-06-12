@@ -175,7 +175,7 @@ using Oscar: QQFieldElem, tropical_semiring
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         # polyhedron for monomial index 2 (exponent [1//1]) is the interval [-1, 0]
-        poly = TropicalNN.polyhedron(f_1d, 2)
+        poly = TropicalNN.polyhedron(f_1d, 2, OscarMode())
         pts = TropicalNN.interior_points([poly])
         @test length(pts) == 1
         # centroid of vertices {-1, 0} is -1/2
@@ -185,7 +185,7 @@ using Oscar: QQFieldElem, tropical_semiring
     @testset "interior_points(Array) — multiple polyhedra" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
-        regions = enum_linear_regions(f_1d)
+        regions = enum_linear_regions_general(f_1d; mode = OscarMode())
         polys = [r[1] for r in regions if r[2]]  # all three regions are non-empty
         pts = TropicalNN.interior_points(polys)
         # one interior point per polyhedron

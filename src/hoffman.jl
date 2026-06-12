@@ -13,7 +13,7 @@ function linearmap_matrices(f::AbstractSignomial)
         exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
         # we only want the linear maps that are realised
-        if Oscar.is_fulldimensional(polyhedron(f, i))
+        if Oscar.is_fulldimensional(polyhedron(f, i, OscarMode()))
             linear_map = [Rational(coeff_i), collect(exp_i)]
             # we are only interested in the unique linear map
             if !(linear_map in linear_maps_acc)

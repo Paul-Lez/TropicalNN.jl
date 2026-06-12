@@ -42,11 +42,11 @@ println()
 # ---------------------------------------------------------------------------
 # Step 3: Enumerate linear regions (HiGHS LP backend)
 # ---------------------------------------------------------------------------
-# enum_linear_regions_rat_highs uses JuMP/HiGHS to check feasibility of each
-# candidate region via LP.  It returns a LinearRegions object whose elements
-# are LinearRegion values, each holding one or more (A, b) pairs encoding the
-# convex pieces of that region as {x : Ax ≤ b}.
-regions = enum_linear_regions_rat_highs(f)
+# HiGHSMode uses JuMP/HiGHS to check feasibility of each candidate region via
+# LP. It returns a LinearRegions object whose elements are LinearRegion values,
+# each holding one or more backend region objects encoding convex pieces.
+region_mode = HiGHSMode()
+regions = enum_linear_regions_rat_general(f; mode = region_mode)
 
 println("Linear regions found: ", length(regions))
 println()
@@ -68,13 +68,15 @@ println("First $n_show region(s):")
 for i in 1:n_show
     region = regions[i]
     if length(region) == 1
-        A, b = region[1]
+        A = get_matrix(region[1]; mode = region_mode)
+        b = get_vector(region[1]; mode = region_mode)
         println("  Region $i  (1 convex piece, $(size(A, 1)) constraints)")
         println("    A = ", A)
         println("    b = ", b)
     else
         println("  Region $i  ($(length(region)) disconnected pieces)")
-        for (k, (A, b)) in enumerate(region)
+        for (k, piece) in enumerate(region)
+            A = get_matrix(piece; mode = region_mode)
             println("    Piece $k: $(size(A, 1)) constraints")
         end
     end

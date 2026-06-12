@@ -1,9 +1,10 @@
 using Test, TropicalNN, Oscar
 
 @testset "Main" begin
+    oscar_mode = OscarMode()
     w, b, t = TropicalNN.random_mlp([3, 2, 1])
     trop = mlp_to_trop(w, b, t)[1]
-    @test length(enum_linear_regions_rat(trop)) > 0
+    @test length(enum_linear_regions_rat_general(trop; mode = oscar_mode)) > 0
     R = tropical_semiring(max)
     f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
     # Write down the tropical polynomial 0*X^1*Y^7 + 4*X^0*Y^1 + (-5)*X^9*Y^1
@@ -32,10 +33,10 @@ using Test, TropicalNN, Oscar
     u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
     # and v to be the tropical polynomial 0
     v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    @test length(enum_linear_regions_rat(u / v)) == 2
+    @test length(enum_linear_regions_rat_general(u / v; mode = oscar_mode)) == 2
 
     # test linear regions enumeration — repeated linear map (exists_reps = true)
-    @testset "enum_linear_regions_rat repeated-map path via f/f" begin
+    @testset "enum_linear_regions_rat_general repeated-map path via f/f" begin
         # f/f is the constant tropical function 0 (the multiplicative identity).
         # Every monomial pair (i, i) maps to the same linear map (coefficient 0, exponent 0⃗),
         # while cross-pairs (i, j) with i≠j intersect only on a lower-dimensional wall and
@@ -44,7 +45,7 @@ using Test, TropicalNN, Oscar
         # f = max(x, y) has 2 regions: {x ≥ y} and {y ≥ x}. Both share the same linear
         # map, so they are collected into a single LinearRegion with 2 convex pieces.
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        lr = enum_linear_regions_rat(f / f)
+        lr = enum_linear_regions_rat_general(f / f; mode = oscar_mode)
 
         @test lr isa LinearRegions
         # One distinct linear map → one LinearRegion
@@ -55,8 +56,8 @@ using Test, TropicalNN, Oscar
         @test all(Oscar.is_fulldimensional(p) for p in lr[1].regions)
     end
 
-    # enum_linear_regions_rat repeated-map path — 6 monomials, 1 variable
-    @testset "enum_linear_regions_rat repeated-map path via f/f — 6 monomials" begin
+    # enum_linear_regions_rat_general repeated-map path — 6 monomials, 1 variable
+    @testset "enum_linear_regions_rat_general repeated-map path via f/f — 6 monomials" begin
         # f = max(0, x-1, 2x-4, 3x-9, 4x-16, 5x-25).
         # The coefficients -c² lie on a concave curve, so all 6 monomials are active.
         # Breakpoints at x = 1, 3, 5, 7, 9 produce 6 full-dimensional regions.
@@ -67,15 +68,15 @@ using Test, TropicalNN, Oscar
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
             sorted = false
         )
-        lr6 = enum_linear_regions_rat(f6 / f6)
+        lr6 = enum_linear_regions_rat_general(f6 / f6; mode = oscar_mode)
         @test lr6 isa LinearRegions
         @test length(lr6) == 1
         @test length(lr6[1].regions) == 6
         @test all(Oscar.is_fulldimensional(p) for p in lr6[1].regions)
     end
 
-    # enum_linear_regions_rat repeated-map path — 6 monomials, 2 variables
-    @testset "enum_linear_regions_rat repeated-map path via f/f — 2D, 6 monomials" begin
+    # enum_linear_regions_rat_general repeated-map path — 6 monomials, 2 variables
+    @testset "enum_linear_regions_rat_general repeated-map path via f/f — 2D, 6 monomials" begin
         # f = max(0, y, 2y-1, x, x+y, x+2y-1)
         # This is the tropical product of max(0, x) and max(0, y, 2y-1), so its 6
         # linear regions are the 2×3 grid:
@@ -89,7 +90,7 @@ using Test, TropicalNN, Oscar
                 [1//1, 0//1], [1//1, 1//1], [1//1, 2//1]];
             sorted = false
         )
-        lr6_2d = enum_linear_regions_rat(f6_2d / f6_2d)
+        lr6_2d = enum_linear_regions_rat_general(f6_2d / f6_2d; mode = oscar_mode)
         @test lr6_2d isa LinearRegions
         @test length(lr6_2d) == 1
         @test length(lr6_2d[1].regions) == 6

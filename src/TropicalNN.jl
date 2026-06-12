@@ -69,16 +69,19 @@ export
        mlp_to_trop,
        random_mlp,
        monomial_strong_elim,
+       LinearRegionsCalculationMode,
+       OscarMode,
+       HiGHSMode,
        polyhedron,
-       enum_linear_regions,
+       get_matrix,
+       get_vector,
+       enum_linear_regions_general,
        n_components,
        components,
        LinearRegion,
        LinearRegions,
-       enum_linear_regions_rat,
-       polyhedron_highs,
-       enum_linear_regions_highs,
-       enum_linear_regions_rat_highs, random_pmap, linearmap_matrices,
+       enum_linear_regions_rat_general,
+       random_pmap, linearmap_matrices,
        tilde_matrices,
        tilde_vectors,
        positive_component,
@@ -103,9 +106,7 @@ export
 
 include("tropical_poly_interface.jl")
 include("tropical_number.jl")
-include("linear_regions.jl")
 include("linear_regions_calculation_general.jl")
-include("linear_regions_highs.jl")
 include("mlp_to_trop.jl")
 include("mlp_to_trop_with_elim.jl")
 

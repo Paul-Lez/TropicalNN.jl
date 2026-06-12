@@ -12,7 +12,7 @@ src/
 ├── rat_maps.jl            # Core tropical algebra types and operations
 ├── mlp_to_trop.jl         # MLP to tropical conversion
 ├── mlp_to_trop_with_elim.jl # Conversion with monomial elimination
-├── linear_regions.jl      # Linear region enumeration
+├── linear_regions_calculation_general.jl # Linear region enumeration backends
 ├── statistics.jl          # Statistical analysis of regions
 ├── hoffman.jl             # Hoffman constant computation
 └── visualise.jl           # Plotting utilities (CairoMakie)
@@ -64,10 +64,11 @@ end
 - `mlp_to_trop_with_strong_elim()` - Convert with elimination
 - `mlp_to_trop_with_quicksum_with_strong_elim()` - Combined optimization
 
-### linear_regions.jl - Region Analysis
-- `polyhedron(f, i)` - Get polyhedron for i-th monomial
-- `enum_linear_regions(f)` - Enumerate linear regions of polynomial
-- `enum_linear_regions_rat(f)` - For rational functions
+### linear_regions_calculation_general.jl - Region Analysis
+- `polyhedron(f, i, mode)` - Get backend region for i-th monomial
+- `enum_linear_regions_general(f; mode)` - Enumerate linear-region candidates of a polynomial
+- `enum_linear_regions_rat_general(f; mode)` - Enumerate linear regions of a rational function
+- `OscarMode()` / `HiGHSMode()` - Select exact Oscar or LP-backed HiGHS calculations
 - `components(V, D)` / `n_components(V, D)` - Connected components
 
 ### statistics.jl - Statistical Analysis
@@ -92,7 +93,7 @@ end
 MLP (weights, biases, thresholds)
     ↓ mlp_to_trop()
 Tropical Puiseux Rational
-    ↓ enum_linear_regions_rat()
+    ↓ enum_linear_regions_rat_general(...; mode)
 Linear Regions (Polyhedra)
     ↓
 Statistics / Visualization

@@ -4,9 +4,9 @@
 #
 #   q = max(x, y, x+y) - max(x-y, x+2y)
 #
-# represented as a RationalSignomial.  The linear regions are computed
-# using the HiGHS-based algorithm (enum_linear_regions_rat_highs), which
-# represents each region as an (A, b) pair with {x : Ax ≤ b}.
+# represented as a RationalSignomial.  The linear regions are computed using
+# HiGHSMode(), which represents each region internally by constraints for
+# {x : Ax ≤ b}.
 
 using TropicalNN
 
@@ -33,23 +33,27 @@ q = RationalSignomial(f, g)
 
 # --- Compute linear regions via HiGHS ----------------------------------------
 
-regions = enum_linear_regions_rat_highs(q)
+region_mode = HiGHSMode()
+regions = enum_linear_regions_rat_general(q; mode = region_mode)
 
 println("Tropical rational function:  max(x, y, x+y) - max(x-y, x+2y)")
 println("Number of linear regions: ", length(regions))
 println()
 
 for (i, region) in enumerate(regions)
-    # Each region is a LinearRegion containing one or more (A, b) pairs.
+    # Each region is a LinearRegion containing one or more backend region objects.
     # A single convex piece has length 1; disconnected pieces have length > 1.
     if length(region) == 1
-        A, b = region[1]
+        A = get_matrix(region[1]; mode = region_mode)
+        b = get_vector(region[1]; mode = region_mode)
         println("Region $i:  {x : Ax ≤ b}")
         println("  A = ", A)
         println("  b = ", b)
     else
         println("Region $i:  connected component of $(length(region)) polyhedra")
-        for (k, (A, b)) in enumerate(region)
+        for (k, piece) in enumerate(region)
+            A = get_matrix(piece; mode = region_mode)
+            b = get_vector(piece; mode = region_mode)
             println("  Piece $k:  A = ", A, ",  b = ", b)
         end
     end

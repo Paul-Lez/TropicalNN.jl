@@ -42,12 +42,13 @@ using Test, TropicalNN, Oscar
     end
 end
 
-@testset "enum_linear_regions_rat — constant function" begin
+@testset "enum_linear_regions_rat_general — constant function" begin
     R = tropical_semiring(max)
+    oscar_mode = OscarMode()
 
     f_const = Signomial([R(3)], [[0//1, 0//1]]; sorted = false)
     g_const = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    lr = enum_linear_regions_rat(f_const / g_const)
+    lr = enum_linear_regions_rat_general(f_const / g_const; mode = oscar_mode)
 
     @test length(lr) == 1
     @test length(lr[1].regions) == 1
@@ -55,6 +56,6 @@ end
 
     f2 = Signomial([R(7)], [[0//1, 0//1]]; sorted = false)
     g2 = Signomial([R(2)], [[0//1, 0//1]]; sorted = false)
-    lr2 = enum_linear_regions_rat(f2 / g2)
+    lr2 = enum_linear_regions_rat_general(f2 / g2; mode = oscar_mode)
     @test length(lr2) == 1
 end

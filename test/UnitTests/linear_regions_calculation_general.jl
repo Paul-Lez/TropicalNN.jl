@@ -4,23 +4,14 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
 @testset "Linear Regions General Calculation" begin
     R = tropical_semiring(max)
-    oscar_mode = TropicalNN._Oscar()
-    highs_mode = TropicalNN._HiGHS()
+    oscar_mode = OscarMode()
+    highs_mode = HiGHSMode()
 
     rational_region_signature(regions) = (
         length(regions), sort([length(region) for region in regions]))
     rational_piece_count(regions) = sum([length(region) for region in regions])
-    oscar_full_dimensional_flags(regions) = [Oscar.is_fulldimensional(region[1])
-                                             for region in regions]
     general_full_dimensional_flags(regions, mode) = [TropicalNN.is_full_dimensional(region[1]; mode = mode)
                                                      for region in regions]
-    highs_regions_data(regions) = [(region[1][1], region[1][2], region[2])
-                                   for region in regions]
-    general_highs_regions_data(regions) = [(
-                                               TropicalNN.get_matrix(region[1]; mode = highs_mode),
-                                               TropicalNN.get_vector(region[1]; mode = highs_mode),
-                                               region[2]
-                                           ) for region in regions]
 
     @testset "Polyhedron construction by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -65,30 +56,24 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         oscar_regions = TropicalNN.enum_linear_regions_general(f; mode = oscar_mode)
-        legacy_oscar_regions = enum_linear_regions(f)
 
-        @test length(oscar_regions) == length(legacy_oscar_regions)
+        @test length(oscar_regions) == 2
         @test all(region -> region[2], oscar_regions)
         @test all(region -> region[1] isa Oscar.Polyhedron, oscar_regions)
 
         highs_regions = TropicalNN.enum_linear_regions_general(f; mode = highs_mode)
-        legacy_highs_regions = enum_linear_regions_highs(f)
 
         @test length(oscar_regions) == length(highs_regions)
         @test count(region -> region[2], oscar_regions) ==
               count(region -> region[2], highs_regions)
-        @test length(highs_regions) == length(legacy_highs_regions)
-        @test [region[2] for region in highs_regions] ==
-              [region[2] for region in legacy_highs_regions]
-        @test [TropicalNN.get_matrix(region[1]; mode = highs_mode)
-               for region in highs_regions] ==
-              [region[1][1] for region in legacy_highs_regions]
-        @test [TropicalNN.get_vector(region[1]; mode = highs_mode)
-               for region in highs_regions] ==
-              [region[1][2] for region in legacy_highs_regions]
+        @test [region[2] for region in highs_regions] == [true, true]
+        @test all(region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa Matrix{Float64},
+            highs_regions)
+        @test all(region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa Vector{Float64},
+            highs_regions)
     end
 
-    @testset "Polynomial compatibility with legacy algorithms on edge cases" begin
+    @testset "Polynomial mode enumeration on edge cases" begin
         cases = [
             (
                 "single monomial",
@@ -112,32 +97,21 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         for (label, f, expected_feasible, expected_full_dimensional) in cases
             @testset "$label" begin
-                legacy_oscar_regions = enum_linear_regions(f)
                 general_oscar_regions = TropicalNN.enum_linear_regions_general(f; mode = oscar_mode)
-                legacy_highs_regions = enum_linear_regions_highs(f)
                 general_highs_regions = TropicalNN.enum_linear_regions_general(f; mode = highs_mode)
 
-                @test [region[2] for region in general_oscar_regions] ==
-                      [region[2] for region in legacy_oscar_regions]
-                @test [region[2] for region in general_highs_regions] ==
-                      [region[2] for region in legacy_highs_regions]
                 @test [region[2] for region in general_oscar_regions] == expected_feasible
                 @test [region[2] for region in general_highs_regions] == expected_feasible
 
-                @test general_full_dimensional_flags(general_oscar_regions, oscar_mode) ==
-                      oscar_full_dimensional_flags(legacy_oscar_regions)
                 @test general_full_dimensional_flags(general_highs_regions, highs_mode) ==
                       expected_full_dimensional
                 @test general_full_dimensional_flags(general_oscar_regions, oscar_mode) ==
                       expected_full_dimensional
-
-                @test general_highs_regions_data(general_highs_regions) ==
-                      highs_regions_data(legacy_highs_regions)
             end
         end
     end
 
-    @testset "Rational compatibility with legacy algorithms" begin
+    @testset "Rational mode enumeration" begin
         constant_1d = Signomial([R(0)], [[0//1]]; sorted = false)
         constant_2d = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         max_xy = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -170,15 +144,9 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         for (label, q, expected_signature) in cases
             @testset "$label" begin
-                legacy_oscar_regions = enum_linear_regions_rat(q)
                 general_oscar_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = oscar_mode)
-                legacy_highs_regions = enum_linear_regions_rat_highs(q)
                 general_highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
 
-                @test rational_region_signature(general_oscar_regions) ==
-                      rational_region_signature(legacy_oscar_regions)
-                @test rational_region_signature(general_highs_regions) ==
-                      rational_region_signature(legacy_highs_regions)
                 @test rational_region_signature(general_oscar_regions) == expected_signature
                 @test rational_region_signature(general_highs_regions) == expected_signature
                 @test rational_region_signature(general_oscar_regions) ==
@@ -198,23 +166,19 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         end
     end
 
-    @testset "Disconnected repeated-map pieces match legacy HiGHS component splitting" begin
+    @testset "Disconnected repeated-map pieces match public HiGHS component splitting" begin
         f = Signomial([R(0), R(0), R(-2)], [[0//1], [1//1], [2//1]]; sorted = false)
         g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
         q = f / g
 
-        legacy_oscar_regions = enum_linear_regions_rat(q)
-        legacy_highs_regions = enum_linear_regions_rat_highs(q)
         general_oscar_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = oscar_mode)
         general_highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
 
-        @test rational_region_signature(legacy_highs_regions) == (4, [1, 1, 1, 1])
-        @test rational_region_signature(general_highs_regions) ==
-              rational_region_signature(legacy_highs_regions)
+        @test rational_region_signature(general_highs_regions) == (4, [1, 1, 1, 1])
         @test rational_region_signature(general_oscar_regions) ==
-              rational_region_signature(legacy_highs_regions)
+              rational_region_signature(general_highs_regions)
         @test rational_piece_count(general_oscar_regions) ==
-              rational_piece_count(legacy_oscar_regions)
+              rational_piece_count(general_highs_regions)
     end
 
     @testset "HiGHS rational region enumeration" begin
@@ -225,7 +189,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
 
         @test highs_regions isa LinearRegions
-        @test length(highs_regions) == length(enum_linear_regions_rat_highs(q))
+        @test length(highs_regions) == 2
         @test sort([length(region) for region in highs_regions]) == [1, 1]
         @test all(
             TropicalNN.is_full_dimensional(piece; mode = highs_mode)

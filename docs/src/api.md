@@ -42,12 +42,14 @@ monomial_strong_elim
 ## Linear Regions
 
 ```@docs
+LinearRegionsCalculationMode
+OscarMode
+HiGHSMode
 polyhedron
-enum_linear_regions
-enum_linear_regions_rat
-polyhedron_highs
-enum_linear_regions_highs
-enum_linear_regions_rat_highs
+get_matrix
+get_vector
+enum_linear_regions_general
+enum_linear_regions_rat_general
 components
 ```
 

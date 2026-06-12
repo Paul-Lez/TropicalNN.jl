@@ -15,7 +15,7 @@ function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool = true) wh
         keep = Vector{Bool}(undef, n)
 
         Threads.@threads for i in 1:n
-            poly = polyhedron(f, i)
+            poly = polyhedron(f, i, OscarMode())
             keep[i] = Oscar.is_fulldimensional(poly)
         end
 
@@ -40,7 +40,7 @@ function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool = true) wh
         new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
 
         for i in Base.eachindex(f)
-            poly = polyhedron(f, i)
+            poly = polyhedron(f, i, OscarMode())
             if Oscar.is_fulldimensional(poly)
                 e = Vector{T}(get_exp(f, i))
                 push!(new_exp, e)

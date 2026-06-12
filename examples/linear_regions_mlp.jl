@@ -5,8 +5,7 @@
 #   Layer 2: W = [1 -1],     b = [0],    threshold = [0]      (ReLU)
 #
 # The MLP is first converted to a tropical Puiseux rational function via
-# mlp_to_trop, then its linear regions are enumerated using the HiGHS-based
-# algorithm (enum_linear_regions_rat_highs).
+# mlp_to_trop, then its linear regions are enumerated using HiGHSMode().
 
 using TropicalNN
 
@@ -32,22 +31,26 @@ println()
 
 # --- Compute linear regions via HiGHS ----------------------------------------
 
-regions = enum_linear_regions_rat_highs(f)
+region_mode = HiGHSMode()
+regions = enum_linear_regions_rat_general(f; mode = region_mode)
 
 println("Number of linear regions: ", length(regions))
 println()
 
 for (i, region) in enumerate(regions)
-    # Each region is a LinearRegion containing one or more (A, b) pairs.
+    # Each region is a LinearRegion containing one or more backend region objects.
     # A single convex piece has length 1; disconnected pieces have length > 1.
     if length(region) == 1
-        A, b = region[1]
+        A = get_matrix(region[1]; mode = region_mode)
+        b = get_vector(region[1]; mode = region_mode)
         println("Region $i:  {x : Ax ≤ b}")
         println("  A = ", A)
         println("  b = ", b)
     else
         println("Region $i:  connected component of $(length(region)) polyhedra")
-        for (k, (A, b)) in enumerate(region)
+        for (k, piece) in enumerate(region)
+            A = get_matrix(piece; mode = region_mode)
+            b = get_vector(piece; mode = region_mode)
             println("  Piece $k:  A = ", A, ",  b = ", b)
         end
     end
