@@ -27,12 +27,12 @@ println()
 #   f = max(x, 2y, x + (1/2)y)        in two variables
 #   g = max((1/2)x + y, 3y)
 
-f = TropicalPuiseuxPoly(
+f = Signomial(
     [0, 0, 0],
     [Rational{Int64}[1, 0], Rational{Int64}[0, 2], Rational{Int64}[1, 1 // 2]]
 )
 
-g = TropicalPuiseuxPoly(
+g = Signomial(
     [0, 0],
     [Rational{Int64}[1 // 2, 1], Rational{Int64}[0, 3]]
 )
@@ -86,8 +86,8 @@ println()
 #   p = f / g
 #   r = (x + y) / max(x, y)
 
-num2 = TropicalPuiseuxPoly([0], [Rational{Int64}[1, 1]])
-den2 = TropicalPuiseuxPoly([0, 0], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]])
+num2 = Signomial([0], [Rational{Int64}[1, 1]])
+den2 = Signomial([0, 0], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]])
 
 p = f / g   # same as q_rat above
 r = num2 / den2
@@ -124,9 +124,9 @@ println()
 # on them produces exact results (no rounding noise).
 # Coefficients are still integers (the additive shift in max-plus algebra).
 
-a = TropicalPuiseuxPoly([0, 0, 0], [[1.5, 0.0], [0.0, 0.5], [1.0, 0.25]])
+a = Signomial([0, 0, 0], [[1.5, 0.0], [0.0, 0.5], [1.0, 0.25]])
 
-b = TropicalPuiseuxPoly([0, 0], [[0.5, 0.5], [0.0, 1.5]])
+b = Signomial([0, 0], [[0.5, 0.5], [0.0, 1.5]])
 
 println("a = ", a)
 println("b = ", b)

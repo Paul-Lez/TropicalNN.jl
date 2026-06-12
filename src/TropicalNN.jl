@@ -2,8 +2,9 @@
     TropicalNN
 
 Tools for tropical Puiseux polynomials, tropical rational functions, and ReLU
-MLP conversion. The main exported types are `Signomial` and `RationalSignomial`;
-`TropicalPuiseuxPoly` and `TropicalPuiseuxRational` are aliases for these names.
+MLP conversion. The main exported polynomial constructor is
+`Signomial`, and the main exported rational-function type is
+`RationalSignomial`.
 """
 module TropicalNN
 
@@ -31,9 +32,8 @@ export
        AbstractSignomial,
        SignomialStatic,
        SignomialMatrix,
-       OptimalTropicalPoly,
-# Primary names (used throughout the module)
        Signomial,
+# Primary names (used throughout the module)
        RationalSignomial,
        Signomial_const,
        Signomial_zero,
@@ -50,15 +50,6 @@ export
        exponents,
        coefficients,
        monomial_pairs,
-       TropicalPuiseuxPoly,
-       TropicalPuiseuxRational,
-       TropicalPuiseuxPoly_const,
-       TropicalPuiseuxPoly_zero,
-       TropicalPuiseuxPoly_one,
-       TropicalPuiseuxMonomial,
-       TropicalPuiseuxRational_identity,
-       TropicalPuiseuxRational_zero,
-       TropicalPuiseuxRational_one,
        string,
        evaluate,
        +,
@@ -122,18 +113,4 @@ include("hoffman.jl")
 
 include("statistics.jl")
 
-# ---------------------------------------------------------------------------
-# Paper-consistent type and function aliases.
-# The publication uses TropicalPuiseuxPoly / TropicalPuiseuxRational;
-# both names resolve to exactly the same types and functions.
-# ---------------------------------------------------------------------------
-const TropicalPuiseuxPoly = Signomial
-const TropicalPuiseuxRational = RationalSignomial
-const TropicalPuiseuxPoly_const = Signomial_const
-const TropicalPuiseuxPoly_zero = Signomial_zero
-const TropicalPuiseuxPoly_one = Signomial_one
-const TropicalPuiseuxMonomial = SignomialMonomial
-const TropicalPuiseuxRational_identity = RationalSignomial_identity
-const TropicalPuiseuxRational_zero = RationalSignomial_zero
-const TropicalPuiseuxRational_one = RationalSignomial_one
 end

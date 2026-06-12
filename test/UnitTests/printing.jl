@@ -21,7 +21,8 @@ using Test, TropicalNN, Oscar
     @test contains(s2, "x₁")
     @test contains(s2, "x₂")
 
-    f_empty = Signomial(Dict{Vector{Rational{Int64}}, eltype(values(f0.coeff))}(),
+    f_empty = Signomial(
+        Dict{Vector{Rational{Int64}}, eltype(values(f0.coeff))}(),
         Vector{Vector{Rational{Int64}}}())
     @test sprint(show, f_empty) == "max()"
 

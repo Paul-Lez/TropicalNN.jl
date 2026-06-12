@@ -57,10 +57,10 @@ end
 
 Return the convention (min or max) of the tropical number.
 """
-Oscar.convention(::TropicalNumber{typeof(min), T}) where {T} = min
-Oscar.convention(::TropicalNumber{typeof(max), T}) where {T} = max
-Oscar.convention(::Type{TropicalNumber{typeof(min), T}}) where {T} = min
-Oscar.convention(::Type{TropicalNumber{typeof(max), T}}) where {T} = max
+Oscar.convention(::TropicalMin{T}) where {T} = min
+Oscar.convention(::TropicalMax{T}) where {T} = max
+Oscar.convention(::Type{TropicalMin{T}}) where {T} = min
+Oscar.convention(::Type{TropicalMax{T}}) where {T} = max
 
 # ==============================================================================
 # Tropical arithmetic (overload standard operators)
@@ -71,14 +71,20 @@ Oscar.convention(::Type{TropicalNumber{typeof(max), T}}) where {T} = max
 
 Tropical addition in min-plus semiring: returns minimum.
 """
-Base.@inline Base.:+(x::TropicalMin{T}, y::TropicalMin{T}) where {T} = TropicalMin{T}(min(x.value, y.value))
+function Base.:+(x::TropicalMin{T},
+        y::TropicalMin{T}) where {T}
+    return TropicalMin{T}(min(x.value, y.value))
+end
 
 """
     +(x::TropicalMax, y::TropicalMax)
 
 Tropical addition in max-plus semiring: returns maximum.
 """
-Base.@inline Base.:+(x::TropicalMax{T}, y::TropicalMax{T}) where {T} = TropicalMax{T}(max(x.value, y.value))
+function Base.:+(x::TropicalMax{T},
+        y::TropicalMax{T}) where {T}
+    return TropicalMax{T}(max(x.value, y.value))
+end
 
 """
     *(x::TropicalNumber, y::TropicalNumber)
@@ -119,8 +125,12 @@ Base.:-(x::TropicalNumber{C, T}) where {C, T} = TropicalNumber{C, T}(-x.value)
 
 Return the tropical zero (additive identity) for min-plus semiring: +∞
 """
-tropical_inf(::Type{TropicalMin{T}}) where {T} = TropicalMin{T}(typemax(Rational{T}))
-tropical_inf(::Type{TropicalMax{T}}) where {T} = TropicalMax{T}(typemin(Rational{T}))
+function tropical_inf(::Type{TropicalMin{T}}) where {T}
+    TropicalMin{T}(typemax(Rational{T}))
+end
+function tropical_inf(::Type{TropicalMax{T}}) where {T}
+    TropicalMax{T}(typemin(Rational{T}))
+end
 
 """
     isinf(x::TropicalNumber)
@@ -146,8 +156,12 @@ Base.isfinite(x::TropicalNumber) = !isinf(x)
 
 Tropical zero (additive identity): +∞ for min, -∞ for max
 """
-Base.zero(::Type{TropicalMin{T}}) where {T} = tropical_inf(TropicalMin{T})
-Base.zero(::Type{TropicalMax{T}}) where {T} = tropical_inf(TropicalMax{T})
+function Base.zero(::Type{TropicalMin{T}}) where {T}
+    tropical_inf(TropicalMin{T})
+end
+function Base.zero(::Type{TropicalMax{T}}) where {T}
+    tropical_inf(TropicalMax{T})
+end
 Base.zero(x::TropicalNumber) = zero(typeof(x))
 
 """

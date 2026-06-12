@@ -128,7 +128,7 @@ function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Flo
 end
 
 @doc raw"""
-    polyhedron_highs(f::Signomial, i::Int)
+    polyhedron_highs(f::AbstractSignomial, i::Int)
 
 Return `(A, b)` for the region where the `i`th monomial of `f` dominates,
 encoded as `{x : Ax <= b}`.
@@ -140,7 +140,7 @@ function polyhedron_highs(f::AbstractSignomial, i)
 end
 
 @doc raw"""
-    enum_linear_regions_highs(f::Signomial; tol=HIGHS_DEFAULT_TOL, solver="hipo")
+    enum_linear_regions_highs(f::AbstractSignomial; tol=HIGHS_DEFAULT_TOL, solver="hipo")
 
 Return `((A, b), is_feasible)` for each monomial region of `f`, using HiGHS
 for feasibility checks. `(A, b)` encodes `{x : Ax <= b}`.

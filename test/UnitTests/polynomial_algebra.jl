@@ -29,7 +29,9 @@ using Test, TropicalNN, Oscar
         @test h2.coeff[Rational{Int64}[0, 1]] == R(7)  # max(3, 7) = 7
 
         # Test 4: Commutativity
-        f4 = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
+        f4 = Signomial(
+            [R(1), R(2), R(3)], [
+                [1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
         g4 = Signomial([R(4), R(5)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
         @test (f4 + g4).exp == (g4 + f4).exp
         @test (f4 + g4).coeff == (g4 + f4).coeff
@@ -65,7 +67,9 @@ using Test, TropicalNN, Oscar
 
         # Test 3: Commutativity
         f3 = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        g3 = Signomial([R(3), R(4), R(5)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
+        g3 = Signomial(
+            [R(3), R(4), R(5)], [
+                [1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
         left = f3 * g3
         right = g3 * f3
         @test Set(left.exp) == Set(right.exp)
@@ -115,7 +119,8 @@ using Test, TropicalNN, Oscar
         @test length(result_flt.exp) >= 2
 
         # Test 4: Quicksum with many polynomials
-        many_polys = [Signomial([R(i)], [[i//1, 0//1]]; sorted = false) for i in 1:10]
+        many_polys = [Signomial([R(i)], [[i//1, 0//1]]; sorted = false)
+                      for i in 1:10]
         result_many = TropicalNN.quicksum(many_polys)
         @test length(result_many.exp) == 10  # All unique monomials
 
@@ -158,7 +163,9 @@ using Test, TropicalNN, Oscar
     @testset "Polynomial Evaluation" begin
         # f = max(1 + x₁, 2 + x₂, 3 + x₁ + x₂)
         # at [R(2), R(3)]: max(1+2, 2+3, 3+2+3) = max(3, 5, 8) = 8
-        f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
+        f = Signomial(
+            [R(1), R(2), R(3)], [
+                [1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
         @test TropicalNN.evaluate(f, [R(2), R(3)]) == R(8)
 
         # at [R(5), R(0)]: max(1+5, 2+0, 3+5+0) = max(6, 2, 8) = 8
@@ -191,7 +198,9 @@ using Test, TropicalNN, Oscar
         # Build a polynomial with one tropical-zero coefficient by summing f + (-f) for one monomial.
         # tropical zero = zero(R(0)) = R(-Inf)
         tropical_zero = zero(R(0))
-        g_with_zero = Signomial([tropical_zero, R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
+        g_with_zero = Signomial(
+            [tropical_zero, R(2)], [
+                [1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g_with_zero_dedup = TropicalNN.dedup_monomials(g_with_zero)
         @test length(g_with_zero_dedup.exp) == 1
         @test g_with_zero_dedup.coeff[[0//1, 1//1]] == R(2)
@@ -235,13 +244,15 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Type Consistency" begin
         # Test 1: Rational{Int64} operations maintain type
-        f_r64 = Signomial([R(1), R(2)], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]]; sorted = false)
+        f_r64 = Signomial(
+            [R(1), R(2)], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]]; sorted = false)
         g_r64 = Signomial([R(3)], [Rational{Int64}[1, 1]]; sorted = false)
         h_r64 = f_r64 + g_r64
         @test eltype(h_r64.exp[1]) == Rational{Int64}
 
         # Test 2: Rational{BigInt} operations maintain type
-        f_rbig = Signomial([R(1), R(2)], [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]; sorted = false)
+        f_rbig = Signomial(
+            [R(1), R(2)], [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]; sorted = false)
         g_rbig = Signomial([R(3)], [Rational{BigInt}[1, 1]]; sorted = false)
         h_rbig = f_rbig + g_rbig
         @test eltype(h_rbig.exp[1]) == Rational{BigInt}

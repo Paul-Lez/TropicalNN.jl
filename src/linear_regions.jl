@@ -41,7 +41,7 @@ function _linear_region_constraints(
 end
 
 @doc raw"""
-    polyhedron(f::Signomial, i::Int)
+    polyhedron(f::AbstractSignomial, i::Int)
 
 Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f.
@@ -52,7 +52,7 @@ function polyhedron(f::AbstractSignomial, i)
 end
 
 @doc raw"""
-    enum_linear_regions(f::Signomial)
+    enum_linear_regions(f::AbstractSignomial)
 
 Outputs an array of tuples (poly, bool) indexed by the same set as the exponents of f. The tuple element poly
 is the linear region corresponding to the exponent, and bool is true when this region is nonemtpy.

@@ -62,7 +62,7 @@ Base.:^(f::AbstractSignomial, n::Int) = f^Base.Rational(n)
 Create a constant polynomial in n variables.
 """
 function poly_const(n::Int, c::Oscar.TropicalSemiringElem, ::Type{T} = Float64) where {T}
-    return OptimalTropicalPoly([c], [zeros(T, n)], true)
+    return Signomial([c], [zeros(T, n)], true)
 end
 
 """
@@ -89,7 +89,7 @@ end
 Create a monomial polynomial.
 """
 function poly_monomial(c::Oscar.TropicalSemiringElem, exp::Vector{T}) where {T}
-    return OptimalTropicalPoly([c], [exp], true)
+    return Signomial([c], [exp], true)
 end
 
 #==============================================================================#
@@ -103,15 +103,15 @@ Base.repr(f::AbstractSignomial) = string(f)
 #==============================================================================#
 
 # Keyword-argument convenience wrappers (preserves API compatibility)
-function OptimalTropicalPoly(
+function Signomial(
         coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
         exp_vecs::Vector{<:AbstractVector{T}};
         sorted::Bool = false
 ) where {T}
-    return OptimalTropicalPoly(coeffs, [Vector{T}(e) for e in exp_vecs], sorted)
+    return Signomial(coeffs, [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
-function OptimalTropicalPoly(
+function Signomial(
         coeff_dict::Dict{<:AbstractVector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
         exp_vecs::Vector{<:AbstractVector{T}};
         sorted::Bool = false
@@ -120,40 +120,40 @@ function OptimalTropicalPoly(
     plain_dict = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}(
         Vector{T}(k) => v for (k, v) in coeff_dict
     )
-    return OptimalTropicalPoly(plain_dict, plain_exps, sorted)
+    return Signomial(plain_dict, plain_exps, sorted)
 end
 
 # Convenience constructor: plain Real coefficients → wrapped in tropical semiring
-function OptimalTropicalPoly(
+function Signomial(
         coeffs::Vector{<:Real},
         exp_vecs::Vector{<:AbstractVector{T}};
         sorted::Bool = false
 ) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly(
+    return Signomial(
         Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
         [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
-function OptimalTropicalPoly(
+function Signomial(
         coeffs::Vector{<:Real},
         exp_vecs::Vector{<:AbstractVector{T}},
         sorted::Bool
 ) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly(
+    return Signomial(
         Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
         [Vector{T}(e) for e in exp_vecs], sorted)
 end
 
 """
-    OptimalTropicalPoly(coeff, exp, sorted=false)
+    Signomial(coeff, exp, sorted=false)
 
 Construct a tropical Puiseux polynomial from coefficients and exponent vectors.
 For dimensions 1-5 this returns a `SignomialStatic`; for larger dimensions it
 returns a `SignomialMatrix`.
 """
-function OptimalTropicalPoly(
+function Signomial(
         coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
         exp_vecs::Vector{Vector{T}},
         sorted::Bool = false
@@ -181,20 +181,20 @@ function OptimalTropicalPoly(
 end
 
 # Convenience constructor from Dict
-function OptimalTropicalPoly(
+function Signomial(
         coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
         exp_vecs::Vector{Vector{T}},
         sorted::Bool = false
 ) where {T}
     coeffs = [coeff_dict[e] for e in exp_vecs]
-    return OptimalTropicalPoly(coeffs, exp_vecs, sorted)
+    return Signomial(coeffs, exp_vecs, sorted)
 end
 
 #==============================================================================#
 #                    CONVERSION BETWEEN REPRESENTATIONS                         #
 #==============================================================================#
 
-# Note: Conversion functions to/from baseline Signomial are defined
+# Note: Conversion functions to/from the baseline representation are defined
 # in a separate extension file that loads when TropicalNN is available.
 # For standalone use, these representations work independently.
 
@@ -218,8 +218,8 @@ end
 
 # Constructor from numerator and denominator data
 function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted = false)
-    num = OptimalTropicalPoly(num_coeffs, num_exp, sorted)
-    den = OptimalTropicalPoly(den_coeffs, den_exp, sorted)
+    num = Signomial(num_coeffs, num_exp, sorted)
+    den = Signomial(den_coeffs, den_exp, sorted)
     return RationalSignomial(num, den)
 end
 
@@ -249,22 +249,10 @@ end
 export AbstractSignomial
 export SignomialStatic, SignomialMatrix
 export RationalSignomial
-export OptimalTropicalPoly, OptimalTropicalRational
+export Signomial, OptimalTropicalRational
 export get_exp, get_coeff, eval_poly, eval_rational
 export quicksum, mul_with_quicksum, comp
 export poly_const, poly_zero, poly_one, poly_monomial
-
-#==============================================================================#
-#                    USER-FACING CONSTRUCTOR ALIAS                              #
-#==============================================================================#
-
-"""
-    Signomial(coeffs, exp_vecs, sorted=false)
-    Signomial(coeff_dict, exp_vecs, sorted=false)
-
-Alias for `OptimalTropicalPoly`.
-"""
-const Signomial = OptimalTropicalPoly
 
 #==============================================================================#
 #                    ADDITIONAL ACCESSOR FUNCTIONS                              #
@@ -290,7 +278,7 @@ Construct the constant `c` as a signomial in `n` variables.
 `f` is used only to infer the exponent numeric type `T`.
 """
 function Signomial_const(n, c, f::AbstractSignomial{T}) where {T}
-    return OptimalTropicalPoly([c], [zeros(T, n)], true)
+    return Signomial([c], [zeros(T, n)], true)
 end
 
 """
@@ -319,7 +307,7 @@ end
 Construct a single-monomial signomial with coefficient `c` and exponent vector `exp`.
 """
 function SignomialMonomial(c, exp::Vector{T}) where {T}
-    return OptimalTropicalPoly([c], [exp], true)
+    return Signomial([c], [exp], true)
 end
 
 #==============================================================================#
@@ -458,7 +446,7 @@ function dedup_monomials(f::AbstractSignomial)
     end
     # Convert SVector to plain Vector for the smart constructor
     plain_exps = [Vector(e) for e in new_exps]
-    return OptimalTropicalPoly(new_coeffs, plain_exps, true)
+    return Signomial(new_coeffs, plain_exps, true)
 end
 
 function dedup_monomials(f::RationalSignomial)
@@ -791,10 +779,10 @@ end
 
 function Base.zero(::Type{<:AbstractSignomial{T}}, n::Int) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly([zero(R(0))], [zeros(T, n)], true)
+    return Signomial([zero(R(0))], [zeros(T, n)], true)
 end
 
 function Base.one(::Type{<:AbstractSignomial{T}}, n::Int) where {T}
     R = Oscar.tropical_semiring(max)
-    return OptimalTropicalPoly([one(R(0))], [zeros(T, n)], true)
+    return Signomial([one(R(0))], [zeros(T, n)], true)
 end

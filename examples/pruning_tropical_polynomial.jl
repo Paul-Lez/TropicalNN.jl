@@ -1,4 +1,4 @@
-# Example: pruning a TropicalPuiseux polynomial
+# Example: pruning a tropical polynomial
 #
 # We define the tropical Puiseux polynomial
 #
@@ -27,7 +27,7 @@ using TropicalNN
 exps = [[1, 0], [0, 1], [2, 2], [1, 1], [2, 0], [0, 2]]
 coeffs = [0, 0, 0, 0, 0, 0]
 
-f = TropicalPuiseuxPoly(coeffs, exps)
+f = Signomial(coeffs, exps)
 
 println("Original polynomial:")
 println("  Number of monomials: ", monomial_count(f))

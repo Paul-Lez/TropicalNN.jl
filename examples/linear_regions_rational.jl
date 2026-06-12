@@ -4,7 +4,7 @@
 #
 #   q = max(x, y, x+y) - max(x-y, x+2y)
 #
-# represented as a TropicalPuiseuxRational.  The linear regions are computed
+# represented as a RationalSignomial.  The linear regions are computed
 # using the HiGHS-based algorithm (enum_linear_regions_rat_highs), which
 # represents each region as an (A, b) pair with {x : Ax ≤ b}.
 
@@ -17,7 +17,7 @@ using TropicalNN
 
 num_exps = [[1, 0], [0, 1], [1, 1]]
 num_coeffs = [0, 0, 0]
-f = TropicalPuiseuxPoly(num_coeffs, num_exps)
+f = Signomial(num_coeffs, num_exps)
 
 # --- Denominator: max(x-y, x+2y) ---------------------------------------------
 #   exponent [1, -1]  →  x - y
@@ -25,11 +25,11 @@ f = TropicalPuiseuxPoly(num_coeffs, num_exps)
 
 den_exps = [[1, -1], [1, 2]]
 den_coeffs = [0, 0]
-g = TropicalPuiseuxPoly(den_coeffs, den_exps)
+g = Signomial(den_coeffs, den_exps)
 
 # --- Rational function -------------------------------------------------------
 
-q = TropicalPuiseuxRational(f, g)
+q = RationalSignomial(f, g)
 
 # --- Compute linear regions via HiGHS ----------------------------------------
 
