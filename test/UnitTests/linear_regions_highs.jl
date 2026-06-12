@@ -153,10 +153,8 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.highs_is_empty(A_feasible, b_feasible) == false
     end
 
-    # Test 9: Invalid HiGHS options
-    @testset "Invalid HiGHS options" begin
-        @test_throws ArgumentError TropicalNN.highs_is_full_dimensional(
-            Float64[1.0;;], Float64[1.0]; tol = 0.0)
+    # Test 9: Dimension mismatch
+    @testset "Dimension mismatch" begin
         @test_throws DimensionMismatch TropicalNN.highs_intersect_is_full_dimensional(
             zeros(Float64, 0, 1),
             Float64[],

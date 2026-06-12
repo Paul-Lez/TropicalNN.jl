@@ -61,7 +61,6 @@ function highs_is_full_dimensional(
         tol = HIGHS_DEFAULT_TOL,
         solver = "hipo"
 )
-
     m, n = size(A)
 
     # Filter out exactly trivial constraints. Rows with small nonzero entries
