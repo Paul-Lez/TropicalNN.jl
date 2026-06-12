@@ -11,7 +11,7 @@ function intersect_reps(rep_1, rep_2)
 end
 
 """
-    m_reps(f::Signomial) -> Dict
+    m_reps(f::AbstractSignomial) -> Dict
 
 Compute the H-representation `[A, b]` for every full-dimensional monomial region of the tropical
 polynomial `f`.  Each region is the polyhedron `{x : Ax ≤ b}` where row `j` of `A` is
@@ -45,7 +45,7 @@ end
 
 Compute the H-representation for every full-dimensional region of the tropical rational function
 `f = num/den`.  Each region is the intersection of a monomial region of the numerator with a
-monomial region of the denominator (see the `Signomial` overload for details).
+monomial region of the denominator (see the `AbstractSignomial` overload for details).
 
 Returns a `Dict` with keys:
 - `"m_reps"`: `Vector` of `[A, b]` pairs encoding the intersection polyhedra.
@@ -91,7 +91,7 @@ end
 Extract the affine linear map `[constant, exponent_vector]` that `f` realises on each region
 identified by `f_indices` (as returned by [`m_reps`](@ref)).
 
-For a `Signomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
+For an `AbstractSignomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
 For a `RationalSignomial`, it is `(c_num(αᵢ) - c_den(αⱼ)) + (αᵢ - αⱼ) · x` for index pair `[i, j]`.
 """
 function get_linear_maps(f::Union{AbstractSignomial, RationalSignomial}, f_indices)
@@ -160,7 +160,7 @@ Applies a statistic function to a tropical polynomial or tropical rational map b
 
 # Arguments
 - `statistic::Function`: Function to apply to linear regions (e.g., `length` to count regions)
-- `f::Union{Signomial, RationalSignomial}`: The tropical function to analyze
+- `f::Union{AbstractSignomial, RationalSignomial}`: The tropical function to analyze
 
 # Returns
 - Result of applying `statistic` to the identified linear regions

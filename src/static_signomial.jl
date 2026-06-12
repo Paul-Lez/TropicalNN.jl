@@ -278,7 +278,7 @@ function comp(f::SignomialStatic{T, N}, G::Vector{<:AbstractSignomial}) where {T
     @assert length(G) == N "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
-    zero_poly = OptimalTropicalPoly(
+    zero_poly = Signomial(
         [zero(first(values(f.coeff)))],
         [zeros(T, nvars(G[1]))],
         true
@@ -288,7 +288,7 @@ function comp(f::SignomialStatic{T, N}, G::Vector{<:AbstractSignomial}) where {T
 
     # Evaluate monomial-wise
     for (exp, coeff) in f.coeff
-        term_poly = OptimalTropicalPoly(
+        term_poly = Signomial(
             [one(coeff)],
             [zeros(T, nvars(G[1]))],
             true

@@ -195,7 +195,7 @@ using Oscar: QQFieldElem, tropical_semiring
     @testset "interior_points(Dict) — exercises the fixed code path" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
-        # interior_points(Signomial) routes through interior_points(Dict)
+        # interior_points(AbstractSignomial) routes through interior_points(Dict)
         # via map_statistic → separate_components → interior_points(Dict)
         result = interior_points(f_1d)
         @test result isa Dict

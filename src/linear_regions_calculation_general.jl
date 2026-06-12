@@ -68,7 +68,7 @@ function is_full_dimensional(region::_Polyhedra; mode::_HiGHS)
 end
 
 @doc raw"""
-    polyhedron(f::Signomial, i::Int)
+    polyhedron(f::AbstractSignomial, i::Int)
 
 Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f.

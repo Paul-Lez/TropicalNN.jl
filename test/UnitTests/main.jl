@@ -14,7 +14,8 @@ using Test, TropicalNN, Oscar
         [Rational{Int64}[0, 1], Rational{Int64}[1, 0], Rational{Int64}[1, 1],
             Rational{Int64}[1, 7], Rational{Int64}[9, 1]]; sorted = true)
     @test f + g == expected_sum
-    expected_prod = Signomial([R(6), R(5), R(7), R(2), R(1), R(3), R(-3), R(-4), R(-2)],
+    expected_prod = Signomial(
+        [R(6), R(5), R(7), R(2), R(1), R(3), R(-3), R(-4), R(-2)],
         [Rational{Int64}[0, 2], Rational{Int64}[1, 1],
             Rational{Int64}[1, 2], Rational{Int64}[1, 8],
             Rational{Int64}[2, 7], Rational{Int64}[2, 8], Rational{Int64}[9, 2],

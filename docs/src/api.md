@@ -83,22 +83,3 @@ tilde_matrices
 tilde_vectors
 positive_component
 ```
-
-## Type Aliases
-
-The following names are aliases for the primary types and constructors above,
-using the terminology of the companion paper (arXiv:2405.20174).
-
-The following names are exported as aliases pointing to the same objects as the primary names above:
-
-| Alias | Primary name |
-|---|---|
-| `TropicalPuiseuxPoly` | [`Signomial`](@ref) |
-| `TropicalPuiseuxRational` | [`RationalSignomial`](@ref) |
-| `TropicalPuiseuxPoly_const` | [`Signomial_const`](@ref) |
-| `TropicalPuiseuxPoly_zero` | [`Signomial_zero`](@ref) |
-| `TropicalPuiseuxPoly_one` | [`Signomial_one`](@ref) |
-| `TropicalPuiseuxMonomial` | [`SignomialMonomial`](@ref) |
-| `TropicalPuiseuxRational_identity` | [`RationalSignomial_identity`](@ref) |
-| `TropicalPuiseuxRational_zero` | [`RationalSignomial_zero`](@ref) |
-| `TropicalPuiseuxRational_one` | [`RationalSignomial_one`](@ref) |

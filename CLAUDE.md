@@ -18,28 +18,36 @@ src/
 └── visualise.jl           # Plotting utilities (CairoMakie)
 ```
 
-## Key Types (rat_maps.jl)
+## Key Types (tropical_poly_interface.jl)
 
 ```julia
-struct TropicalPuiseuxPoly{T}
-    coeff::Dict           # Coefficient dictionary (exponent vector → coefficient)
-    exp::Vector{Vector{T}}  # Exponent vectors (lexicographically sorted)
+abstract type AbstractSignomial{T} end
+
+struct SignomialStatic{T, N} <: AbstractSignomial{T}
+    coeff::Vector
+    exp::Vector
 end
 
-struct TropicalPuiseuxRational{T}
-    num::TropicalPuiseuxPoly{T}
-    den::TropicalPuiseuxPoly{T}
+struct SignomialMatrix{T} <: AbstractSignomial{T}
+    exp::Matrix{T}
+    coeff::Vector
+end
+
+struct RationalSignomial{P <: AbstractSignomial}
+    num::P
+    den::P
 end
 ```
 
-- `TropicalPuiseuxPoly`: Tropical polynomial with rational exponents
-- `TropicalPuiseuxRational`: Quotient of two tropical polynomials
+- `Signomial`: Constructor that chooses a static or matrix-backed polynomial representation
+- `SignomialStatic` / `SignomialMatrix`: Concrete tropical polynomial representations
+- `RationalSignomial`: Quotient of two tropical polynomials
 
 ## Core Functions by Module
 
-### rat_maps.jl - Tropical Algebra
-- `TropicalPuiseuxPoly(coeffs, exps, sorted)` - Constructor
-- `TropicalPuiseuxMonomial(coeff, exp)` - Single monomial
+### tropical_poly_interface.jl - Tropical Algebra
+- `Signomial(coeffs, exps, sorted)` - Constructor
+- `SignomialMonomial(coeff, exp)` - Single monomial
 - `+`, `*`, `/` - Arithmetic operators
 - `eval(f, x)` - Evaluate at point
 - `comp(f, g)` - Function composition

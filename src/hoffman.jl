@@ -1,7 +1,7 @@
 ############### Utilities ###############
 
 @doc raw"""
-    linearmap_matrices(f::Signomial)
+    linearmap_matrices(f::AbstractSignomial)
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
@@ -286,7 +286,7 @@ end
 ############### Effective Radius ###############
 
 @doc raw"""
-    exact_er(f::Signomial)
+    exact_er(f::AbstractSignomial)
 
 Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
 """
@@ -298,7 +298,7 @@ function exact_er(f::AbstractSignomial)
 end
 
 @doc raw"""
-    upper_er(f::Signomial)
+    upper_er(f::AbstractSignomial)
 
 Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
 """
