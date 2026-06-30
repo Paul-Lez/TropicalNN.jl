@@ -12,7 +12,7 @@ using Test, TropicalNN, Oscar
         # Layer 2: 3 inputs -> 1 output (1x3 matrix)
         W = [Rational{BigInt}.([1 0; 0 1; -1 -1]), Rational{BigInt}.([1 1 1])]
         b = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
-        t = [Rational{BigInt}.([0, 0, 0]), Rational{BigInt}.([0])]
+        t = [Rational{BigInt}.([0, 0, 0])]
         result = mlp_to_trop(W, b, t)
         @test result isa Vector{<:RationalSignomial}
         @test length(result) == 1  # Single output
@@ -78,19 +78,19 @@ using Test, TropicalNN, Oscar
         # Test 1: Mismatched bias dimensions
         W_bad = [Rational{BigInt}.([1 0; 0 1])]
         b_bad = [Rational{BigInt}.([0, 0, 0])]  # Wrong size (3 instead of 2)
-        t_bad = [Rational{BigInt}.([0, 0])]
+        t_bad = Vector{Rational{BigInt}}[]
         @test_throws DimensionMismatch mlp_to_trop(W_bad, b_bad, t_bad)
 
         # Test 2: Mismatched threshold dimensions
-        W_bad2 = [Rational{BigInt}.([1 0; 0 1])]
-        b_bad2 = [Rational{BigInt}.([0, 0])]
+        W_bad2 = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
+        b_bad2 = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t_bad2 = [Rational{BigInt}.([0])]  # Wrong size (1 instead of 2)
         @test_throws DimensionMismatch mlp_to_trop(W_bad2, b_bad2, t_bad2)
 
         # Test 3: Layer dimension mismatch (second layer)
-        W_layers = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1]')]
+        W_layers = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b_layers = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0, 0])]  # Wrong size
-        t_layers = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
+        t_layers = [Rational{BigInt}.([0, 0])]
         @test_throws DimensionMismatch mlp_to_trop(W_layers, b_layers, t_layers)
     end
 
@@ -132,8 +132,8 @@ using Test, TropicalNN, Oscar
     ==========================================================================#
     @testset "Composition Operations" begin
         # Create two simple layers
-        W1, b1, t1 = random_mlp([2, 2])
-        W2, b2, t2 = random_mlp([2, 2])
+        W1, b1, t1 = random_mlp([2, 2, 1])
+        W2, b2, t2 = random_mlp([2, 2, 1])
 
         layer1 = single_to_trop(W1[1], b1[1], t1[1])
         layer2 = single_to_trop(W2[1], b2[1], t2[1])
@@ -197,7 +197,7 @@ using Test, TropicalNN, Oscar
         W1, b1, t1 = random_mlp(dims1)
         @test length(W1) == 2  # 2 layers
         @test length(b1) == 2
-        @test length(t1) == 2
+        @test length(t1) == 1
         @test size(W1[1]) == (3, 2)  # First layer: 3 neurons, 2 inputs
         @test size(W1[2]) == (1, 3)  # Second layer: 1 output, 3 inputs
         @test all(iszero, t1[1])  # Default thresholds are zero
@@ -224,6 +224,7 @@ using Test, TropicalNN, Oscar
         dims_single = [3, 2]
         W5, b5, t5 = random_mlp(dims_single)
         @test length(W5) == 1
+        @test length(t5) == 0
         @test size(W5[1]) == (2, 3)
     end
 
@@ -254,7 +255,7 @@ using Test, TropicalNN, Oscar
         # Test 4: Network with all zero weights (degenerate case)
         W_zero = [zeros(Rational{BigInt}, 2, 2)]
         b_zero = [Rational{BigInt}.([1, 1])]
-        t_zero = [Rational{BigInt}.([0, 0])]
+        t_zero = Vector{Rational{BigInt}}[]
         result_zero = mlp_to_trop(W_zero, b_zero, t_zero)
         @test result_zero isa Vector{<:RationalSignomial}
     end

@@ -40,7 +40,7 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
             push!(pos, max(A[i, j], 0))
             push!(neg, max(-A[i, j], 0))
         end
-        # the numerator is the monomial given by the positive part, with coeff b[i], plus the monomial given by the negative part 
+        # the numerator is the monomial given by the positive part, with coeff b[i], plus the monomial given by the negative part
         # with coeff t[i]
         num = SignomialMonomial(b[i], pos) + SignomialMonomial(t[i], neg)
         # the denominator is the monomial given by the negative part, with coeff the tropical multiplicative 
@@ -52,11 +52,44 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
 end
 
 """
+    affine_to_trop(A, b)
+
+Convert a single affine layer to tropical Puiseux rational functions.
+"""
+function affine_to_trop(A::Matrix{T}, b::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+    G = RationalSignomial[]
+
+    if size(A, 1) != length(b)
+        throw(DimensionMismatch(
+            "Dimension mismatch: A has $(size(A,1)) rows, b has length $(length(b)). They must match."
+        ))
+    end
+
+    R = tropical_semiring(max)
+    b = [R(Rational(i)) for i in b]
+    sizehint!(G, size(A, 1))
+    for i in axes(A, 1)
+        pos = Vector{T}()
+        neg = Vector{T}()
+        for j in axes(A, 2)
+            push!(pos, max(A[i, j], 0))
+            push!(neg, max(-A[i, j], 0))
+        end
+        num = SignomialMonomial(b[i], pos)
+        den = SignomialMonomial(one(b[i]), neg)
+        push!(G, num/den)
+    end
+    return G
+end
+
+"""
     mlp_to_trop(linear_maps, bias, thresholds; quicksum=false, strong_elim=false, dedup=false)
 
-Convert a ReLU MLP to tropical rational functions, one per output neuron.
-`linear_maps`, `bias`, and `thresholds` are layer-wise weights, biases, and
-activation thresholds.
+Convert a ReLU MLP with affine output layer to tropical rational functions,
+one per output neuron. `linear_maps`, `bias`, and `thresholds` are layer-wise
+weights, biases, and activation thresholds. `thresholds` has one entry for
+each hidden layer, so it must have length `length(linear_maps) - 1`; the final
+layer is affine and has no threshold.
 
 Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
 monomials with non-full-dimensional regions after each layer; `dedup` calls
@@ -66,46 +99,64 @@ layer sizes.
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
         quicksum::Bool = false, strong_elim::Bool = false,
         dedup::Bool = false) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
-    R = tropical_semiring(max)
-
-    # Initialisation: the first vector of tropical rational functions
-    output = single_to_trop(linear_maps[1], bias[1], thresholds[1])
-
-    # Apply initial simplification if requested
-    if dedup
-        output = dedup_monomials(output)
+    if isempty(linear_maps)
+        throw(ArgumentError("mlp_to_trop requires at least one layer"))
     end
+    if length(bias) != length(linear_maps)
+        throw(DimensionMismatch(
+            "Dimension mismatch: got $(length(linear_maps)) weight matrices and $(length(bias)) bias vectors. These lengths must match."
+        ))
+    end
+    expected_thresholds = length(linear_maps) - 1
+    if length(thresholds) != expected_thresholds
+        throw(DimensionMismatch(
+            "Dimension mismatch: got $(length(linear_maps)) weight matrices and $(length(thresholds)) threshold vectors."
+        ))
+    end
+
+    output = RationalSignomial[]
 
     # Iterate through the layers and compose variable output with the current layer at each step
     for i in Base.eachindex(linear_maps)
         A = linear_maps[i]
         b = bias[i]
-        t = thresholds[i]
 
         # Check dimensions match
-        if size(A, 1) != length(b) || size(A, 1) != length(t)
+        if size(A, 1) != length(b)
             throw(
                 DimensionMismatch(
-                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match.",
+                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)). They must match.",
             ),
             )
         end
 
-        if i != 1
-            # Compute the vector of tropical rational functions corresponding to max(Ax+b, t)
+        # Hidden layers are ReLU-clamped; the final layer is affine.
+        if i == lastindex(linear_maps)
+            ith_tropical = affine_to_trop(A, b)
+        else
+            t = thresholds[i]
+            if size(A, 1) != length(t)
+                throw(
+                    DimensionMismatch(
+                    "Layer $i: dimension mismatch. A has $(size(A,1)) rows, t has length $(length(t)). They must match.",
+                ),
+                )
+            end
             ith_tropical = single_to_trop(A, b, t)
+        end
 
-            # Compose with the output of the previous layer
+        if i == 1
+            output = ith_tropical
+        else
             output = quicksum ? comp_with_quicksum(ith_tropical, output) :
                      comp(ith_tropical, output)
 
-            # Apply simplification if requested
             if strong_elim
                 output = monomial_strong_elim(output)
             end
-            if dedup
-                output = dedup_monomials(output)
-            end
+        end
+        if dedup
+            output = dedup_monomials(output)
         end
     end
 
@@ -137,10 +188,10 @@ end
 """
     random_mlp(dims; random_thresholds=false, symbolic=true)
 
-Generate random weights, biases, and thresholds for layer widths `dims`.
-Returns `(weights, biases, thresholds)`. If `symbolic=true`, entries are
-converted to `Rational{BigInt}`; otherwise they are floating-point values.
-When `random_thresholds=false`, all thresholds are zero.
+Generate random weights, biases, and hidden-layer thresholds for layer widths
+`dims`. Returns `(weights, biases, thresholds)`. If `symbolic=true`, entries
+are converted to `Rational{BigInt}`; otherwise they are floating-point values.
+When `random_thresholds=false`, all hidden-layer thresholds are zero.
 """
 function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = false, symbolic::Bool = true)
     # if symbolic is set to true then we work with symbolic fractions. 
@@ -150,20 +201,22 @@ function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = f
                    for i in 1:(length(dims) - 1)]
         biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]))
                   for i in 2:length(dims)]
+        threshold_range = 2:(length(dims) - 1)
         if random_thresholds
-            thresholds = [Rational{BigInt}.(rand(dims[i])) for i in 2:length(dims)]
+            thresholds = [Rational{BigInt}.(rand(dims[i])) for i in threshold_range]
         else
-            thresholds = [Rational{BigInt}.(zeros(dims[i])) for i in 2:length(dims)]
+            thresholds = [Rational{BigInt}.(zeros(dims[i])) for i in threshold_range]
         end
     else # otherwise we work with Floats
         # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
         weights = [rand(Normal(0, sqrt(2/dims[i])), dims[i + 1], dims[i])
                    for i in 1:(length(dims) - 1)]
         biases = [rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]) for i in 2:length(dims)]
+        threshold_range = 2:(length(dims) - 1)
         if random_thresholds
-            thresholds = [rand(dims[i]) for i in 2:length(dims)]
+            thresholds = [rand(dims[i]) for i in threshold_range]
         else
-            thresholds = [zeros(dims[i]) for i in 2:length(dims)]
+            thresholds = [zeros(dims[i]) for i in threshold_range]
         end
     end
     return (weights, biases, thresholds)

@@ -74,7 +74,7 @@ using Test, TropicalNN, Oscar
     @testset "MLP-derived polynomial" begin
         W_fixed = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
-        t_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
+        t_fixed = [Rational{BigInt}.([0, 0])]
         trop_fixed = mlp_to_trop(W_fixed, b_fixed, t_fixed)[1]
         regions_highs_fixed = enum_linear_regions_rat_general(trop_fixed; mode = highs_mode)
         regions_oscar_fixed = enum_linear_regions_rat_general(trop_fixed; mode = oscar_mode)
