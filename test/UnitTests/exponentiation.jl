@@ -30,14 +30,12 @@ using Test, TropicalNN, Oscar
         g2 = f ^ Int64(2)
         @test g2 isa AbstractSignomial
         @test length(g2.exp) == 2
-        @test haskey(g2.coeff, Rational{Int64}[2, 0])
-        @test haskey(g2.coeff, Rational{Int64}[0, 2])
-        @test Float64(Rational(g2.coeff[Rational{Int64}[2, 0]])) == 2.0  # 1*2 = 2
-        @test Float64(Rational(g2.coeff[Rational{Int64}[0, 2]])) == 4.0  # 2*2 = 4
+        @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[2, 0]))) == 2.0  # 1*2 = 2
+        @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[0, 2]))) == 4.0  # 2*2 = 4
 
         g0 = f ^ Int64(0)
         @test length(g0.exp) == 1
-        @test Float64(Rational(g0.coeff[first(g0.exp)])) == 0.0
+        @test Float64(Rational(get_coeff(g0, 1))) == 0.0
     end
 
     @testset verbose = true "Signomial ^ Float64" begin
@@ -60,9 +58,9 @@ using Test, TropicalNN, Oscar
         @test any(e -> e == Rational{BigInt}[1, 0], g.exp)
         @test any(e -> e == Rational{BigInt}[0, 1], g.exp)
         exp1 = Rational{BigInt}[1, 0]
-        @test Float64(Rational(g.coeff[exp1])) == 1.0
+        @test Float64(Rational(get_coeff_by_exp(g, exp1))) == 1.0
         exp2 = Rational{BigInt}[0, 1]
-        @test Float64(Rational(g.coeff[exp2])) == 2.0
+        @test Float64(Rational(get_coeff_by_exp(g, exp2))) == 2.0
 
         g0 = f ^ (0//1)
         @test length(g0.exp) == 1

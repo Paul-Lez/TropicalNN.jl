@@ -28,9 +28,45 @@ All subtypes must implement:
 - `nvars(f)` - Number of variables
 - `length(f)` - Number of monomials
 - `get_exp(f, i)` - Get i-th exponent vector
-- `get_coeff(f, exp)` - Get coefficient for exponent
+- `get_coeff(f, i)` - Get coefficient for i-th monomial
+- `get_coeff_by_exp(f, exp)` - Get coefficient for exponent
 """
 abstract type AbstractSignomial{T} end
+
+const _TROPICAL_COEFF = Oscar.TropicalSemiringElem{typeof(max)}
+
+function _canonicalize_terms(
+        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}}
+) where {T}
+    length(coeffs) == length(exp_vecs) ||
+        throw(DimensionMismatch("Coefficient count must match exponent count"))
+
+    if isempty(exp_vecs)
+        return _TROPICAL_COEFF[], Vector{Vector{T}}()
+    end
+
+    dim = length(exp_vecs[begin])
+    coeff_by_exp = Dict{Tuple, _TROPICAL_COEFF}()
+    exp_by_key = Dict{Tuple, Vector{T}}()
+
+    for (c, exp_vec) in zip(coeffs, exp_vecs)
+        length(exp_vec) == dim ||
+            throw(DimensionMismatch("All exponent vectors must have length $dim"))
+        exp = Vector{T}(exp_vec)
+        key = Tuple(exp)
+        if haskey(coeff_by_exp, key)
+            coeff_by_exp[key] += c
+        else
+            coeff_by_exp[key] = c
+            exp_by_key[key] = exp
+        end
+    end
+
+    exps = collect(values(exp_by_key))
+    sort!(exps)
+    return _TROPICAL_COEFF[coeff_by_exp[Tuple(exp)] for exp in exps], exps
+end
 
 #==============================================================================#
 #                    CONCRETE REPRESENTATIONS                                  #
@@ -400,7 +436,7 @@ Evaluate the tropical polynomial `f` at the point `a`.
 Alias for `eval_poly`.
 """
 function evaluate(f::AbstractSignomial, a::Vector)
-    return eval_poly(f, a)
+    return eval_poly(f, _coerce_evaluation_point(f, a))
 end
 
 """
@@ -409,7 +445,7 @@ end
 Evaluate the rational tropical function `f` at the point `a`.
 """
 function evaluate(f::RationalSignomial, a::Vector)
-    return eval_rational(f, a)
+    return eval_rational(f, _coerce_evaluation_point(f.num, a))
 end
 
 """
@@ -419,6 +455,18 @@ Evaluate a vector of rational tropical functions at the point `a`.
 """
 function evaluate(F::Vector{<:RationalSignomial}, a::Vector)
     return [evaluate(f, a) for f in F]
+end
+
+_lift_evaluation_scalar(_, x::Oscar.TropicalSemiringElem) = x
+
+function _lift_evaluation_scalar(R, x::Real)
+    return R(x isa AbstractFloat ? rationalize(x) : x)
+end
+
+function _coerce_evaluation_point(f::AbstractSignomial, a::Vector)
+    all(x -> x isa Oscar.TropicalSemiringElem, a) && return a
+    R = parent(get_coeff(f, 1))
+    return [_lift_evaluation_scalar(R, x) for x in a]
 end
 
 # Callable syntax: f(x) as sugar for evaluate(f, x)
@@ -435,18 +483,17 @@ end
 Remove all monomials with tropical-zero coefficient from `f`.
 """
 function dedup_monomials(f::AbstractSignomial)
+    length(f) == 0 && return f
     tropical_zero = zero(get_coeff(f, 1))
-    new_exps = Vector{eltype(exponents(f))}()
-    new_coeffs = Oscar.TropicalSemiringElem{typeof(max)}[]
+    new_exps = Vector{Vector{eltype(get_exp(f, 1))}}()
+    new_coeffs = _TROPICAL_COEFF[]
     for (e, c) in monomial_pairs(f)
         if c != tropical_zero
-            push!(new_exps, e)
+            push!(new_exps, Vector(e))
             push!(new_coeffs, c)
         end
     end
-    # Convert SVector to plain Vector for the smart constructor
-    plain_exps = [Vector(e) for e in new_exps]
-    return Signomial(new_coeffs, plain_exps, true)
+    return Signomial(new_coeffs, new_exps, false)
 end
 
 function dedup_monomials(f::RationalSignomial)
@@ -463,7 +510,7 @@ end
 Return the number of monomials in `f`.
 """
 function monomial_count(f::AbstractSignomial)
-    return length(f)
+    return length(dedup_monomials(f))
 end
 
 function monomial_count(f::RationalSignomial)
