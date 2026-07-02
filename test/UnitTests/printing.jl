@@ -1,6 +1,6 @@
 using Test, TropicalNN, Oscar
 
-@testset "show / string representations" begin
+@testset verbose = true "show / string representations" begin
     R = tropical_semiring(max)
 
     f0 = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)

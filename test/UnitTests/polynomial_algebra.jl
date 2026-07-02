@@ -1,12 +1,12 @@
 using Test, TropicalNN, Oscar
 
-@testset "Polynomial Algebra Operations" begin
+@testset verbose = true "Polynomial Algebra Operations" begin
     R = tropical_semiring(max)
 
     #==========================================================================
     # Addition Tests
     ==========================================================================#
-    @testset "Polynomial Addition" begin
+    @testset verbose = true "Polynomial Addition" begin
         # Test 1: Basic addition with Rational exponents
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g = Signomial([R(3), R(4)], [[1//1, 0//1], [2//1, 0//1]]; sorted = false)
@@ -49,7 +49,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Multiplication Tests
     ==========================================================================#
-    @testset "Polynomial Multiplication" begin
+    @testset verbose = true "Polynomial Multiplication" begin
         # Test 1: Basic multiplication
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g = Signomial([R(3), R(4)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -92,7 +92,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Quicksum Tests
     ==========================================================================#
-    @testset "Quicksum (Multi-polynomial Addition)" begin
+    @testset verbose = true "Quicksum (Multi-polynomial Addition)" begin
         # Test 1: Basic quicksum with 3 polynomials
         polys = [
             Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false),
@@ -133,7 +133,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Rational Function Tests
     ==========================================================================#
-    @testset "Tropical Rational Functions" begin
+    @testset verbose = true "Tropical Rational Functions" begin
         # Test 1: Basic rational function creation
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
@@ -160,7 +160,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Evaluation Tests
     ==========================================================================#
-    @testset "Polynomial Evaluation" begin
+    @testset verbose = true "Polynomial Evaluation" begin
         # f = max(1 + x₁, 2 + x₂, 3 + x₁ + x₂)
         # at [R(2), R(3)]: max(1+2, 2+3, 3+2+3) = max(3, 5, 8) = 8
         f = Signomial(
@@ -187,7 +187,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Monomial Deduplication Tests
     ==========================================================================#
-    @testset "Monomial Deduplication" begin
+    @testset verbose = true "Monomial Deduplication" begin
         # Test 1: Dedup with no zero-coefficient monomials (should be unchanged)
         g = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g_dedup = TropicalNN.dedup_monomials(g)
@@ -216,7 +216,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Edge Cases and Special Polynomials
     ==========================================================================#
-    @testset "Edge Cases" begin
+    @testset verbose = true "Edge Cases" begin
         # Test 1: Constant polynomial
         template = Signomial([R(1)], [[0//1, 0//1]]; sorted = false)
         const_poly = Signomial_const(2, R(5), template)
@@ -242,7 +242,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Type Consistency Tests
     ==========================================================================#
-    @testset "Type Consistency" begin
+    @testset verbose = true "Type Consistency" begin
         # Test 1: Rational{Int64} operations maintain type
         f_r64 = Signomial(
             [R(1), R(2)], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]]; sorted = false)

@@ -7,7 +7,7 @@
 
 ## Installation
 
-This package requires Julia 1.10. To install, open the Julia REPL, press `]` to enter Pkg mode, and run:
+This package requires Julia 1.12. To install, open the Julia REPL, press `]` to enter Pkg mode, and run:
 
 ```
 pkg> add https://github.com/Paul-Lez/TropicalNN.jl

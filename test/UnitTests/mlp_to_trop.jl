@@ -1,12 +1,12 @@
 using Test, TropicalNN, Oscar
 
-@testset "MLP to Tropical Conversion" begin
+@testset verbose = true "MLP to Tropical Conversion" begin
     R = tropical_semiring(max)
 
     #==========================================================================
     # Basic MLP Conversion Tests
     ==========================================================================#
-    @testset "mlp_to_trop - Basic Conversion" begin
+    @testset verbose = true "mlp_to_trop - Basic Conversion" begin
         # Test 1: Simple 2-layer network
         # Layer 1: 2 inputs -> 3 outputs (3x2 matrix)
         # Layer 2: 3 inputs -> 1 output (1x3 matrix)
@@ -40,7 +40,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Variant Function Tests
     ==========================================================================#
-    @testset "mlp_to_trop Variants" begin
+    @testset verbose = true "mlp_to_trop Variants" begin
         dims = [2, 3, 1]
         W, b, t = random_mlp(dims)
 
@@ -74,7 +74,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Error Handling Tests
     ==========================================================================#
-    @testset "Dimension Mismatch Errors" begin
+    @testset verbose = true "Dimension Mismatch Errors" begin
         # Test 1: Mismatched bias dimensions
         W_bad = [Rational{BigInt}.([1 0; 0 1])]
         b_bad = [Rational{BigInt}.([0, 0, 0])]  # Wrong size (3 instead of 2)
@@ -97,7 +97,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # single_to_trop Tests
     ==========================================================================#
-    @testset "single_to_trop - Single Layer Conversion" begin
+    @testset verbose = true "single_to_trop - Single Layer Conversion" begin
         # Test 1: Simple identity-like layer
         A = Rational{BigInt}.([1 0; 0 1])
         b = Rational{BigInt}.([0, 0])
@@ -130,7 +130,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Composition Tests
     ==========================================================================#
-    @testset "Composition Operations" begin
+    @testset verbose = true "Composition Operations" begin
         # Create two simple layers
         W1, b1, t1 = random_mlp([2, 2, 1])
         W2, b2, t2 = random_mlp([2, 2, 1])
@@ -191,7 +191,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # random_mlp Tests
     ==========================================================================#
-    @testset "random_mlp - Network Generation" begin
+    @testset verbose = true "random_mlp - Network Generation" begin
         # Test 1: Basic network generation with default parameters
         dims1 = [2, 3, 1]
         W1, b1, t1 = random_mlp(dims1)
@@ -231,7 +231,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Edge Cases and Special Scenarios
     ==========================================================================#
-    @testset "Edge Cases" begin
+    @testset verbose = true "Edge Cases" begin
         # Test 1: Single input dimension
         dims_1d = [1, 2, 1]
         W, b, t = random_mlp(dims_1d)
@@ -263,7 +263,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Integration Tests - Combining Multiple Operations
     ==========================================================================#
-    @testset "Integration Tests" begin
+    @testset verbose = true "Integration Tests" begin
         # Test 1: Full pipeline with linear region enumeration
         dims = [2, 3, 1]
         W, b, t = random_mlp(dims)
@@ -294,7 +294,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Performance Characteristics Tests
     ==========================================================================#
-    @testset "Performance Characteristics" begin
+    @testset verbose = true "Performance Characteristics" begin
         # Test that quicksum variants complete without error
         # (actual performance testing would require BenchmarkTools)
         dims = [2, 4, 1]

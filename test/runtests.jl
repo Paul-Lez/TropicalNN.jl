@@ -1,37 +1,40 @@
 using Test
 
 if "format" in ARGS
-    include("formatting.jl")
+    @testset verbose = true "TropicalNN.jl formatting" begin
+        @testset "formatting.jl" begin
+            println(stderr, "Running test/formatting.jl")
+            flush(stderr)
+            include("formatting.jl")
+        end
+    end
 else
-    @testset "TropicalNN.jl" begin
-        include("./UnitTests/main.jl")
+    # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
+    # Omit them until visualise.jl is integrated into the module.
+    unit_tests = [
+        "main.jl",
+        "polynomial_algebra.jl",
+        "signomial_matrix.jl",
+        "mlp_to_trop.jl",
+        "hoffman.jl",
+        "statistics.jl",
+        "linear_regions_calculation_general.jl",
+        "linear_regions_highs.jl",
+        "exponentiation.jl",
+        "printing.jl",
+        "linearmap_matrices.jl",
+        "tropical_number.jl"
+    ]
 
-        include("./UnitTests/polynomial_algebra.jl")
+    @testset verbose = true "TropicalNN.jl" begin
+        for file in unit_tests
+            path = joinpath("UnitTests", file)
+            println(stderr, "Running test/$path")
+            flush(stderr)
 
-        include("./UnitTests/signomial_matrix.jl")
-
-        include("./UnitTests/mlp_to_trop.jl")
-
-        # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
-        # Commented out until visualise.jl is integrated into the module.
-        # if Base.find_package("CairoMakie") !== nothing
-        #     include("./UnitTests/visualise.jl")
-        # end
-
-        include("./UnitTests/hoffman.jl")
-
-        include("./UnitTests/statistics.jl")
-
-        include("./UnitTests/linear_regions_calculation_general.jl")
-
-        include("./UnitTests/linear_regions_highs.jl")
-
-        include("./UnitTests/exponentiation.jl")
-
-        include("./UnitTests/printing.jl")
-
-        include("./UnitTests/linearmap_matrices.jl")
-
-        include("./UnitTests/tropical_number.jl")
+            @testset "UnitTests/$file" begin
+                include(path)
+            end
+        end
     end
 end

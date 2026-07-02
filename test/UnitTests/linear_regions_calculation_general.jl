@@ -67,9 +67,13 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test count(region -> region[2], oscar_regions) ==
               count(region -> region[2], highs_regions)
         @test [region[2] for region in highs_regions] == [true, true]
-        @test all(region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa Matrix{Float64},
+        @test all(
+            region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa
+                      Matrix{Float64},
             highs_regions)
-        @test all(region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa Vector{Float64},
+        @test all(
+            region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa
+                      Vector{Float64},
             highs_regions)
     end
 

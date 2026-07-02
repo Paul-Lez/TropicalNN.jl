@@ -1,9 +1,9 @@
 using Test, TropicalNN, Oscar
 
-@testset "Exponentiation methods" begin
+@testset verbose = true "Exponentiation methods" begin
     R = tropical_semiring(max)
 
-    @testset "TropicalSemiringElem ^ TropicalSemiringElem" begin
+    @testset verbose = true "TropicalSemiringElem ^ TropicalSemiringElem" begin
         a = R(3)
         b = R(2)
         @test Float64(Rational(a ^ b)) == 6.0   # 3*2 = 6
@@ -11,20 +11,20 @@ using Test, TropicalNN, Oscar
         @test Float64(Rational(R(5) ^ R(1))) == 5.0
     end
 
-    @testset "TropicalSemiringElem ^ Rational" begin
+    @testset verbose = true "TropicalSemiringElem ^ Rational" begin
         @test Float64(Rational(R(4) ^ (1//2))) == 2.0   # 4 * 1/2 = 2
         @test Float64(Rational(R(6) ^ (2//3))) == 4.0   # 6 * 2/3 = 4
         @test Float64(Rational(R(0) ^ (3//2))) == 0.0
         @test Float64(Rational(R(10) ^ (1//5))) == 2.0   # 10 * 1/5 = 2
     end
 
-    @testset "TropicalSemiringElem ^ Float64" begin
+    @testset verbose = true "TropicalSemiringElem ^ Float64" begin
         @test Float64(Rational(R(4) ^ 2.0)) ≈ 8.0    # 4*2 = 8
         @test Float64(Rational(R(3) ^ 0.5)) ≈ 1.5    # 3*0.5 = 1.5
         @test Float64(Rational(R(0) ^ 3.0)) ≈ 0.0
     end
 
-    @testset "Signomial ^ Int64" begin
+    @testset verbose = true "Signomial ^ Int64" begin
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g2 = f ^ Int64(2)
@@ -40,7 +40,7 @@ using Test, TropicalNN, Oscar
         @test Float64(Rational(g0.coeff[first(g0.exp)])) == 0.0
     end
 
-    @testset "Signomial ^ Float64" begin
+    @testset verbose = true "Signomial ^ Float64" begin
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g = f ^ 2.0
@@ -51,7 +51,7 @@ using Test, TropicalNN, Oscar
         @test length(g0.exp) == 1
     end
 
-    @testset "Signomial ^ Rational" begin
+    @testset verbose = true "Signomial ^ Rational" begin
         f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
 
         g = f ^ (1//2)
@@ -68,7 +68,7 @@ using Test, TropicalNN, Oscar
         @test length(g0.exp) == 1
     end
 
-    @testset "RationalSignomial ^ Int64" begin
+    @testset verbose = true "RationalSignomial ^ Int64" begin
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
@@ -82,7 +82,7 @@ using Test, TropicalNN, Oscar
         @test length(q0.num.exp) == 1
     end
 
-    @testset "RationalSignomial ^ Float64" begin
+    @testset verbose = true "RationalSignomial ^ Float64" begin
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
@@ -96,7 +96,7 @@ using Test, TropicalNN, Oscar
         @test length(q0.num.exp) == 1
     end
 
-    @testset "RationalSignomial ^ Rational" begin
+    @testset verbose = true "RationalSignomial ^ Rational" begin
         num = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)

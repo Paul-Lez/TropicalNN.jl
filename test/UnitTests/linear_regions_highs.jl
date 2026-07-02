@@ -1,27 +1,29 @@
 using Test, TropicalNN, Oscar
 
-@testset "Linear Regions HiGHS Mode" begin
+@testset verbose = true "Linear Regions HiGHS Mode" begin
     R = tropical_semiring(max)
     highs_mode = HiGHSMode()
     oscar_mode = OscarMode()
 
-    @testset "Basic polynomial max(x, y)" begin
+    @testset verbose = true "Basic polynomial max(x, y)" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         regions_highs = enum_linear_regions_general(u; mode = highs_mode)
         @test length(regions_highs) == 2
         @test all(region -> region[2], regions_highs)
         @test all(
-            region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa Matrix{Float64},
+            region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa
+                      Matrix{Float64},
             regions_highs
         )
         @test all(
-            region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa Vector{Float64},
+            region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa
+                      Vector{Float64},
             regions_highs
         )
     end
 
-    @testset "Rational function max(x, y) / 0" begin
+    @testset verbose = true "Rational function max(x, y) / 0" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = u / v
@@ -33,12 +35,14 @@ using Test, TropicalNN, Oscar
         for lr in regions_rat_highs
             @test lr isa LinearRegion
             @test length(lr.regions) >= 1
-            @test TropicalNN.get_matrix(lr.regions[1]; mode = highs_mode) isa Matrix{Float64}
-            @test TropicalNN.get_vector(lr.regions[1]; mode = highs_mode) isa Vector{Float64}
+            @test TropicalNN.get_matrix(lr.regions[1]; mode = highs_mode) isa
+                  Matrix{Float64}
+            @test TropicalNN.get_vector(lr.regions[1]; mode = highs_mode) isa
+                  Vector{Float64}
         end
     end
 
-    @testset "Complex rational function" begin
+    @testset verbose = true "Complex rational function" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]]; sorted = false)
         q = f / g
@@ -48,7 +52,7 @@ using Test, TropicalNN, Oscar
         @test length(regions_rat_highs) > 0
     end
 
-    @testset "Polynomial max(0, x, 2x)" begin
+    @testset verbose = true "Polynomial max(0, x, 2x)" begin
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
         regions_highs = enum_linear_regions_general(u; mode = highs_mode)
@@ -58,7 +62,7 @@ using Test, TropicalNN, Oscar
         @test feasible_count >= 2
     end
 
-    @testset "HiGHS vs Oscar consistency" begin
+    @testset verbose = true "HiGHS vs Oscar consistency" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = u / v
@@ -71,7 +75,7 @@ using Test, TropicalNN, Oscar
         @test length(regions_oscar) == length(regions_highs)
     end
 
-    @testset "MLP-derived polynomial" begin
+    @testset verbose = true "MLP-derived polynomial" begin
         W_fixed = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t_fixed = [Rational{BigInt}.([0, 0])]
@@ -87,7 +91,7 @@ using Test, TropicalNN, Oscar
         @test length(regions_highs) > 0
     end
 
-    @testset "Repeated linear map (f/f) - 2D, 2 monomials" begin
+    @testset verbose = true "Repeated linear map (f/f) - 2D, 2 monomials" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         lr = enum_linear_regions_rat_general(f / f; mode = highs_mode)
         @test lr isa LinearRegions
@@ -95,7 +99,7 @@ using Test, TropicalNN, Oscar
         @test length(lr[1].regions) == 2
     end
 
-    @testset "Repeated linear map (f/f) - 1D, 6 monomials" begin
+    @testset verbose = true "Repeated linear map (f/f) - 1D, 6 monomials" begin
         f6 = Signomial(
             [R(0), R(-1), R(-4), R(-9), R(-16), R(-25)],
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
@@ -110,7 +114,7 @@ using Test, TropicalNN, Oscar
         end
     end
 
-    @testset "Repeated linear map (f/f) - 2D, 6 monomials" begin
+    @testset verbose = true "Repeated linear map (f/f) - 2D, 6 monomials" begin
         f6_2d = Signomial(
             [R(0), R(0), R(-1), R(0), R(0), R(-1)],
             [[0//1, 0//1], [0//1, 1//1], [0//1, 2//1],
@@ -126,7 +130,7 @@ using Test, TropicalNN, Oscar
         end
     end
 
-    @testset "Empty polyhedron detection" begin
+    @testset verbose = true "Empty polyhedron detection" begin
         A = [1.0 0.0; -1.0 0.0]
         b = [0.0; -1.0]
         @test TropicalNN.highs_is_empty(A, b) == true
@@ -136,7 +140,7 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.highs_is_empty(A_feasible, b_feasible) == false
     end
 
-    @testset "Dimension mismatch" begin
+    @testset verbose = true "Dimension mismatch" begin
         @test_throws DimensionMismatch TropicalNN.highs_intersect_is_full_dimensional(
             zeros(Float64, 0, 1),
             Float64[],
@@ -145,7 +149,7 @@ using Test, TropicalNN, Oscar
         )
     end
 
-    @testset "Full dimensional check" begin
+    @testset verbose = true "Full dimensional check" begin
         A = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
         b = [1.0; 1.0; 1.0; 1.0]
         @test TropicalNN.highs_is_full_dimensional(A, b) == true

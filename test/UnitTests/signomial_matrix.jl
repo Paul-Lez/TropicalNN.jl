@@ -1,6 +1,6 @@
 using Test, TropicalNN, Oscar
 
-@testset "SignomialMatrix (dim > 5)" begin
+@testset verbose = true "SignomialMatrix (dim > 5)" begin
     R = tropical_semiring(max)
 
     # Helper: build a 6-variable exponent vector with a single nonzero entry
@@ -13,7 +13,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Construction Tests
     ==========================================================================#
-    @testset "Construction routes to SignomialMatrix" begin
+    @testset verbose = true "Construction routes to SignomialMatrix" begin
         # 6 variables should use SignomialMatrix, not SignomialStatic
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         @test f isa SignomialMatrix{Rational{Int64}}
@@ -24,7 +24,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Addition Tests
     ==========================================================================#
-    @testset "Addition" begin
+    @testset verbose = true "Addition" begin
         # f = max(1 + x1, 2 + x2)
         # g = max(3 + x1, 4 + x3)
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
@@ -49,7 +49,7 @@ using Test, TropicalNN, Oscar
         @test length(h_no) == 2
     end
 
-    @testset "Addition duplicate exponent merging" begin
+    @testset verbose = true "Addition duplicate exponent merging" begin
         # Both f and g have the same monomial x1 with different coefficients.
         # Correct tropical addition: max(1, 3) = 3 for that monomial.
         f = Signomial([R(1)], [unit_exp(1)]; sorted = false)
@@ -73,7 +73,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Multiplication Tests
     ==========================================================================#
-    @testset "Multiplication" begin
+    @testset verbose = true "Multiplication" begin
         # f = max(1 + x1, 2 + x2)
         # g = max(3 + x3, 4 + x4)
         # Product should have 4 monomials (no overlapping exponents possible)
@@ -103,7 +103,7 @@ using Test, TropicalNN, Oscar
         @test length(h) == length(h2)
     end
 
-    @testset "Multiplication with overlapping product exponents" begin
+    @testset verbose = true "Multiplication with overlapping product exponents" begin
         # f = max(1 + x1, 2 + x2), g = max(3 + x1, 4 + x2)
         # Products: (x1,x1)=2x1 c=4, (x1,x2)=x1+x2 c=5,
         #           (x2,x1)=x1+x2 c=5, (x2,x2)=2x2 c=6
@@ -125,7 +125,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Evaluation Tests
     ==========================================================================#
-    @testset "Evaluation" begin
+    @testset verbose = true "Evaluation" begin
         # f = max(1 + x1, 2 + x2, 3 + x3, 4 + x4, 5 + x5, 6 + x6)
         exps = [unit_exp(i) for i in 1:6]
         coeffs = [R(i) for i in 1:6]
@@ -150,7 +150,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Quicksum Tests
     ==========================================================================#
-    @testset "Quicksum" begin
+    @testset verbose = true "Quicksum" begin
         # Create 6 single-monomial polynomials, one per variable
         polys = [Signomial([R(i)], [unit_exp(i)]; sorted = false) for i in 1:6]
 
@@ -179,7 +179,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Multiplication with Quicksum
     ==========================================================================#
-    @testset "Multiplication with quicksum" begin
+    @testset verbose = true "Multiplication with quicksum" begin
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         g = Signomial([R(3), R(4)], [unit_exp(3), unit_exp(4)]; sorted = false)
 
@@ -198,7 +198,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Scalar Multiplication and Exponentiation
     ==========================================================================#
-    @testset "Scalar multiplication" begin
+    @testset verbose = true "Scalar multiplication" begin
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         g = R(5) * f
         @test g isa SignomialMatrix{Rational{Int64}}
@@ -213,7 +213,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Dedup Monomials
     ==========================================================================#
-    @testset "Dedup monomials" begin
+    @testset verbose = true "Dedup monomials" begin
         # Polynomial with one tropical-zero coefficient
         tropical_zero = zero(R(0))
         f = Signomial([tropical_zero, R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
@@ -224,7 +224,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Higher Dimension Tests (8 and 10 variables)
     ==========================================================================#
-    @testset "Higher dimensions" begin
+    @testset verbose = true "Higher dimensions" begin
         # 8-variable polynomial
         exps_8 = [begin
                       e = zeros(Rational{Int64}, 8);
@@ -261,7 +261,7 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Equality Tests
     ==========================================================================#
-    @testset "Equality" begin
+    @testset verbose = true "Equality" begin
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         g = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         @test f == g

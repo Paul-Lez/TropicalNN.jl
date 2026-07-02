@@ -1,6 +1,6 @@
 using Test, TropicalNN, Oscar
 
-@testset "Main" begin
+@testset verbose = true "Main" begin
     oscar_mode = OscarMode()
     w, b, t = TropicalNN.random_mlp([3, 2, 1])
     trop = mlp_to_trop(w, b, t)[1]
@@ -36,7 +36,7 @@ using Test, TropicalNN, Oscar
     @test length(enum_linear_regions_rat_general(u / v; mode = oscar_mode)) == 2
 
     # test linear regions enumeration — repeated linear map (exists_reps = true)
-    @testset "enum_linear_regions_rat_general repeated-map path via f/f" begin
+    @testset verbose = true "enum_linear_regions_rat_general repeated-map path via f/f" begin
         # f/f is the constant tropical function 0 (the multiplicative identity).
         # Every monomial pair (i, i) maps to the same linear map (coefficient 0, exponent 0⃗),
         # while cross-pairs (i, j) with i≠j intersect only on a lower-dimensional wall and
@@ -57,7 +57,7 @@ using Test, TropicalNN, Oscar
     end
 
     # enum_linear_regions_rat_general repeated-map path — 6 monomials, 1 variable
-    @testset "enum_linear_regions_rat_general repeated-map path via f/f — 6 monomials" begin
+    @testset verbose = true "enum_linear_regions_rat_general repeated-map path via f/f — 6 monomials" begin
         # f = max(0, x-1, 2x-4, 3x-9, 4x-16, 5x-25).
         # The coefficients -c² lie on a concave curve, so all 6 monomials are active.
         # Breakpoints at x = 1, 3, 5, 7, 9 produce 6 full-dimensional regions.
@@ -76,7 +76,7 @@ using Test, TropicalNN, Oscar
     end
 
     # enum_linear_regions_rat_general repeated-map path — 6 monomials, 2 variables
-    @testset "enum_linear_regions_rat_general repeated-map path via f/f — 2D, 6 monomials" begin
+    @testset verbose = true "enum_linear_regions_rat_general repeated-map path via f/f — 2D, 6 monomials" begin
         # f = max(0, y, 2y-1, x, x+y, x+2y-1)
         # This is the tropical product of max(0, x) and max(0, y, 2y-1), so its 6
         # linear regions are the 2×3 grid:

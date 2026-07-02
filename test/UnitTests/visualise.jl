@@ -1,7 +1,7 @@
 #using Test, TropicalNN, Oscar, GLMakie
 using Test, TropicalNN, Oscar, CairoMakie
 
-@testset "Visualise" begin
+@testset verbose = true "Visualise" begin
 
     # random_pmap
     pmap=random_pmap(2, 4)

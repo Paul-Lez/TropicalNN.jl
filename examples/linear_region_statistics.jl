@@ -1,4 +1,6 @@
-using TropicalNN, GraphMakie, CairoMakie, Graphs
+using TropicalNN, CairoMakie, GraphMakie, Graphs
+
+mkpath("./examples/outputs")
 
 # Generate a random neural network and obtain its tropical representation
 w, b, t=random_mlp([2, 4, 1])
@@ -41,12 +43,12 @@ end
 # Namely, we take each linear region to be a node and add an edge between nodes when the linear regions are connected along a face.
 G=get_graph(f)
 # We can visualise this graph and compare it to the visualisation of the neural networks linear regions.
-fig=GLMakie.Figure()
+fig=CairoMakie.Figure()
 ax=Axis(fig[1, 1])
 graphplot!(ax, G)
-GLMakie.save("./examples/outputs/statistics_graph.png", fig)
+CairoMakie.save("./examples/outputs/statistics_graph.png", fig)
 fig, ax=plot_linear_regions(f)
-GLMakie.save("./examples/outputs/statistics_linear_regions.png", fig)
+CairoMakie.save("./examples/outputs/statistics_linear_regions.png", fig)
 
 # We can also verify that the node data collected in the graph makes sense
 scatter!(
@@ -57,7 +59,7 @@ text!(
     ax, reduce(vcat, [[Float64(p[1]) for p in G[v]["interior_point"]] for v in labels(G)]),
     reduce(vcat, [[Float64(p[2]) for p in G[v]["interior_point"]] for v in labels(G)]),
     text = reduce(vcat, [[string(vol) for vol in G[v]["volume"]] for v in labels(G)]))
-GLMakie.save("./package/examples/outputs/statistics_linear_regions_with_data.png", fig)
+CairoMakie.save("./examples/outputs/statistics_linear_regions_with_data.png", fig)
 
 # We use Graphs.jl to construct this graph and hence we can leverage its functionality to explore the properties of this graph.
 # Some measures of interest may include the following.

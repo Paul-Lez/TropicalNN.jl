@@ -1,7 +1,7 @@
 using Test, TropicalNN, Graphs, MetaGraphsNext
 using Oscar: QQFieldElem, tropical_semiring
 
-@testset "Statistics" begin
+@testset verbose = true "Statistics" begin
 
     # one-dimensional tropical polynomial
 
@@ -171,7 +171,7 @@ using Oscar: QQFieldElem, tropical_semiring
     # - Monomial [1] (coeff 1): region -1 ≤ x ≤ 0   — bounded interval, vertices at x=-1 and x=0
     # - Monomial [2] (coeff 1): region x ≥ 0         — unbounded ray, one vertex at x=0
 
-    @testset "interior_points(Array) — single bounded polyhedron" begin
+    @testset verbose = true "interior_points(Array) — single bounded polyhedron" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         # polyhedron for monomial index 2 (exponent [1//1]) is the interval [-1, 0]
@@ -182,7 +182,7 @@ using Oscar: QQFieldElem, tropical_semiring
         @test Float64.(pts[1]) ≈ [-0.5]
     end
 
-    @testset "interior_points(Array) — multiple polyhedra" begin
+    @testset verbose = true "interior_points(Array) — multiple polyhedra" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         regions = enum_linear_regions_general(f_1d; mode = OscarMode())
@@ -192,7 +192,7 @@ using Oscar: QQFieldElem, tropical_semiring
         @test length(pts) == length(polys)
     end
 
-    @testset "interior_points(Dict) — exercises the fixed code path" begin
+    @testset verbose = true "interior_points(Dict) — exercises the fixed code path" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         # interior_points(AbstractSignomial) routes through interior_points(Dict)
@@ -208,7 +208,7 @@ using Oscar: QQFieldElem, tropical_semiring
         end
     end
 
-    @testset "interior_points(Dict) — centroid of bounded region" begin
+    @testset verbose = true "interior_points(Dict) — centroid of bounded region" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         result = interior_points(f_1d)
@@ -218,7 +218,7 @@ using Oscar: QQFieldElem, tropical_semiring
         @test any(p ≈ [-0.5] for p in all_pts)
     end
 
-    @testset "interior_points(RationalSignomial) — end-to-end" begin
+    @testset verbose = true "interior_points(RationalSignomial) — end-to-end" begin
         # Verify the function runs without error on a rational function
         W, b, t = random_mlp([1, 2, 1])
         trop = mlp_to_trop(W, b, t)[1]

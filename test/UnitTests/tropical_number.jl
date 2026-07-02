@@ -4,8 +4,8 @@ Unit tests for TropicalNumber type
 
 using Test, TropicalNN
 
-@testset "TropicalNumber" begin
-    @testset "Constructors" begin
+@testset verbose = true "TropicalNumber" begin
+    @testset verbose = true "Constructors" begin
         # Min-plus
         x = TropicalMin(3, 2)
         @test x.value == 3//2
@@ -23,7 +23,7 @@ using Test, TropicalNN
         @test typeof(a) == TropicalMax{Int64}
     end
 
-    @testset "Tropical Addition (Min)" begin
+    @testset verbose = true "Tropical Addition (Min)" begin
         x = TropicalMin(3, 2)  # 3/2
         y = TropicalMin(5, 3)  # 5/3
 
@@ -38,7 +38,7 @@ using Test, TropicalNN
         @test (x + zero(TropicalMin{Int64})).value == x.value
     end
 
-    @testset "Tropical Addition (Max)" begin
+    @testset verbose = true "Tropical Addition (Max)" begin
         x = TropicalMax(3, 2)  # 3/2
         y = TropicalMax(5, 3)  # 5/3
 
@@ -53,7 +53,7 @@ using Test, TropicalNN
         @test (x + zero(TropicalMax{Int64})).value == x.value
     end
 
-    @testset "Tropical Multiplication" begin
+    @testset verbose = true "Tropical Multiplication" begin
         x = TropicalMin(3, 2)  # 3/2
         y = TropicalMin(2, 1)  # 2
 
@@ -72,7 +72,7 @@ using Test, TropicalNN
         @test (x * one(TropicalMin{Int64})).value == x.value
     end
 
-    @testset "Tropical Division" begin
+    @testset verbose = true "Tropical Division" begin
         x = TropicalMin(7, 2)  # 7/2
         y = TropicalMin(2, 1)  # 2
 
@@ -84,7 +84,7 @@ using Test, TropicalNN
         @test (x * y / y).value == x.value
     end
 
-    @testset "Tropical Exponentiation" begin
+    @testset verbose = true "Tropical Exponentiation" begin
         x = TropicalMin(3, 2)  # 3/2
 
         # (3/2)^3 = 3 * 3/2 = 9/2
@@ -99,7 +99,7 @@ using Test, TropicalNN
         @test (x^0).value == 0//1
     end
 
-    @testset "Identity Elements" begin
+    @testset verbose = true "Identity Elements" begin
         # Tropical zero (additive identity)
         z_min = zero(TropicalMin{Int64})
         @test isinf(z_min)
@@ -118,7 +118,7 @@ using Test, TropicalNN
         @test (x * o).value == x.value
     end
 
-    @testset "Comparison" begin
+    @testset verbose = true "Comparison" begin
         x = TropicalMin(3, 2)
         y = TropicalMin(5, 3)
         z = TropicalMin(3, 2)
@@ -134,7 +134,7 @@ using Test, TropicalNN
         @test hash(x) != hash(y)
     end
 
-    @testset "Infinity Handling" begin
+    @testset verbose = true "Infinity Handling" begin
         # Min-plus infinity is +∞
         inf_min = tropical_inf(TropicalMin{Int64})
         @test isinf(inf_min)
@@ -154,7 +154,7 @@ using Test, TropicalNN
         @test !iszero(x)
     end
 
-    @testset "Array Operations" begin
+    @testset verbose = true "Array Operations" begin
         # Min-plus sum
         arr_min = [TropicalMin(i, 1) for i in 1:10]
         result = tropical_sum(arr_min)
@@ -171,7 +171,7 @@ using Test, TropicalNN
         @test result.value == (1+2+3+4+5)//1  # sum is 15
     end
 
-    @testset "Convention" begin
+    @testset verbose = true "Convention" begin
         x_min = TropicalMin(3, 2)
         x_max = TropicalMax(3, 2)
 
@@ -181,7 +181,7 @@ using Test, TropicalNN
         @test convention(typeof(x_max)) == max
     end
 
-    @testset "Distributivity (tropical)" begin
+    @testset verbose = true "Distributivity (tropical)" begin
         # Tropical multiplication distributes over tropical addition
         x = TropicalMin(1, 1)
         y = TropicalMin(2, 1)
@@ -193,7 +193,7 @@ using Test, TropicalNN
         @test lhs.value == rhs.value
     end
 
-    @testset "Conversions" begin
+    @testset verbose = true "Conversions" begin
         r = 3//2
         x = convert(TropicalMin{Int64}, r)
         @test x.value == r
@@ -207,7 +207,7 @@ using Test, TropicalNN
         @test z.value == 5//1
     end
 
-    @testset "Type Stability" begin
+    @testset verbose = true "Type Stability" begin
         x = TropicalMin(3, 2)
         y = TropicalMin(5, 3)
 
@@ -218,7 +218,7 @@ using Test, TropicalNN
         @test typeof(x^2) == typeof(x)
     end
 
-    @testset "Edge Cases" begin
+    @testset verbose = true "Edge Cases" begin
         # Very large numbers
         x = TropicalMin(typemax(Int64) ÷ 2, 1)
         y = TropicalMin(typemax(Int64) ÷ 2, 1)

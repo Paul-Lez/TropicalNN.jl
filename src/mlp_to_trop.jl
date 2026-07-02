@@ -56,7 +56,8 @@ end
 
 Convert a single affine layer to tropical Puiseux rational functions.
 """
-function affine_to_trop(A::Matrix{T}, b::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+function affine_to_trop(A::Matrix{T},
+        b::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     G = RationalSignomial[]
 
     if size(A, 1) != length(b)

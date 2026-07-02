@@ -1,9 +1,9 @@
 using Test, TropicalNN, Oscar
 
-@testset "linearmap_matrices" begin
+@testset verbose = true "linearmap_matrices" begin
     R = tropical_semiring(max)
 
-    @testset "Signomial" begin
+    @testset verbose = true "Signomial" begin
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         A, b = linearmap_matrices(f)
 
@@ -18,7 +18,7 @@ using Test, TropicalNN, Oscar
         @test length(b) == 2
     end
 
-    @testset "Single-monomial Signomial" begin
+    @testset verbose = true "Single-monomial Signomial" begin
         f_const = Signomial([R(5)], [[0//1, 0//1]]; sorted = false)
         A, b = linearmap_matrices(f_const)
         @test size(A, 1) == 1
@@ -26,7 +26,7 @@ using Test, TropicalNN, Oscar
         @test length(b) == 1
     end
 
-    @testset "RationalSignomial" begin
+    @testset verbose = true "RationalSignomial" begin
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
@@ -42,7 +42,7 @@ using Test, TropicalNN, Oscar
     end
 end
 
-@testset "enum_linear_regions_rat_general — constant function" begin
+@testset verbose = true "enum_linear_regions_rat_general — constant function" begin
     R = tropical_semiring(max)
     oscar_mode = OscarMode()
 
