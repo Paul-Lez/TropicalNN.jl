@@ -1,6 +1,6 @@
 using Test, TropicalNN, Random
 
-@testset "Hoffman" begin
+@testset verbose = true "Hoffman" begin
     Random.seed!(42)
 
     @test round(exact_hoff([1 0 0; 0 1 0; 0 0 1]), digits = 2) == 1.0

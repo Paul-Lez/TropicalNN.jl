@@ -2,7 +2,7 @@ using Test, TropicalNN, Oscar
 
 struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode end
 
-@testset "Linear Regions General Calculation" begin
+@testset verbose = true "Linear Regions General Calculation" begin
     R = tropical_semiring(max)
     oscar_mode = OscarMode()
     highs_mode = HiGHSMode()
@@ -13,7 +13,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
     general_full_dimensional_flags(regions, mode) = [TropicalNN.is_full_dimensional(region[1]; mode = mode)
                                                      for region in regions]
 
-    @testset "Polyhedron construction by mode" begin
+    @testset verbose = true "Polyhedron construction by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         oscar_region = TropicalNN.polyhedron(f, 1, oscar_mode)
@@ -43,7 +43,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test TropicalNN.is_full_dimensional(whole_space; mode = highs_mode)
     end
 
-    @testset "Unsupported and empty inputs fail explicitly" begin
+    @testset verbose = true "Unsupported and empty inputs fail explicitly" begin
         @test_throws ArgumentError TropicalNN.make_polyhedron(
             zeros(Float64, 1, 1), Float64[0.0]; mode = UnsupportedLinearRegionsMode())
 
@@ -52,7 +52,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             RationalSignomial(empty, empty); mode = highs_mode)
     end
 
-    @testset "Polynomial region enumeration by mode" begin
+    @testset verbose = true "Polynomial region enumeration by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         oscar_regions = TropicalNN.enum_linear_regions_general(f; mode = oscar_mode)
@@ -77,7 +77,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             highs_regions)
     end
 
-    @testset "Polynomial mode enumeration on edge cases" begin
+    @testset verbose = true "Polynomial mode enumeration on edge cases" begin
         cases = [
             (
                 "single monomial",
@@ -115,7 +115,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         end
     end
 
-    @testset "Rational mode enumeration" begin
+    @testset verbose = true "Rational mode enumeration" begin
         constant_1d = Signomial([R(0)], [[0//1]]; sorted = false)
         constant_2d = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         max_xy = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -202,7 +202,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         )
     end
 
-    @testset "Repeated linear map components" begin
+    @testset verbose = true "Repeated linear map components" begin
         f = Signomial(
             [R(0), R(-1), R(-4), R(-9), R(-16), R(-25)],
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
@@ -219,7 +219,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         )
     end
 
-    @testset "Disconnected pieces with the same linear map are split" begin
+    @testset verbose = true "Disconnected pieces with the same linear map are split" begin
         f = Signomial([R(0), R(0), R(-2)], [[0//1], [1//1], [2//1]]; sorted = false)
         g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
         q = f / g
