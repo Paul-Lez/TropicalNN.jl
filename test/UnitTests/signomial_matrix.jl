@@ -203,6 +203,9 @@ using Test, TropicalNN, Oscar
         f = Signomial([tropical_zero, R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         f_dedup = TropicalNN.dedup_monomials(f)
         @test length(f_dedup) == 1
+        @test f_dedup isa SignomialMatrix{Rational{Int64}}
+        @test Oscar.nvars(f_dedup) == 6
+        @test monomial_count(f) == 1
     end
 
     #==========================================================================

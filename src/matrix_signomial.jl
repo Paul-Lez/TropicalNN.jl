@@ -1,5 +1,15 @@
 # Matrix-based signomial implementation.
 
+# Allocation-free lexicographic column comparison used to validate constructor
+# fast paths that skip re-canonicalizing already sorted, unique exponent columns.
+function _matrix_col_lexless(exp::Matrix, i::Int, j::Int)
+    @inbounds for d in axes(exp, 1)
+        exp[d, i] < exp[d, j] && return true
+        exp[d, j] < exp[d, i] && return false
+    end
+    return false
+end
+
 """
     SignomialMatrix{T}
 
@@ -18,11 +28,17 @@ struct SignomialMatrix{T} <: AbstractSignomial{T}
 
     function SignomialMatrix{T}(
             exp::Matrix{T},
-            coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
+            coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+            sorted_unique::Bool = false
     ) where {T}
         dim, n_monomials = size(exp)
         @assert length(coeff) == n_monomials "Coefficient count must match monomial count"
         if n_monomials <= 1
+            return new{T}(exp, coeff, dim)
+        end
+        if sorted_unique
+            @assert all(_matrix_col_lexless(exp, i - 1, i)
+                        for i in 2:n_monomials) "SignomialMatrix exponents must be sorted and unique"
             return new{T}(exp, coeff, dim)
         end
 
@@ -156,10 +172,9 @@ end
 function Base.:^(f::SignomialMatrix{T}, r::Base.Rational) where {T}
     if r == 0
         # Return one polynomial
-        R = parent(f.coeff[1])
         return SignomialMatrix{T}(
             zeros(T, f.dim, 1),
-            [one(R(0))]
+            [_tropical_one(f)]
         )
     end
 
@@ -199,17 +214,12 @@ function quicksum(F::Vector{SignomialMatrix{T}}) where {T}
     return SignomialMatrix{T}(combined_exp, combined_coeff)
 end
 
-function mul_with_quicksum(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
-    # Same as regular multiplication for matrix version
-    return f * g
-end
-
 function comp(f::SignomialMatrix{T}, G::Vector{<:AbstractSignomial}) where {T}
     @assert length(G) == f.dim "Number of polynomials must match variables"
 
     # Get a zero polynomial in the output space
     zero_poly = Signomial(
-        [zero(f.coeff[1])],
+        [_tropical_zero(f)],
         [zeros(T, nvars(G[1]))],
         true
     )
@@ -266,5 +276,5 @@ function exponents(f::SignomialMatrix{T}) where {T}
 end
 
 function coefficients(f::SignomialMatrix)
-    return f.coeff
+    return copy(f.coeff)
 end

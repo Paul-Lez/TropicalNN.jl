@@ -28,11 +28,22 @@ All subtypes must implement:
 - `nvars(f)` - Number of variables
 - `length(f)` - Number of monomials
 - `get_exp(f, i)` - Get i-th exponent vector
-- `get_coeff(f, exp)` - Get coefficient for exponent
+- `get_coeff(f, i)` - Get coefficient for i-th monomial
+- `get_coeff_by_exp(f, exp)` - Get coefficient for exponent
 """
 abstract type AbstractSignomial{T} end
 
 const _TROPICAL_COEFF = Oscar.TropicalSemiringElem{typeof(max)}
+
+function _coefficient_parent(f::AbstractSignomial)
+    if length(f) == 0
+        return Oscar.tropical_semiring(max)
+    end
+    return parent(get_coeff(f, 1))
+end
+
+_tropical_zero(f::AbstractSignomial) = zero(_coefficient_parent(f)(0))
+_tropical_one(f::AbstractSignomial) = one(_coefficient_parent(f)(0))
 
 """
     _canonize_terms(coeffs, exp_vecs)
@@ -333,7 +344,7 @@ Construct the tropical-zero (additive identity, −∞) signomial in `n` variabl
 `f` is used only to infer the exponent type.
 """
 function Signomial_zero(n::Int, f::AbstractSignomial)
-    return Signomial_const(n, zero(get_coeff(f, 1)), f)
+    return Signomial_const(n, _tropical_zero(f), f)
 end
 
 """
@@ -343,7 +354,7 @@ Construct the tropical-one (multiplicative identity, value 0) signomial in `n` v
 `f` is used only to infer the exponent type.
 """
 function Signomial_one(n::Int, f::AbstractSignomial)
-    return Signomial_const(n, one(get_coeff(f, 1)), f)
+    return Signomial_const(n, _tropical_one(f), f)
 end
 
 """
@@ -445,7 +456,7 @@ Evaluate the tropical polynomial `f` at the point `a`.
 Alias for `eval_poly`.
 """
 function evaluate(f::AbstractSignomial, a::Vector)
-    return eval_poly(f, a)
+    return eval_poly(f, _coerce_evaluation_point(f, a))
 end
 
 """
@@ -454,7 +465,7 @@ end
 Evaluate the rational tropical function `f` at the point `a`.
 """
 function evaluate(f::RationalSignomial, a::Vector)
-    return eval_rational(f, a)
+    return eval_rational(f, _coerce_evaluation_point(f.num, a))
 end
 
 """
@@ -466,6 +477,18 @@ function evaluate(F::Vector{<:RationalSignomial}, a::Vector)
     return [evaluate(f, a) for f in F]
 end
 
+_lift_evaluation_scalar(_, x::Oscar.TropicalSemiringElem) = x
+
+function _lift_evaluation_scalar(R, x::Real)
+    return R(x isa AbstractFloat ? rationalize(x) : x)
+end
+
+function _coerce_evaluation_point(f::AbstractSignomial, a::Vector)
+    all(x -> x isa Oscar.TropicalSemiringElem, a) && return a
+    R = _coefficient_parent(f)
+    return [_lift_evaluation_scalar(R, x) for x in a]
+end
+
 # Callable syntax: f(x) as sugar for evaluate(f, x)
 (f::AbstractSignomial)(x::Vector) = evaluate(f, x)
 (f::RationalSignomial)(x::Vector) = evaluate(f, x)
@@ -475,23 +498,52 @@ end
 #==============================================================================#
 
 """
-    dedup_monomials(f::AbstractSignomial)
+    dedup_monomials(f)
 
 Remove all monomials with tropical-zero coefficient from `f`.
 """
-function dedup_monomials(f::AbstractSignomial)
-    tropical_zero = zero(get_coeff(f, 1))
-    new_exps = Vector{eltype(exponents(f))}()
-    new_coeffs = Oscar.TropicalSemiringElem{typeof(max)}[]
-    for (e, c) in monomial_pairs(f)
+function dedup_monomials(f::SignomialStatic{T, N}) where {T, N}
+    length(f) == 0 && return f
+    keep_count = monomial_count(f)
+    keep_count == length(f) && return f
+
+    tropical_zero = zero(f.coeff[1])
+    new_coeffs = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, keep_count)
+    new_exps = Vector{SVector{N, T}}(undef, keep_count)
+
+    idx = 1
+    @inbounds for i in Base.eachindex(f)
+        c = f.coeff[i]
         if c != tropical_zero
-            push!(new_exps, e)
-            push!(new_coeffs, c)
+            new_coeffs[idx] = c
+            new_exps[idx] = f.exp[i]
+            idx += 1
         end
     end
-    # Convert SVector to plain Vector for the smart constructor
-    plain_exps = [Vector(e) for e in new_exps]
-    return Signomial(new_coeffs, plain_exps, true)
+    return SignomialStatic{T, N}(new_coeffs, new_exps)
+end
+
+function dedup_monomials(f::SignomialMatrix{T}) where {T}
+    length(f) == 0 && return f
+    keep_count = monomial_count(f)
+    keep_count == length(f) && return f
+
+    tropical_zero = zero(f.coeff[1])
+    new_coeffs = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, keep_count)
+    new_exp = Matrix{T}(undef, f.dim, keep_count)
+
+    idx = 1
+    @inbounds for i in Base.eachindex(f)
+        c = f.coeff[i]
+        if c != tropical_zero
+            new_coeffs[idx] = c
+            for d in 1:f.dim
+                new_exp[d, idx] = f.exp[d, i]
+            end
+            idx += 1
+        end
+    end
+    return SignomialMatrix{T}(new_exp, new_coeffs, true)
 end
 
 function dedup_monomials(f::RationalSignomial)
@@ -508,7 +560,15 @@ end
 Return the number of monomials in `f`.
 """
 function monomial_count(f::AbstractSignomial)
-    return length(f)
+    length(f) == 0 && return 0
+    tropical_zero = zero(get_coeff(f, 1))
+    n = 0
+    for i in Base.eachindex(f)
+        if get_coeff(f, i) != tropical_zero
+            n += 1
+        end
+    end
+    return n
 end
 
 function monomial_count(f::RationalSignomial)
@@ -578,7 +638,7 @@ end
     quicksum(F::Vector{<:AbstractSignomial})
 
 Fallback quicksum for a heterogeneous vector of `AbstractSignomial` values.
-Accumulates terms with plain addition.
+Accumulates terms with exact polynomial addition.
 """
 function quicksum(F::Vector{<:AbstractSignomial})
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
@@ -589,12 +649,17 @@ function quicksum(F::Vector{<:AbstractSignomial})
     return result
 end
 
+function _warn_mul_with_quicksum_deprecated()
+    @warn "mul_with_quicksum is deprecated; use * for pairwise multiplication or foldl(*) for vectors" maxlog=1
+end
+
 """
     mul_with_quicksum(F::Vector{<:AbstractSignomial})
 
-Multiply all polynomials in `F` using quicksum multiplication.
+Deprecated; use `foldl(*)` or ordinary multiplication instead.
 """
 function mul_with_quicksum(F::Vector{<:AbstractSignomial})
+    _warn_mul_with_quicksum_deprecated()
     isempty(F) && throw(ArgumentError("Cannot mul_with_quicksum empty vector"))
     result = F[1]
     for i in 2:length(F)
@@ -623,9 +688,10 @@ end
 """
     mul_with_quicksum(F::Vector{<:RationalSignomial})
 
-Multiply all rational signomials in `F` using quicksum multiplication.
+Deprecated; use `foldl(*)` or ordinary multiplication instead.
 """
 function mul_with_quicksum(F::Vector{<:RationalSignomial})
+    _warn_mul_with_quicksum_deprecated()
     isempty(F) && throw(ArgumentError("Cannot mul_with_quicksum empty vector"))
     result = F[1]
     for i in 2:length(F)
@@ -637,18 +703,19 @@ end
 """
     mul_with_quicksum(f::RationalSignomial, g::RationalSignomial)
 
-Quicksum multiplication of two rational signomials.
+Deprecated; use `f * g` instead.
 """
 function mul_with_quicksum(f::RationalSignomial, g::RationalSignomial)
+    _warn_mul_with_quicksum_deprecated()
     return RationalSignomial(
         mul_with_quicksum(f.num, g.num),
         mul_with_quicksum(f.den, g.den)
     )
 end
 
-# AbstractSignomial fallback for mul_with_quicksum
 function mul_with_quicksum(f::AbstractSignomial, g::AbstractSignomial)
-    return f * g  # fall back to regular multiplication
+    _warn_mul_with_quicksum_deprecated()
+    return f * g
 end
 
 #==============================================================================#
@@ -658,7 +725,7 @@ end
 """
     add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
 
-Add two rational signomials using quicksum operations.
+Add two rational signomials using quicksum addition for the numerator.
 """
 function add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
     num = quicksum([mul_with_quicksum(f.num, g.den), mul_with_quicksum(f.den, g.num)])
@@ -669,7 +736,7 @@ end
 """
     div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
 
-Divide two rational signomials using quicksum operations.
+Divide two rational signomials.
 """
 function div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
     num = mul_with_quicksum(f.num, g.den)
@@ -723,7 +790,7 @@ end
 """
     comp_with_quicksum(f::AbstractSignomial, G::Vector{<:RationalSignomial})
 
-Composition using quicksum operations (faster, defers sorting).
+Composition using exact quicksum operations, which batch intermediate sums where available.
 """
 function comp_with_quicksum(f::AbstractSignomial, G::Vector{<:RationalSignomial})
     @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
