@@ -22,7 +22,19 @@ struct SignomialMatrix{T} <: AbstractSignomial{T}
     ) where {T}
         dim, n_monomials = size(exp)
         @assert length(coeff) == n_monomials "Coefficient count must match monomial count"
-        new{T}(exp, coeff, dim)
+        if n_monomials <= 1
+            return new{T}(exp, coeff, dim)
+        end
+
+        exp_vecs = [Vector{T}(exp[:, i]) for i in 1:n_monomials]
+        canonical_coeff, canonical_exp = _canonize_terms(coeff, exp_vecs)
+        canonical_matrix = Matrix{T}(undef, dim, length(canonical_exp))
+        @inbounds for i in eachindex(canonical_exp)
+            for d in 1:dim
+                canonical_matrix[d, i] = canonical_exp[i][d]
+            end
+        end
+        new{T}(canonical_matrix, canonical_coeff, dim)
     end
 end
 
@@ -35,27 +47,8 @@ function SignomialMatrix{T}(
     if isempty(exp_vecs)
         return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), eltype(values(coeff_dict))[])
     end
-
-    dim = length(exp_vecs[1])
-    n_monomials = length(exp_vecs)
-
-    # Sort if needed
-    if !sorted
-        exp_vecs = sort(exp_vecs)
-    end
-
-    # Convert to matrix
-    exp_matrix = Matrix{T}(undef, dim, n_monomials)
-    coeff_vec = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, n_monomials)
-
-    @inbounds for i in 1:n_monomials
-        for d in 1:dim
-            exp_matrix[d, i] = exp_vecs[i][d]
-        end
-        coeff_vec[i] = coeff_dict[exp_vecs[i]]
-    end
-
-    return SignomialMatrix{T}(exp_matrix, coeff_vec)
+    coeffs = Oscar.TropicalSemiringElem{typeof(max)}[coeff_dict[e] for e in exp_vecs]
+    return SignomialMatrix{T}(coeffs, exp_vecs, sorted)
 end
 
 # Constructor from coefficient vector and exponent vector
@@ -68,14 +61,9 @@ function SignomialMatrix{T}(
         return SignomialMatrix{T}(Matrix{T}(undef, 0, 0), coeffs)
     end
 
+    coeffs, exp_vecs = _canonize_terms(coeffs, exp_vecs)
     dim = length(exp_vecs[1])
     n_monomials = length(exp_vecs)
-
-    if !sorted
-        perm = sortperm(exp_vecs)
-        exp_vecs = exp_vecs[perm]
-        coeffs = coeffs[perm]
-    end
 
     exp_matrix = Matrix{T}(undef, dim, n_monomials)
     @inbounds for i in 1:n_monomials
@@ -119,12 +107,7 @@ function Base.:+(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
 
     combined_coeff = vcat(f.coeff, g.coeff)
 
-    # Sort
-    perm = sortperm([combined_exp[:, i] for i in 1:(m + n)])
-    sorted_exp = combined_exp[:, perm]
-    sorted_coeff = combined_coeff[perm]
-
-    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(combined_exp, combined_coeff)
 end
 
 function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
@@ -149,12 +132,7 @@ function Base.:*(f::SignomialMatrix{T}, g::SignomialMatrix{T}) where {T}
         end
     end
 
-    # Sort
-    perm = sortperm([result_exp[:, i] for i in 1:result_size])
-    sorted_exp = result_exp[:, perm]
-    sorted_coeff = result_coeff[perm]
-
-    return SignomialMatrix{T}(sorted_exp, sorted_coeff)
+    return SignomialMatrix{T}(result_exp, result_coeff)
 end
 
 function eval_poly(f::SignomialMatrix{T}, a::Vector) where {T}
@@ -192,7 +170,7 @@ function Base.:^(f::SignomialMatrix{T}, r::Base.Rational) where {T}
             new_exp[d, i] = T(r * f.exp[d, i])
         end
     end
-    new_coeff = [c^r for c in f.coeff]
+    new_coeff = Oscar.TropicalSemiringElem{typeof(max)}[c^r for c in f.coeff]
     return SignomialMatrix{T}(new_exp, new_coeff)
 end
 
@@ -274,12 +252,13 @@ function Base.string(f::SignomialMatrix{T}) where {T}
 end
 
 function get_coeff_by_exp(f::SignomialMatrix{T}, e) where {T}
-    for i in 1:length(f)
-        if f.exp[:, i] == e
-            return f.coeff[i]
-        end
+    exp = Vector{T}(e)
+    i = findfirst(x -> Vector{T}(x) == exp, eachcol(f.exp))
+    if i !== nothing
+        return f.coeff[i]
+    else
+        throw(KeyError(e))
     end
-    throw(KeyError(e))
 end
 
 function exponents(f::SignomialMatrix{T}) where {T}

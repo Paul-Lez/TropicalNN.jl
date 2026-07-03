@@ -1,4 +1,4 @@
-using Test, TropicalNN, Random
+using Test, TropicalNN, Random, Oscar
 
 @testset verbose = true "Hoffman" begin
     Random.seed!(42)
@@ -7,6 +7,16 @@ using Test, TropicalNN, Random
     @test round(exact_hoff([1 0 0; 0 1 0; 0 0 1; -1 -1 -1]), digits = 2) == 3.0
     @test round(exact_hoff([1 0 0; 0 1 0; 0 0 1; -1 0 0; 0 -1 0; 0 0 -1]), digits = 2) ==
           1.0
+
+    R = tropical_semiring(max)
+    single_monomial = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
+    # Degenerate one-piece case: there is no finite A-surjectivity certificate
+    # and no linear-region boundary, so these APIs use Inf as the convention.
+    @test exact_hoff(single_monomial) == Inf
+    @test upper_hoff(single_monomial) == Inf
+    @test lower_hoff(single_monomial) == Inf
+    @test exact_er(single_monomial) == Inf
+    @test upper_er(single_monomial) == Inf
 
     Random.seed!(42)
     mat = rand(3, 3)

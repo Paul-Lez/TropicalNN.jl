@@ -50,6 +50,9 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         empty = Signomial(Rational{BigInt}[], Vector{Vector{Rational{BigInt}}}(); sorted = false)
         @test_throws ArgumentError TropicalNN.enum_linear_regions_rat_general(
             RationalSignomial(empty, empty); mode = highs_mode)
+
+        @test TropicalNN.components([1, 2], Dict((1, 3) => true, (1, 2) => true)) ==
+              [[1, 2]]
     end
 
     @testset verbose = true "Polynomial region enumeration by mode" begin

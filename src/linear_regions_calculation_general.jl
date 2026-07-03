@@ -165,8 +165,11 @@ function components(V, D)
     adj = Dict(v => eltype(V)[] for v in V)
     for ((u, v), connected) in D
         if connected
-            haskey(adj, u) && push!(adj[u], v)
-            haskey(adj, v) && push!(adj[v], u)
+            # Ignore edges whose endpoints are not both in the vertex set V.
+            if haskey(adj, u) && haskey(adj, v)
+                push!(adj[u], v)
+                push!(adj[v], u)
+            end
         end
     end
 

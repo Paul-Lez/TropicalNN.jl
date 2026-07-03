@@ -32,6 +32,51 @@ All subtypes must implement:
 """
 abstract type AbstractSignomial{T} end
 
+const _TROPICAL_COEFF = Oscar.TropicalSemiringElem{typeof(max)}
+
+"""
+    _canonize_terms(coeffs, exp_vecs)
+
+Return `(coeffs, exp_vecs)` in canonical signomial form.
+
+This validates that each coefficient has a matching exponent vector and that
+all exponent vectors have the same dimension. Duplicate exponent vectors are
+merged by tropical addition of their coefficients, and the returned exponent
+vectors are sorted lexicographically.
+"""
+function _canonize_terms(
+        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}}
+) where {T}
+    length(coeffs) == length(exp_vecs) ||
+        throw(DimensionMismatch("Coefficient count must match exponent count"))
+
+    if isempty(exp_vecs)
+        return _TROPICAL_COEFF[], Vector{Vector{T}}()
+    end
+
+    dim = length(exp_vecs[begin])
+    coeff_by_exp = Dict{Tuple, _TROPICAL_COEFF}()
+    exp_by_key = Dict{Tuple, Vector{T}}()
+
+    for (c, exp_vec) in zip(coeffs, exp_vecs)
+        length(exp_vec) == dim ||
+            throw(DimensionMismatch("All exponent vectors must have length $dim"))
+        exp = Vector{T}(exp_vec)
+        key = Tuple(exp)
+        if haskey(coeff_by_exp, key)
+            coeff_by_exp[key] += c
+        else
+            coeff_by_exp[key] = c
+            exp_by_key[key] = exp
+        end
+    end
+
+    exps = collect(values(exp_by_key))
+    sort!(exps)
+    return _TROPICAL_COEFF[coeff_by_exp[Tuple(exp)] for exp in exps], exps
+end
+
 #==============================================================================#
 #                    CONCRETE REPRESENTATIONS                                  #
 #==============================================================================#

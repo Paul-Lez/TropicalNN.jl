@@ -189,16 +189,19 @@ Returns an approximate interior point for each polyhedron in `polys`, computed a
 **centroid of the vertex set** (i.e. the average of `Oscar.vertices(poly)`).
 
 !!! warning
-    This is only a valid interior point for **bounded** polyhedra with a non-empty vertex set.
-    For unbounded regions (which have no vertices) the vertex list is empty and this function
-    will throw a `DivideError`.  Use only after filtering for bounded regions.
+    For polyhedra with no vertices, this returns `nothing` for that polyhedron
+    instead of an approximate interior point.
 """
 function interior_points(polys::Array)
     component_interiors = Vector{Any}()
     for poly in polys
         # Obtain an interior point for each polyhedron in the collection
         vertices = Oscar.vertices(poly)
-        push!(component_interiors, sum(vertices) / length(vertices))
+        if isempty(vertices)
+            push!(component_interiors, nothing)
+        else
+            push!(component_interiors, sum(vertices) / length(vertices))
+        end
     end
     return component_interiors
 end
@@ -391,17 +394,56 @@ function get_graph(linear_regions::Dict)
     end
     # Add the edges between regions that are connected
     for k in 1:(num_regions - 1)
-        for j in 1:length(region_polys[(k + 1):end])
-            int = connection(region_polys[k], region_polys[(k + 1):end][j])
+        for l in (k + 1):num_regions
+            int = connection(region_polys[k], region_polys[l])
             if int != nothing
                 # Populate the node data with the linear maps 
                 # and the intersection of the connected regions
-                g[k, k + j] = Dict("linear maps" => [linear_maps[k], linear_maps[k + j]], "intersection" =>
+                g[k, l] = Dict("linear maps" => [linear_maps[k], linear_maps[l]], "intersection" =>
                     int)
             end
         end
     end
     return g
+end
+
+function _edge_direction(edge_intersection)
+    vertices = Oscar.vertices(edge_intersection)
+    if length(vertices) >= 2
+        return [vertices[2][1] - vertices[1][1], vertices[2][2] - vertices[1][2]]
+    end
+
+    rays = Oscar.rays(edge_intersection)
+    if !isempty(rays)
+        return [rays[1][1], rays[1][2]]
+    end
+
+    return nothing
+end
+
+function _edge_gradient(direction)
+    direction === nothing && return nothing
+    iszero(direction[1]) && return Inf
+    return direction[2] / direction[1]
+end
+
+function _normalized_direction(direction)
+    direction === nothing && return nothing
+    d = Float64.(direction)
+    norm_d = sqrt(sum(x -> x^2, d))
+    iszero(norm_d) && return nothing
+    return d ./ norm_d
+end
+
+function _canonical_direction(direction)
+    d = _normalized_direction(direction)
+    d === nothing && return nothing
+    for x in d
+        if !iszero(x)
+            return x < 0 ? -d : d
+        end
+    end
+    return d
 end
 
 @doc raw"""
@@ -455,7 +497,7 @@ function edge_gradients(g::MetaGraph)
         if haskey(gs, vertex)
             push!(gs[vertex], grad)
         else
-            gs[vertex] = [grad]
+            gs[vertex] = Any[grad]
         end
         return gs
     end
@@ -466,19 +508,15 @@ function edge_gradients(g::MetaGraph)
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
         vs = Oscar.vertices(e_int)
-        if length(vs) == 1 # In this case the edge is an infinite ray
-            ray = Oscar.rays(e_int)[1]
-            grad = ray[2] / ray[1]
-            # We add the edge to the singular source node
+        grad = _edge_gradient(_edge_direction(e_int))
+        grad === nothing && continue
+        if length(vs) == 1
             gs_with_source = add_g(gs_with_source, vs[1], grad)
-            push!(gs_full, grad)
-        else # In this case the edge is bounded by vertices
-            grad = (vs[1][2] - vs[2][2]) / (vs[1][1] - vs[2][1])
-            # We add the edge to each node
+        elseif length(vs) >= 2
             gs_with_source = add_g(gs_with_source, vs[1], grad)
             gs_with_source = add_g(gs_with_source, vs[2], grad)
-            push!(gs_full, grad)
         end
+        push!(gs_full, grad)
     end
     gs_with_source["full"] = gs_full
     return gs_with_source
@@ -523,7 +561,7 @@ function edge_lengths(g::MetaGraph)
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
         vs = Oscar.vertices(e_int)
-        if length(vs) != 1 # We only want to consider finite edges
+        if length(vs) >= 2 # We only want to consider finite edges
             len = sqrt(Float64((vs[1][1] - vs[2][1])^2 + (vs[1][2] - vs[2][2])^2))
             # We add the edge to each node
             ls_with_source = add_l(ls_with_source, vs[1], len)
@@ -577,21 +615,22 @@ function edge_directions(g::MetaGraph)
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
         vs = Oscar.vertices(e_int)
-        if length(vs) == 1 # In this case the edge is an infinite ray
-            ray = Float64.(Oscar.rays(e_int)[1])
-            d = [ray[1], ray[2]]
-            d = d ./ (sqrt(d[1]^2 + d[2]^2))
-            # We add the edge to the singular source node
-            ds_with_source = add_d(ds_with_source, vs[1], d)
-            push!(ds_full, d .* (abs(d[1]) / d[1]))
-        else # In this case the edge is bounded by vertices
-            # We add the edge to each node
-            d1 = Float64.([vs[2][1] - vs[1][1], vs[2][2] - vs[1][2]])
-            d2 = Float64.([vs[1][1] - vs[2][1], vs[1][2] - vs[2][2]])
-            ds_with_source = add_d(ds_with_source, vs[1], d1 ./ sqrt(d1[1]^2 + d1[2]^2))
-            ds_with_source = add_d(ds_with_source, vs[2], d2 ./ sqrt(d2[1]^2 + d2[2]^2))
-            push!(ds_full, d1 .* (abs(d1[1]) / d1[1]))
+        direction = _edge_direction(e_int)
+        canonical_direction = _canonical_direction(direction)
+        canonical_direction === nothing && continue
+        if length(vs) == 1
+            ds_with_source = add_d(ds_with_source, vs[1], canonical_direction)
+        elseif length(vs) >= 2
+            d12 = _normalized_direction(
+                [vs[2][1] - vs[1][1], vs[2][2] - vs[1][2]]
+            )
+            d21 = _normalized_direction(
+                [vs[1][1] - vs[2][1], vs[1][2] - vs[2][2]]
+            )
+            d12 !== nothing && (ds_with_source = add_d(ds_with_source, vs[1], d12))
+            d21 !== nothing && (ds_with_source = add_d(ds_with_source, vs[2], d21))
         end
+        push!(ds_full, canonical_direction)
     end
     ds_with_source["full"] = ds_full
     return ds_with_source
@@ -622,8 +661,10 @@ Collects the vertices of the linear regions, along with their multiplicities, th
 """
 function vertex_collection(g::MetaGraph)
     # Here we collect all the vertices of the graph
-    vs = reduce(vcat, [Oscar.vertices(g[e[1], e[2]]["intersection"])
-                       for e in collect(edge_labels(g))])
+    vs = Vector{Any}()
+    for e in collect(edge_labels(g))
+        append!(vs, Oscar.vertices(g[e[1], e[2]]["intersection"]))
+    end
     # We then count the multiplicities of each vertex byinterating through vs
     vs_with_mult = Dict()
     for v in vs

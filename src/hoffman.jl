@@ -112,12 +112,14 @@ s.t. ‖Aᵀx‖₁ ≤ t,  sum(x) = 1,  x ≥ 0
   ``H(\tilde{A}) = 1 / t_{\min}`` where ``t_{\min}`` is the minimum over all feasible probability
   vectors; if `t_val == 0` then `A` is **not** A-surjective and the Hoffman constant is infinite.
 """
-function surjectivity_test(A::Matrix)
+function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
     n = size(A, 2)
     m = size(A, 1)
+    tol >= 0 || throw(ArgumentError("tol must be nonnegative, got $tol"))
 
     # setting up the model
     model = Model(GLPK.Optimizer)
+    set_silent(model)
     @variable(model, x[1:m] >= 0)
     @variable(model, t)
     @objective(model, Min, t)
@@ -126,13 +128,16 @@ function surjectivity_test(A::Matrix)
 
     # solving the model
     optimize!(model)
+    status = termination_status(model)
+    status == MOI.OPTIMAL ||
+        throw(ErrorException("GLPK surjectivity LP ended with unexpected status $status"))
 
     x_val = value.(x)
     t_val = value(t)
 
     # accounting for any numerical errors
-    x_val = map(v -> abs(v) < 1e-10 ? 0.0 : v, x_val)
-    t_val = abs(t_val) < 1e-10 ? 0.0 : t_val
+    x_val = map(v -> abs(v) < tol ? 0.0 : v, x_val)
+    t_val = abs(t_val) < tol ? 0.0 : t_val
 
     return x_val, t_val
 end
@@ -149,21 +154,27 @@ and solving an A-surjectivity LP for each subset.
 """
 function exact_hoff(A::Matrix)
     m = size(A, 1)
-    H = 0.0
+    H = -Inf
+    found_surjective = false
     # iterating over sub-matrices of A
     for j in 1:m
-        subsets = collect(Combinatorics.combinations(1:m, j))
-        for subset in subsets
+        for subset in Combinatorics.combinations(1:m, j)
             AA = A[subset, :]
             # solving the optimisation problem
             y, t = surjectivity_test(AA)
             if t > 0
                 # in this case the subset is A-surjective
                 H = max(H, 1 / t)
+                found_surjective = true
             end
         end
     end
-    return H
+    if found_surjective
+        return H
+    else
+        # if no sub-matrix is A-surjective then the Hoffman constant is infinite
+        return Inf
+    end
 end
 
 @doc raw"""
@@ -173,11 +184,11 @@ Computes an upper bound on Hoffman constant of the matrix `A` by using the lowes
 """
 function upper_hoff(A::Matrix)
     m, n = size(A)
-    HU = 0.0
+    HU = -Inf
+    found_surjective = false
     # iterating over sub-matrices of A
     for j in 1:m
-        subsets = collect(Combinatorics.combinations(1:m, j))
-        for subset in subsets
+        for subset in Combinatorics.combinations(1:m, j)
             AJ = A[subset, :]
             # only considering full rank sub-matrices
             if rank(AJ) == min(j, n)
@@ -185,11 +196,17 @@ function upper_hoff(A::Matrix)
                 p_J = minimum(svdvals(AJ))
                 if p_J > 0
                     HU = max(HU, 1 / p_J)
+                    found_surjective = true
                 end
             end
         end
     end
-    return HU
+    if found_surjective
+        return HU
+    else
+        # if no sub-matrix is A-surjective then the Hoffman constant is infinite
+        return Inf
+    end
 end
 
 @doc raw"""
@@ -203,7 +220,7 @@ function lower_hoff(A::Matrix, num_samples::Int = 10)
     # if the number of sub-matrices we are considering exceeds the total number of sub-matrices in A
     # we can just use the exact method with no additional computational resources
     if num_samples >= 2^m
-        HL = exact_hoff(A)
+        return exact_hoff(A)
     else
         for i in 1:num_samples
             # consider random sub-matrices
@@ -292,6 +309,7 @@ Provides an upper bound on the effective radius of a tropical polynomial using e
 """
 function exact_er(f::AbstractSignomial)
     hoff_const, A, b = exact_hoff(f, return_matrices = true)
+    isinf(hoff_const) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_const *
            maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
@@ -304,6 +322,7 @@ Provides an upper bound on the effective radius of a tropical polynomial using u
 """
 function upper_er(f::AbstractSignomial)
     hoff_upper, A, b = upper_hoff(f, return_matrices = true)
+    isinf(hoff_upper) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_upper *
            maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
@@ -316,6 +335,7 @@ Provides an upper bound on the effective radius of a tropical rational map using
 """
 function exact_er(f::RationalSignomial)
     hoff_const, A, b = exact_hoff(f, return_matrices = true)
+    isinf(hoff_const) && return Inf
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
@@ -326,5 +346,6 @@ Provides an upper bound on the effective radius of a tropical rational map using
 """
 function upper_er(f::RationalSignomial)
     hoff_upper, A, b = upper_hoff(f, return_matrices = true)
+    isinf(hoff_upper) && return Inf
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
