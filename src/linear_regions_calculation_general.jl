@@ -3,6 +3,7 @@
 
 const OSCAR_POLYHEDRON_COEFF_TYPE = Rational{BigInt}
 const HIGHS_DEFAULT_TOL = 1e-6
+const HIGHS_DEFAULT_SOLVER = "choose"
 
 """
     LinearRegionsCalculationMode
@@ -16,7 +17,7 @@ struct _Oscar <: LinearRegionsCalculationMode end
 
 Base.@kwdef struct _HiGHS <: LinearRegionsCalculationMode
     tol::Float64 = HIGHS_DEFAULT_TOL
-    solver::String = "hipo"
+    solver::String = HIGHS_DEFAULT_SOLVER
 end
 
 """
@@ -27,7 +28,7 @@ Use Oscar polyhedra and exact rational arithmetic for linear-region calculations
 const OscarMode = _Oscar
 
 """
-    HiGHSMode(; tol=HIGHS_DEFAULT_TOL, solver="hipo")
+    HiGHSMode(; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER)
 
 Use JuMP/HiGHS LP checks and floating-point constraint matrices for
 linear-region calculations. `tol` controls full-dimensionality checks.
@@ -196,7 +197,7 @@ function components(V, D)
     return result
 end
 
-function create_highs_model(; solver = "hipo")
+function create_highs_model(; solver = HIGHS_DEFAULT_SOLVER)
     model = Model(HiGHS.Optimizer)
     set_silent(model)
     set_attribute(model, "solver", solver)
@@ -204,11 +205,15 @@ function create_highs_model(; solver = "hipo")
 end
 
 """
-    highs_is_empty(A::Matrix{Float64}, b::Vector{Float64}; solver="hipo")
+    highs_is_empty(A::Matrix{Float64}, b::Vector{Float64}; solver=HIGHS_DEFAULT_SOLVER)
 
 Check if polyhedron `{x : Ax <= b}` is empty via LP feasibility using HiGHS.
 """
-function highs_is_empty(A::Matrix{Float64}, b::Vector{Float64}; solver = "hipo")
+function highs_is_empty(
+        A::Matrix{Float64},
+        b::Vector{Float64};
+        solver = HIGHS_DEFAULT_SOLVER
+)
     _, n = size(A)
 
     model = create_highs_model(; solver = solver)
@@ -228,7 +233,7 @@ function highs_is_empty(A::Matrix{Float64}, b::Vector{Float64}; solver = "hipo")
 end
 
 """
-    highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol=HIGHS_DEFAULT_TOL, solver="hipo")
+    highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER)
 
 Check if polyhedron `{x : Ax <= b}` is full dimensional via LP using HiGHS.
 """
@@ -236,7 +241,7 @@ function highs_is_full_dimensional(
         A::Matrix{Float64},
         b::Vector{Float64};
         tol = HIGHS_DEFAULT_TOL,
-        solver = "hipo"
+        solver = HIGHS_DEFAULT_SOLVER
 )
     tol > 0 || throw(ArgumentError("tol must be positive, got $tol"))
 
@@ -279,14 +284,14 @@ end
 """
     highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Float64},
                                         A2::Matrix{Float64}, b2::Vector{Float64};
-                                        tol=HIGHS_DEFAULT_TOL, solver="hipo")
+                                        tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER)
 
 Check if the intersection of two polyhedra is full dimensional via LP using HiGHS.
 """
 function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Float64},
         A2::Matrix{Float64}, b2::Vector{Float64};
         tol = HIGHS_DEFAULT_TOL,
-        solver = "hipo")
+        solver = HIGHS_DEFAULT_SOLVER)
     size(A1, 2) == size(A2, 2) ||
         throw(DimensionMismatch("Ambient dimensions must match, got $(size(A1, 2)) and $(size(A2, 2))"))
 
