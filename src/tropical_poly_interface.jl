@@ -3,8 +3,7 @@
 # This module provides a unified API for tropical polynomials. The constructor
 # stores low-dimensional exponents in StaticArrays and larger exponent sets in
 # matrix form.
-#
-# The user-facing API is dimension-agnostic - the goal here is that implementation details are hidden.
+
 
 using Oscar
 using StaticArrays

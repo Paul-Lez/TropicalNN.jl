@@ -90,14 +90,15 @@ Convert a ReLU MLP with affine output layer to tropical rational functions,
 one per output neuron. `linear_maps`, `bias`, and `thresholds` are layer-wise
 weights, biases, and activation thresholds. `thresholds` has one entry for
 each hidden layer, so it must have length `length(linear_maps) - 1`; the final
-layer is affine and has no threshold.
+layer is affine and has no threshold. The vector of thresholds is optional; 
+if not provided, all thresholds are set to be zero. 
 
 Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
 monomials with non-full-dimensional regions after each layer; `dedup` calls
 `dedup_monomials` after each layer. Throws `DimensionMismatch` for inconsistent
 layer sizes.
 """
-function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
+function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds::Union{Vector{T}, Nothing} = nothing;
         quicksum::Bool = false, strong_elim::Bool = false,
         dedup::Bool = false) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     if isempty(linear_maps)
@@ -109,7 +110,10 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds;
         ))
     end
     expected_thresholds = length(linear_maps) - 1
-    if length(thresholds) != expected_thresholds
+    # If thresholds aren't provided, then we take then all to be zero.
+    if thresholds === nothing
+        thresholds = [zeros(T, size(linear_maps[i], 1)) for i in 1:expected_thresholds]
+    elseif length(thresholds) != expected_thresholds
         throw(DimensionMismatch(
             "Dimension mismatch: got $(length(linear_maps)) weight matrices and $(length(thresholds)) threshold vectors."
         ))
@@ -184,56 +188,6 @@ function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias
         thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     @warn "mlp_to_trop_with_mul_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
     return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true)
-end
-
-"""
-    random_mlp(dims; random_thresholds=false, symbolic=true)
-
-Generate random weights, biases, and hidden-layer thresholds for layer widths
-`dims`. Returns `(weights, biases, thresholds)`. If `symbolic=true`, entries
-are converted to `Rational{BigInt}`; otherwise they are floating-point values.
-When `random_thresholds=false`, all hidden-layer thresholds are zero.
-"""
-function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = false, symbolic::Bool = true)
-    # if symbolic is set to true then we work with symbolic fractions. 
-    if symbolic
-        # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
-        weights = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i])), dims[i + 1], dims[i]))
-                   for i in 1:(length(dims) - 1)]
-        biases = [Rational{BigInt}.(rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]))
-                  for i in 2:length(dims)]
-        threshold_range = 2:(length(dims) - 1)
-        if random_thresholds
-            thresholds = [Rational{BigInt}.(rand(dims[i])) for i in threshold_range]
-        else
-            thresholds = [Rational{BigInt}.(zeros(dims[i])) for i in threshold_range]
-        end
-    else # otherwise we work with Floats
-        # Use He initialisation: variance 2/fan_in, where fan_in is dims[i] for weights and dims[i-1] for biases
-        weights = [rand(Normal(0, sqrt(2/dims[i])), dims[i + 1], dims[i])
-                   for i in 1:(length(dims) - 1)]
-        biases = [rand(Normal(0, sqrt(2/dims[i - 1])), dims[i]) for i in 2:length(dims)]
-        threshold_range = 2:(length(dims) - 1)
-        if random_thresholds
-            thresholds = [rand(dims[i]) for i in threshold_range]
-        else
-            thresholds = [zeros(dims[i]) for i in threshold_range]
-        end
-    end
-    return (weights, biases, thresholds)
-end
-
-@doc raw"""
-    random_pmap(n_vars, n_mons)
-
-Generate a random tropical polynomial with `n_vars` variables and `n_mons`
-monomials. Coefficients and exponents are sampled from `Normal(0, 1/sqrt(2))`
-and converted to `Rational{BigInt}`.
-"""
-function random_pmap(n_vars, n_mons)
-    return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)),
-        [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons];
-        sorted = false)
 end
 
 """
