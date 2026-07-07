@@ -98,7 +98,8 @@ monomials with non-full-dimensional regions after each layer; `dedup` calls
 `dedup_monomials` after each layer. Throws `DimensionMismatch` for inconsistent
 layer sizes.
 """
-function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds::Union{Vector{T}, Nothing} = nothing;
+function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
+        thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
         quicksum::Bool = false, strong_elim::Bool = false,
         dedup::Bool = false) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     if isempty(linear_maps)
@@ -110,7 +111,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias, thresholds::Union{Vec
         ))
     end
     expected_thresholds = length(linear_maps) - 1
-    # If thresholds aren't provided, then we take then all to be zero.
+    # If thresholds aren't provided, then we take them all to be zero.
     if thresholds === nothing
         thresholds = [zeros(T, size(linear_maps[i], 1)) for i in 1:expected_thresholds]
     elseif length(thresholds) != expected_thresholds

@@ -16,6 +16,10 @@ using Test, TropicalNN, Oscar
         result = mlp_to_trop(W, b, t)
         @test result isa Vector{<:RationalSignomial}
         @test length(result) == 1  # Single output
+        result_default_thresholds = mlp_to_trop(W, b)
+        @test result_default_thresholds isa Vector{<:RationalSignomial}
+        @test length(result_default_thresholds) == length(result)
+        @test string(result_default_thresholds[1]) == string(result[1])
 
         # Test 2: Random small network with symbolic=true
         dims = [2, 3, 1]

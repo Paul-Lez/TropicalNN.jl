@@ -108,6 +108,7 @@ include("tropical_poly_interface.jl")
 include("tropical_number.jl")
 include("linear_regions_calculation_general.jl")
 include("mlp_to_trop.jl")
+include("util.jl")
 include("monomial.jl")
 
 include("hoffman.jl")
