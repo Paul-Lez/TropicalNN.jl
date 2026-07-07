@@ -23,6 +23,7 @@ using LinearAlgebra
 using Graphs
 using MetaGraphsNext
 
+import Distributed
 import Base: string, +, *, /
 import Oscar: convention
 

@@ -5,6 +5,44 @@ const OSCAR_POLYHEDRON_COEFF_TYPE = Rational{BigInt}
 const HIGHS_DEFAULT_TOL = 1e-6
 const HIGHS_DEFAULT_SOLVER = "choose"
 
+function _normalise_worker_ids(workers)
+    workers === nothing && return nothing
+
+    worker_ids = unique(Int[worker for worker in workers])
+    filter!(pid -> pid != Distributed.myid(), worker_ids)
+    isempty(worker_ids) && return nothing
+
+    active_processes = Distributed.procs()
+    inactive = setdiff(worker_ids, active_processes)
+    if !isempty(inactive)
+        throw(ArgumentError("Inactive Julia worker process ids: $(join(inactive, ", "))"))
+    end
+    return worker_ids
+end
+
+function _ensure_tropicalnn_loaded(worker_ids)
+    for pid in worker_ids
+        try
+            Distributed.remotecall_wait(Core.eval, pid, Main, :(using TropicalNN))
+        catch err
+            throw(ArgumentError(
+                "Worker $pid could not load TropicalNN. Start workers with the same " *
+                "project, for example addprocs(...; exeflags=[\"--project=.\"]), " *
+                "before passing worker ids. Original error: $err",
+            ))
+        end
+    end
+    return nothing
+end
+
+function _index_chunks(n::Int, nworkers::Int)
+    n <= 0 && return UnitRange{Int}[]
+
+    nchunks = min(n, 4 * max(1, nworkers))
+    chunk_size = cld(n, nchunks)
+    return [start:min(start + chunk_size - 1, n) for start in 1:chunk_size:n]
+end
+
 """
     LinearRegionsCalculationMode
 
@@ -313,6 +351,27 @@ function make_polyhedron(A, b; mode::LinearRegionsCalculationMode)
     throw(ArgumentError("Unsupported linear-regions calculation mode $(typeof(mode))"))
 end
 
+function _linear_region_coefficient_type(mode::LinearRegionsCalculationMode)
+    return mode isa _Oscar ? OSCAR_POLYHEDRON_COEFF_TYPE : Float64
+end
+
+function _linear_region_empty_rows(mode::LinearRegionsCalculationMode)
+    return mode isa _HiGHS ? 0 : 1
+end
+
+function _linear_region_constraint_data(
+        f::AbstractSignomial,
+        i,
+        mode::LinearRegionsCalculationMode
+)
+    return _linear_region_constraints(
+        f,
+        i,
+        _linear_region_coefficient_type(mode);
+        empty_rows = _linear_region_empty_rows(mode),
+    )
+end
+
 """
     get_matrix(region; mode)
 
@@ -370,19 +429,7 @@ linear map corresponding to the i-th monomial of f, using the selected backend
 mode.
 """
 function polyhedron(f::AbstractSignomial, i, mode::LinearRegionsCalculationMode)
-    if mode isa _Oscar
-        coefficient_type = OSCAR_POLYHEDRON_COEFF_TYPE
-    else
-        coefficient_type = Float64
-    end
-
-    if mode isa _HiGHS
-        empty_rows = 0
-    else
-        empty_rows = 1
-    end
-
-    A, b = _linear_region_constraints(f, i, coefficient_type; empty_rows = empty_rows)
+    A, b = _linear_region_constraint_data(f, i, mode)
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return make_polyhedron(A, b; mode = mode)
 end
@@ -415,23 +462,57 @@ function regions_intersect(region_1, region_2; mode::LinearRegionsCalculationMod
     return is_feasible(region_intersection(region_1, region_2; mode = mode); mode = mode)
 end
 
+function _linear_region_data(args)
+    f, i, mode = args
+    A, b = _linear_region_constraint_data(f, i, mode)
+    region = make_polyhedron(A, b; mode = mode)
+    return (A, b, is_feasible(region; mode = mode))
+end
+
+function _linear_region_data_chunk(args)
+    f, inds, mode = args
+    return [_linear_region_data((f, i, mode)) for i in inds]
+end
+
+function _linear_region_data_parallel(f::AbstractSignomial, mode, worker_ids)
+    n = length(f)
+    if worker_ids === nothing || n <= 1
+        return [_linear_region_data((f, i, mode)) for i in Base.eachindex(f)]
+    end
+
+    _ensure_tropicalnn_loaded(worker_ids)
+    chunks = _index_chunks(n, length(worker_ids))
+    chunk_results = Distributed.pmap(
+        _linear_region_data_chunk,
+        Distributed.WorkerPool(worker_ids),
+        [(f, chunk, mode) for chunk in chunks],
+    )
+    return reduce(vcat, chunk_results)
+end
+
+function _linear_region_from_data(data, mode::LinearRegionsCalculationMode)
+    A, b, feasible = data
+    return (make_polyhedron(A, b; mode = mode), feasible)
+end
+
 """
-    enum_linear_regions_general(f::AbstractSignomial; mode)
+    enum_linear_regions_general(f::AbstractSignomial; mode, workers=nothing)
 
 Compute all linear-region candidates for signomial `f` using the selected
-backend mode.
+backend mode. If `workers` is supplied, candidate construction and feasibility
+checks run on those Julia worker processes.
 
 Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
 `f`.
 """
 function enum_linear_regions_general(
         f::AbstractSignomial;
-        mode::LinearRegionsCalculationMode
+        mode::LinearRegionsCalculationMode,
+        workers = nothing
 )
-    return map(Base.eachindex(f)) do i
-        region = polyhedron(f, i, mode)
-        return (region, is_feasible(region; mode = mode))
-    end
+    worker_ids = _normalise_worker_ids(workers)
+    region_data = _linear_region_data_parallel(f, mode, worker_ids)
+    return [_linear_region_from_data(data, mode) for data in region_data]
 end
 
 function _linear_map_key(f::AbstractSignomial, g::AbstractSignomial, i, j)
@@ -440,15 +521,109 @@ function _linear_map_key(f::AbstractSignomial, g::AbstractSignomial, i, j)
     return (coeff, exp)
 end
 
+function _rational_region_intersections_chunk(args)
+    f, g, lin_f, lin_g, pairs, mode = args
+    intersections = Vector{Tuple{Any, Any, Any}}()
+
+    for (i, j) in pairs
+        A = vcat(lin_f[i][1], lin_g[j][1])
+        b = vcat(lin_f[i][2], lin_g[j][2])
+        intersection = make_polyhedron(A, b; mode = mode)
+        if is_full_dimensional(intersection; mode = mode)
+            push!(intersections, (_linear_map_key(f, g, i, j), A, b))
+        end
+    end
+
+    return intersections
+end
+
+function _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, worker_ids)
+    pairs = Tuple{Int, Int}[]
+    for i in Base.eachindex(f)
+        for j in Base.eachindex(g)
+            if lin_f[i][3] && lin_g[j][3]
+                push!(pairs, (i, j))
+            end
+        end
+    end
+
+    isempty(pairs) && return Tuple{Any, Any, Any}[]
+    if worker_ids === nothing || length(pairs) <= 1
+        return _rational_region_intersections_chunk((f, g, lin_f, lin_g, pairs, mode))
+    end
+
+    _ensure_tropicalnn_loaded(worker_ids)
+    chunks = _index_chunks(length(pairs), length(worker_ids))
+    pair_chunks = [pairs[chunk] for chunk in chunks]
+    chunk_results = Distributed.pmap(
+        _rational_region_intersections_chunk,
+        Distributed.WorkerPool(worker_ids),
+        [(f, g, lin_f, lin_g, pair_chunk, mode) for pair_chunk in pair_chunks],
+    )
+    return reduce(vcat, chunk_results)
+end
+
+function _linear_regions_from_region_map(
+        map_to_regions::Dict{Any, Vector{T}},
+        mode::LinearRegionsCalculationMode
+) where {T}
+    linear_regions = LinearRegion{T}[]
+    for regions in values(map_to_regions)
+        region_components = if length(regions) == 1
+            (regions,)
+        else
+            has_intersection = Dict()
+            for (region_1, region_2) in Combinatorics.combinations(regions, 2)
+                has_intersection[(region_1, region_2)] = regions_intersect(region_1, region_2; mode = mode)
+            end
+            # TODO: eventually we should replace `components` by one of the functions here
+            # https://juliagraphs.org/Graphs.jl/stable/algorithms/connectivity/
+            components(regions, has_intersection)
+        end
+
+        for component in region_components
+            push!(linear_regions, LinearRegion(convert(Vector{T}, component)))
+        end
+    end
+
+    isempty(linear_regions) &&
+        throw(ArgumentError("No full-dimensional linear regions were found for the rational signomial"))
+    return LinearRegions(linear_regions)
+end
+
+function _enum_linear_regions_rat_distributed(q::RationalSignomial, mode, worker_ids)
+    f = q.num
+    g = q.den
+
+    lin_f = _linear_region_data_parallel(f, mode, worker_ids)
+    lin_g = _linear_region_data_parallel(g, mode, worker_ids)
+    region_type = typeof(make_polyhedron(lin_f[begin][1], lin_f[begin][2]; mode = mode))
+    map_to_regions = Dict{Any, Vector{region_type}}()
+
+    intersections = _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, worker_ids)
+    for (key, A, b) in intersections
+        intersection = make_polyhedron(A, b; mode = mode)
+        if haskey(map_to_regions, key)
+            push!(map_to_regions[key], intersection)
+        else
+            map_to_regions[key] = region_type[intersection]
+        end
+    end
+
+    return _linear_regions_from_region_map(map_to_regions, mode)
+end
+
 """
-    enum_linear_regions_rat_general(q::RationalSignomial; mode)
+    enum_linear_regions_rat_general(q::RationalSignomial; mode, workers=nothing)
 
 Compute the linear regions of a tropical Puiseux rational function using the
-algorithm indicated by `mode`.
+algorithm indicated by `mode`. If `workers` is supplied, independent candidate
+and intersection checks run on those Julia worker processes.
 """
 function enum_linear_regions_rat_general(
         q::RationalSignomial;
-        mode::LinearRegionsCalculationMode
+        mode::LinearRegionsCalculationMode,
+        workers = nothing
 )
     f = q.num
     g = q.den
@@ -456,6 +631,11 @@ function enum_linear_regions_rat_general(
         throw(ArgumentError("RationalSignomial numerator must have at least one monomial"))
     length(g) > 0 ||
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
+
+    worker_ids = _normalise_worker_ids(workers)
+    if worker_ids !== nothing
+        return _enum_linear_regions_rat_distributed(q, mode, worker_ids)
+    end
 
     lin_f = enum_linear_regions_general(f; mode = mode)
     lin_g = enum_linear_regions_general(g; mode = mode)
@@ -484,26 +664,5 @@ function enum_linear_regions_rat_general(
         end
     end
 
-    linear_regions = LinearRegion{region_type}[]
-    for regions in values(map_to_regions)
-        region_components = if length(regions) == 1
-            (regions,)
-        else
-            has_intersection = Dict()
-            for (region_1, region_2) in Combinatorics.combinations(regions, 2)
-                has_intersection[(region_1, region_2)] = regions_intersect(region_1, region_2; mode = mode)
-            end
-            # TODO: eventually we should replace `components` by one of the functions here
-            # https://juliagraphs.org/Graphs.jl/stable/algorithms/connectivity/
-            components(regions, has_intersection)
-        end
-
-        for component in region_components
-            push!(linear_regions, LinearRegion(convert(Vector{region_type}, component)))
-        end
-    end
-
-    isempty(linear_regions) &&
-        throw(ArgumentError("No full-dimensional linear regions were found for the rational signomial"))
-    return LinearRegions(linear_regions)
+    return _linear_regions_from_region_map(map_to_regions, mode)
 end

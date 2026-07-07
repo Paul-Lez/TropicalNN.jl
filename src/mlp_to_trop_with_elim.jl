@@ -1,85 +1,109 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
 
 @doc raw"""
-    monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true)
+    monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true, workers=nothing)
 
 Return a copy of `f` without monomials whose dominance polyhedron is not
-full-dimensional. If `parallel=true` and multiple Julia threads are available,
-the full-dimensionality checks run with `Threads.@threads`.
+full-dimensional. If `workers` is supplied and `parallel=true`, the
+full-dimensionality checks run on those Julia worker processes.
 """
-function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool = true) where {T}
-    n = length(f)
-
-    if parallel && Threads.nthreads() > 1 && n > 1
-        # Parallel version: check full-dimensionality for all monomials in parallel
-        keep = Vector{Bool}(undef, n)
-
-        Threads.@threads for i in 1:n
-            poly = polyhedron(f, i, OscarMode())
-            keep[i] = Oscar.is_fulldimensional(poly)
-        end
-
-        # Collect results based on keep vector
-        new_exp = Vector{Vector{T}}()
-        sizehint!(new_exp, count(keep))
-        new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
-
-        for i in 1:n
-            if keep[i]
-                e = Vector{T}(get_exp(f, i))
-                push!(new_exp, e)
-                new_coeff[e] = get_coeff(f, i)
-            end
-        end
-
-        return Signomial(new_coeff, new_exp)
+function monomial_strong_elim(
+        f::AbstractSignomial{T};
+        parallel::Bool = true,
+        workers = nothing
+) where {T}
+    keep = if parallel
+        _strong_elim_keep_mask(f, workers)
     else
-        # Sequential version (original algorithm)
-        new_exp = Vector{Vector{T}}()
-        sizehint!(new_exp, n)
-        new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
-
-        for i in Base.eachindex(f)
-            poly = polyhedron(f, i, OscarMode())
-            if Oscar.is_fulldimensional(poly)
-                e = Vector{T}(get_exp(f, i))
-                push!(new_exp, e)
-                new_coeff[e] = get_coeff(f, i)
-            end
-        end
-
-        return Signomial(new_coeff, new_exp)
+        _strong_elim_keep_mask(f, nothing)
     end
+
+    return _filter_monomials(f, keep)
+end
+
+function _filter_monomials(f::AbstractSignomial{T}, keep::AbstractVector{Bool}) where {T}
+    new_exp = Vector{Vector{T}}()
+    sizehint!(new_exp, count(keep))
+    new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+
+    for i in Base.eachindex(f)
+        if keep[i]
+            e = Vector{T}(get_exp(f, i))
+            push!(new_exp, e)
+            new_coeff[e] = get_coeff(f, i)
+        end
+    end
+
+    return Signomial(new_coeff, new_exp)
+end
+
+function _strong_elim_keep_mask(f::AbstractSignomial, workers)
+    n = length(f)
+    worker_ids = _normalise_worker_ids(workers)
+    if worker_ids === nothing || n <= 1
+        return _strong_elim_keep_chunk((f, 1:n))
+    end
+
+    _ensure_tropicalnn_loaded(worker_ids)
+    chunks = _index_chunks(n, length(worker_ids))
+    chunk_results = Distributed.pmap(
+        _strong_elim_keep_chunk,
+        Distributed.WorkerPool(worker_ids),
+        [(f, chunk) for chunk in chunks],
+    )
+    return reduce(vcat, chunk_results)
+end
+
+function _strong_elim_keep_chunk(args)
+    f, inds = args
+    keep = Vector{Bool}(undef, length(inds))
+    for (j, i) in pairs(inds)
+        poly = polyhedron(f, i, OscarMode())
+        keep[j] = Oscar.is_fulldimensional(poly)
+    end
+    return keep
 end
 
 @doc raw"""
-    monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true)
+    monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true, workers=nothing)
 
 Removes redundant monomials from both numerator and denominator of a tropical
 Puiseux rational function.
 
 # Arguments
 - `f::RationalSignomial{T}`: The rational function to simplify
-- `parallel::Bool=true`: Whether to use parallel computation
+- `parallel::Bool=true`: Whether to use process-parallel computation when
+  workers are supplied
+- `workers=nothing`: Optional Julia worker process ids
 """
-function monomial_strong_elim(f::RationalSignomial; parallel::Bool = true)
+function monomial_strong_elim(
+        f::RationalSignomial;
+        parallel::Bool = true,
+        workers = nothing
+)
     return RationalSignomial(
-        monomial_strong_elim(f.num; parallel = parallel),
-        monomial_strong_elim(f.den; parallel = parallel)
+        monomial_strong_elim(f.num; parallel = parallel, workers = workers),
+        monomial_strong_elim(f.den; parallel = parallel, workers = workers)
     )
 end
 
 @doc raw"""
-    monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true)
+    monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true, workers=nothing)
 
 Removes redundant monomials from a vector of tropical Puiseux rational functions.
 
 # Arguments
 - `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
-- `parallel::Bool=true`: Whether to use parallel computation
+- `parallel::Bool=true`: Whether to use process-parallel computation when
+  workers are supplied
+- `workers=nothing`: Optional Julia worker process ids
 """
-function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool = true)
-    return [monomial_strong_elim(f; parallel = parallel) for f in F]
+function monomial_strong_elim(
+        F::Vector{<:RationalSignomial};
+        parallel::Bool = true,
+        workers = nothing
+)
+    return [monomial_strong_elim(f; parallel = parallel, workers = workers) for f in F]
 end
 
 """
