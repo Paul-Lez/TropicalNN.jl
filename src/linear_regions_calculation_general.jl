@@ -118,30 +118,26 @@ Base.iterate(lrs::LinearRegions) = iterate(lrs.regions)
 Base.iterate(lrs::LinearRegions, state) = iterate(lrs.regions, state)
 Base.getindex(lrs::LinearRegions, i::Int) = lrs.regions[i]
 
-# Computes the number of equivalence classes of the transitive closure of a
-# relation by running depth first search.
-function n_components(V, D)
-    count = 0
-    visited = Dict()
-    for v in V
-        visited[v] = false
-    end
-    function depth_first_search(k)
-        visited[k] = true
-        for p in V
-            if !visited[p] &&
-               ((haskey(D, (k, p)) && D[(k, p)]) || (haskey(D, (p, k)) && D[(p, k)]))
-                depth_first_search(p)
+function _components_graph(V, D)
+    # TODO: get rid of this and create the graph on the fly instead.
+    vertex_to_index = Dict(v => i for (i, v) in pairs(V))
+    graph = Graphs.SimpleGraph(length(V))
+
+    for ((u, v), connected) in D
+        if connected
+            u_idx = vertex_to_index[u]
+            v_idx = vertex_to_index[v]
+            if u_idx != v_idx
+                Graphs.add_edge!(graph, u_idx, v_idx)
             end
         end
     end
-    for p in V
-        if !visited[p]
-            depth_first_search(p)
-            count += 1
-        end
-    end
-    return count
+
+    return graph
+end
+
+function n_components(V, D)
+    return length(Graphs.connected_components(_components_graph(V, D)))
 end
 
 @doc raw"""
@@ -149,6 +145,7 @@ end
 
 Outputs an array representing the connected components of the graph given by the vertices V and the edges D
 (more precisely, the edges are given by the keys of D whose entries are "true").
+True edge endpoints are expected to belong to `V`.
 
 # Example
 ```jldoctest
@@ -163,38 +160,8 @@ julia> components(V, D)
 ```
 """
 function components(V, D)
-    adj = Dict(v => eltype(V)[] for v in V)
-    for ((u, v), connected) in D
-        if connected
-            # Ignore edges whose endpoints are not both in the vertex set V.
-            if haskey(adj, u) && haskey(adj, v)
-                push!(adj[u], v)
-                push!(adj[v], u)
-            end
-        end
-    end
-
-    visited = Dict(v => false for v in V)
-
-    function depth_first_search(k, component_arr)
-        visited[k] = true
-        push!(component_arr, k)
-        for p in adj[k]
-            if !visited[p]
-                depth_first_search(p, component_arr)
-            end
-        end
-    end
-
-    result = Vector{Vector{eltype(V)}}()
-    for p in V
-        if !visited[p]
-            component_arr = eltype(V)[]
-            depth_first_search(p, component_arr)
-            push!(result, component_arr)
-        end
-    end
-    return result
+    graph = _components_graph(V, D)
+    return [V[component] for component in Graphs.connected_components(graph)]
 end
 
 function create_highs_model(; solver = HIGHS_DEFAULT_SOLVER)
