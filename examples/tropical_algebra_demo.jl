@@ -161,3 +161,22 @@ println("  b(1,1) = ", TropicalNN.evaluate(b, pt_f))
 println("  (a⊕b)(1,1) = ", TropicalNN.evaluate(ab_add, pt_f))
 println("  (a⊗b)(1,1) = ", TropicalNN.evaluate(ab_mul, pt_f))
 println("  (a⊘b)(1,1) = ", TropicalNN.evaluate(q_float, pt_f))
+println()
+
+# --- Composition ---
+#
+# comp(g, [f1, f2]) substitutes f1 and f2 for the two variables of g.
+#
+#   f1 = max(x, y)
+#   f2 = max(2x, 0.5y)
+#   g  = max(u + v, 2u)      (in variables u, v)
+#
+# so g(f1, f2) = max(f1 + f2, 2*f1)
+#             = max(3x, 2x+y, x+0.5y, 2x, 2y, 1.5y)
+
+f1 = Signomial([0, 0], [[1.0, 0.0], [0.0, 1.0]])
+f2 = Signomial([0, 0], [[2.0, 0.0], [0.0, 0.5]])
+g = Signomial([0, 0], [[1.0, 1.0], [2.0, 0.0]])
+
+g_comp = comp(g, [f1, f2])
+println("Composition g(f1, f2) = ", g_comp)

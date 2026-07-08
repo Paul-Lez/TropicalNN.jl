@@ -1,8 +1,8 @@
 # Example: linear regions of an MLP
 #
 # Architecture [2, 2, 1]:
-#   Layer 1: W = [0 1; 1 0], b = [1; 1], threshold = [0; 0]  (ReLU)
-#   Layer 2: W = [1 -1],     b = [0],    threshold = [0]      (ReLU)
+#   Layer 1: W = [0 1; 1 0], b = [1; 1]  (ReLU)
+#   Layer 2: W = [1 -1],     b = [0]     (affine output)
 #
 # The MLP is first converted to a tropical Puiseux rational function via
 # mlp_to_trop, then its linear regions are enumerated using HiGHSMode().
@@ -13,15 +13,13 @@ using TropicalNN
 
 W1 = Rational{BigInt}[0 1; 1 0]
 b1 = Rational{BigInt}[1, 1]
-t1 = Rational{BigInt}[0, 0]
 
 W2 = Rational{BigInt}[1 -1]
 b2 = Rational{BigInt}[0]
-t2 = Rational{BigInt}[0]
 
 # --- Convert to tropical representation --------------------------------------
 
-F = mlp_to_trop([W1, W2], [b1, b2], [t1, t2])
+F = mlp_to_trop([W1, W2], [b1, b2])
 f = F[1]  # single output neuron
 
 println("Tropical rational function for the network output:")

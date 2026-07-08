@@ -2,7 +2,7 @@
 #
 # We compute the linear regions of
 #
-#   q = max(x, y, x+y) - max(x-y, x+2y)
+#   q = max(x, y, x+y) - max(x, x+2y)
 #
 # represented as a RationalSignomial.  The linear regions are computed using
 # HiGHSMode(), which represents each region internally by constraints for
@@ -19,11 +19,11 @@ num_exps = [[1, 0], [0, 1], [1, 1]]
 num_coeffs = [0, 0, 0]
 f = Signomial(num_coeffs, num_exps)
 
-# --- Denominator: max(x-y, x+2y) ---------------------------------------------
-#   exponent [1, -1]  →  x - y
-#   exponent [1,  2]  →  x + 2y
+# --- Denominator: max(x, x+2y) -----------------------------------------------
+#   exponent [1, 0]  →  x
+#   exponent [1, 2]  →  x + 2y
 
-den_exps = [[1, -1], [1, 2]]
+den_exps = [[1, 0], [1, 2]]
 den_coeffs = [0, 0]
 g = Signomial(den_coeffs, den_exps)
 
@@ -36,7 +36,7 @@ q = RationalSignomial(f, g)
 region_mode = HiGHSMode()
 regions = enum_linear_regions_rat_general(q; mode = region_mode)
 
-println("Tropical rational function:  max(x, y, x+y) - max(x-y, x+2y)")
+println("Tropical rational function:  max(x, y, x+y) - max(x, x+2y)")
 println("Number of linear regions: ", length(regions))
 println()
 
@@ -58,3 +58,17 @@ for (i, region) in enumerate(regions)
         end
     end
 end
+
+# --- Hoffman constant of the rational function --------------------------------
+# exact_hoff computes the exact value (brute force over row subsets);
+# upper_hoff and lower_hoff give cheaper bounds.
+
+hoff_exact = exact_hoff(q)
+hoff_upper = upper_hoff(q)
+hoff_lower = lower_hoff(q)
+
+println()
+println("Hoffman constant of the rational function:")
+println("  exact:       ", hoff_exact)
+println("  upper bound: ", hoff_upper)
+println("  lower bound: ", hoff_lower)
