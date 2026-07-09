@@ -281,8 +281,8 @@ using Test, TropicalNN, Oscar
         trop_func2 = mlp_to_trop(W2, b2, t2)
         # Check that the result has proper structure for evaluation
         @test trop_func2[1] isa RationalSignomial
-        @test trop_func2[1].num isa AbstractSignomial
-        @test trop_func2[1].den isa AbstractSignomial
+        @test trop_func2[1].num isa Signomial
+        @test trop_func2[1].den isa Signomial
 
         # Test 3: Monomial elimination actually reduces complexity
         W3, b3, t3 = random_mlp([2, 4, 1])
@@ -292,7 +292,7 @@ using Test, TropicalNN, Oscar
         @test without_elim isa Vector{<:RationalSignomial}
         @test with_elim isa Vector{<:RationalSignomial}
         # Elimination version should have same or fewer monomials
-        @test length(with_elim[1].num.exp) <= length(without_elim[1].num.exp)
+        @test length(with_elim[1].num) <= length(without_elim[1].num)
     end
 
     #==========================================================================

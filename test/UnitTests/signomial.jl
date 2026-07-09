@@ -1,6 +1,6 @@
 using Test, TropicalNN, Oscar
 
-@testset verbose = true "SignomialMatrix (dim > 5)" begin
+@testset verbose = true "Signomial" begin
     R = tropical_semiring(max)
 
     # Helper: build a 6-variable exponent vector with a single nonzero entry
@@ -13,12 +13,25 @@ using Test, TropicalNN, Oscar
     #==========================================================================
     # Construction Tests
     ==========================================================================#
-    @testset verbose = true "Construction routes to SignomialMatrix" begin
-        # 6 variables should use SignomialMatrix, not SignomialStatic
+    @testset verbose = true "Construction routes to Signomial" begin
+        # All dimensions should use Signomial.
+        low_dim = Signomial(
+            [R(1), R(2)],
+            [[1//1, 0//1], [0//1, 1//1]];
+            sorted = false
+        )
+        @test low_dim isa Signomial{Rational{Int64}}
+        @test Oscar.nvars(low_dim) == 2
+
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
-        @test f isa SignomialMatrix{Rational{Int64}}
+        @test f isa Signomial{Rational{Int64}}
         @test Oscar.nvars(f) == 6
         @test length(f) == 2
+
+        @test_throws MethodError Signomial([R(1)], [[0//1, 0//1]], true)
+        coeff_dict = Dict([0//1, 0//1] => R(1))
+        @test_throws MethodError Signomial(coeff_dict, [[0//1, 0//1]], true)
+        @test_throws MethodError Signomial([1], [[0//1, 0//1]], true)
     end
 
     #==========================================================================
@@ -33,7 +46,7 @@ using Test, TropicalNN, Oscar
 
         # Result should be max(3 + x1, 2 + x2, 4 + x3)
         # x1 appears in both with coeffs 1 and 3, tropical sum = max(1,3) = 3
-        @test h isa SignomialMatrix{Rational{Int64}}
+        @test h isa Signomial{Rational{Int64}}
         @test length(h) == 3
         @test get_coeff_by_exp(h, unit_exp(1)) == R(3)
 
@@ -70,7 +83,7 @@ using Test, TropicalNN, Oscar
         g = Signomial([R(3), R(4)], [unit_exp(3), unit_exp(4)]; sorted = false)
         h = f * g
 
-        @test h isa SignomialMatrix{Rational{Int64}}
+        @test h isa Signomial{Rational{Int64}}
         @test length(h) == 4  # 2 * 2 = 4 distinct monomials
 
         # Check a specific monomial: x1 + x3 with coeff 1 + 3 = 4
@@ -139,7 +152,7 @@ using Test, TropicalNN, Oscar
         polys = [Signomial([R(i)], [unit_exp(i)]; sorted = false) for i in 1:6]
 
         result = TropicalNN.quicksum(polys)
-        @test result isa SignomialMatrix{Rational{Int64}}
+        @test result isa Signomial{Rational{Int64}}
         @test length(result) == 6  # All unique monomials
 
         # Quicksum should produce the same result as sequential addition
@@ -161,31 +174,12 @@ using Test, TropicalNN, Oscar
     end
 
     #==========================================================================
-    # Multiplication with Quicksum
-    ==========================================================================#
-    @testset verbose = true "Multiplication with quicksum" begin
-        f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
-        g = Signomial([R(3), R(4)], [unit_exp(3), unit_exp(4)]; sorted = false)
-
-        h_std = f * g
-        h_qs = TropicalNN.mul_with_quicksum(f, g)
-
-        # For SignomialMatrix, mul_with_quicksum delegates to *, so results
-        # should be identical.
-        @test length(h_std) == length(h_qs)
-        for i in 1:length(h_std)
-            @test get_exp(h_std, i) == get_exp(h_qs, i)
-            @test get_coeff(h_std, i) == get_coeff(h_qs, i)
-        end
-    end
-
-    #==========================================================================
     # Scalar Multiplication and Exponentiation
     ==========================================================================#
     @testset verbose = true "Scalar multiplication" begin
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         g = R(5) * f
-        @test g isa SignomialMatrix{Rational{Int64}}
+        @test g isa Signomial{Rational{Int64}}
         @test length(g) == 2
         # Tropical scalar multiplication: coeff * scalar (i.e. coeff + scalar in ordinary arithmetic)
         # Check that both coefficients were scaled
@@ -203,7 +197,7 @@ using Test, TropicalNN, Oscar
         f = Signomial([tropical_zero, R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
         f_dedup = TropicalNN.dedup_monomials(f)
         @test length(f_dedup) == 1
-        @test f_dedup isa SignomialMatrix{Rational{Int64}}
+        @test f_dedup isa Signomial{Rational{Int64}}
         @test Oscar.nvars(f_dedup) == 6
         @test monomial_count(f) == 1
     end
@@ -220,7 +214,7 @@ using Test, TropicalNN, Oscar
                   end
                   for i in 1:8]
         f8 = Signomial([R(i) for i in 1:8], exps_8; sorted = false)
-        @test f8 isa SignomialMatrix{Rational{Int64}}
+        @test f8 isa Signomial{Rational{Int64}}
         @test Oscar.nvars(f8) == 8
         @test length(f8) == 8
 
@@ -235,13 +229,13 @@ using Test, TropicalNN, Oscar
                    end
                    for i in 1:10]
         f10 = Signomial([R(i) for i in 1:10], exps_10; sorted = false)
-        @test f10 isa SignomialMatrix{Rational{Int64}}
+        @test f10 isa Signomial{Rational{Int64}}
         @test length(f10) == 10
 
         # Multiplication of 10-variable polynomials
         g10 = Signomial([R(1), R(2)], [exps_10[1], exps_10[2]]; sorted = false)
         h10 = f10 * g10
-        @test h10 isa SignomialMatrix{Rational{Int64}}
+        @test h10 isa Signomial{Rational{Int64}}
         @test length(h10) == 19  # x1 + x2 appears in two products and is merged
     end
 

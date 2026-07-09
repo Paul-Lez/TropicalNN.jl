@@ -14,7 +14,7 @@ else
     unit_tests = [
         "main.jl",
         "polynomial_algebra.jl",
-        "signomial_matrix.jl",
+        "signomial.jl",
         "mlp_to_trop.jl",
         "hoffman.jl",
         "statistics.jl",

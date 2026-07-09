@@ -28,13 +28,13 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g2 = f ^ Int64(2)
-        @test g2 isa AbstractSignomial
-        @test length(g2.exp) == 2
+        @test g2 isa Signomial
+        @test length(g2) == 2
         @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[2, 0]))) == 2.0  # 1*2 = 2
         @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[0, 2]))) == 4.0  # 2*2 = 4
 
         g0 = f ^ Int64(0)
-        @test length(g0.exp) == 1
+        @test length(g0) == 1
         @test Float64(Rational(get_coeff(g0, 1))) == 0.0
 
         empty = (zero(R(0)) * f) + (zero(R(0)) * f)
@@ -46,28 +46,28 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g = f ^ 2.0
-        @test g isa AbstractSignomial
-        @test length(g.exp) == 2
+        @test g isa Signomial
+        @test length(g) == 2
 
         g0 = f ^ 0.0
-        @test length(g0.exp) == 1
+        @test length(g0) == 1
     end
 
     @testset verbose = true "Signomial ^ Rational" begin
         f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
 
         g = f ^ (1//2)
-        @test g isa AbstractSignomial
-        @test length(g.exp) == 2
-        @test any(e -> e == Rational{BigInt}[1, 0], g.exp)
-        @test any(e -> e == Rational{BigInt}[0, 1], g.exp)
+        @test g isa Signomial
+        @test length(g) == 2
+        @test any(e -> e == Rational{BigInt}[1, 0], TropicalNN.exponents(g))
+        @test any(e -> e == Rational{BigInt}[0, 1], TropicalNN.exponents(g))
         exp1 = Rational{BigInt}[1, 0]
         @test Float64(Rational(get_coeff_by_exp(g, exp1))) == 1.0
         exp2 = Rational{BigInt}[0, 1]
         @test Float64(Rational(get_coeff_by_exp(g, exp2))) == 2.0
 
         g0 = f ^ (0//1)
-        @test length(g0.exp) == 1
+        @test length(g0) == 1
     end
 
     @testset verbose = true "RationalSignomial ^ Int64" begin
@@ -77,11 +77,11 @@ using Test, TropicalNN, Oscar
 
         q2 = q ^ Int64(2)
         @test q2 isa RationalSignomial
-        @test length(q2.num.exp) == 2
+        @test length(q2.num) == 2
 
         q0 = q ^ Int64(0)
         @test q0 isa RationalSignomial
-        @test length(q0.num.exp) == 1
+        @test length(q0.num) == 1
     end
 
     @testset verbose = true "RationalSignomial ^ Float64" begin
@@ -91,11 +91,11 @@ using Test, TropicalNN, Oscar
 
         qf = q ^ 2.0
         @test qf isa RationalSignomial
-        @test length(qf.num.exp) == 2
+        @test length(qf.num) == 2
 
         q0 = q ^ 0.0
         @test q0 isa RationalSignomial
-        @test length(q0.num.exp) == 1
+        @test length(q0.num) == 1
     end
 
     @testset verbose = true "RationalSignomial ^ Rational" begin
@@ -105,10 +105,10 @@ using Test, TropicalNN, Oscar
 
         qr = q ^ (1//2)
         @test qr isa RationalSignomial
-        @test length(qr.num.exp) == 2
+        @test length(qr.num) == 2
 
         q0 = q ^ (0//1)
         @test q0 isa RationalSignomial
-        @test length(q0.num.exp) == 1
+        @test length(q0.num) == 1
     end
 end

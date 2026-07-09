@@ -1,13 +1,13 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
 
 @doc raw"""
-    monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool=true)
+    monomial_strong_elim(f::Signomial{T}; parallel::Bool=true)
 
 Return a copy of `f` without monomials whose dominance polyhedron is not
 full-dimensional. If `parallel=true` and multiple Julia threads are available,
 the full-dimensionality checks run with `Threads.@threads`.
 """
-function monomial_strong_elim(f::AbstractSignomial{T}; parallel::Bool = true) where {T}
+function monomial_strong_elim(f::Signomial{T}; parallel::Bool = true) where {T}
     n = length(f)
 
     if parallel && Threads.nthreads() > 1 && n > 1

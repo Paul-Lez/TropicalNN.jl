@@ -11,20 +11,20 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g = Signomial([R(3), R(4)], [[1//1, 0//1], [2//1, 0//1]]; sorted = false)
         h = f + g
-        @test length(h.exp) == 3  # Should have 3 unique monomials
+        @test length(h) == 3  # Should have 3 unique monomials
         @test get_coeff_by_exp(h, Rational{Int64}[1, 0]) == R(3)  # max(1, 3) = 3
 
         # Test 2: Addition with Float64 exponents (coeffs still Rational)
         f_flt = Signomial([R(1), R(2)], [[1.0, 0.0], [0.0, 1.0]]; sorted = false)
         g_flt = Signomial([R(3), R(4)], [[1.0, 0.0], [2.0, 0.0]]; sorted = false)
         h_flt = f_flt + g_flt
-        @test length(h_flt.exp) == 3
+        @test length(h_flt) == 3
 
         # Test 3: Addition with overlapping monomials
         f2 = Signomial([R(5), R(3)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g2 = Signomial([R(2), R(7)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         h2 = f2 + g2
-        @test length(h2.exp) == 2  # Same monomials, should merge
+        @test length(h2) == 2  # Same monomials, should merge
         @test get_coeff_by_exp(h2, Rational{Int64}[1, 0]) == R(5)  # max(5, 2) = 5
         @test get_coeff_by_exp(h2, Rational{Int64}[0, 1]) == R(7)  # max(3, 7) = 7
 
@@ -33,15 +33,15 @@ using Test, TropicalNN, Oscar
             [R(1), R(2), R(3)], [
                 [1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
         g4 = Signomial([R(4), R(5)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
-        @test (f4 + g4).exp == (g4 + f4).exp
-        @test (f4 + g4).coeff == (g4 + f4).coeff
+        @test TropicalNN.exponents(f4 + g4) == TropicalNN.exponents(g4 + f4)
+        @test TropicalNN.coefficients(f4 + g4) == TropicalNN.coefficients(g4 + f4)
 
         # Test 5: Associativity
         h_test = Signomial([R(6)], [[1//1, 2//1]]; sorted = false)
         left = (f4 + g4) + h_test
         right = f4 + (g4 + h_test)
-        @test Set(left.exp) == Set(right.exp)
-        for exp_vec in left.exp
+        @test Set(TropicalNN.exponents(left)) == Set(TropicalNN.exponents(right))
+        for exp_vec in TropicalNN.exponents(left)
             @test get_coeff_by_exp(left, exp_vec) == get_coeff_by_exp(right, exp_vec)
         end
 
@@ -57,9 +57,10 @@ using Test, TropicalNN, Oscar
         @test length(sum_after_power) == 2
         @test TropicalNN.evaluate(sum_after_power, [R(-10), R(0)]) == R(25)
 
-        # Test 8: Addition handles empty static polynomials produced by zero-term pruning
+        # Test 8: Addition handles empty matrix-backed polynomials produced by zero-term pruning
         empty = (zero(R(0)) * f) + (zero(R(0)) * f)
-        @test empty isa SignomialStatic{Rational{Int64}, 2}
+        @test empty isa Signomial{Rational{Int64}}
+        @test Oscar.nvars(empty) == 2
         @test length(empty) == 0
         @test length(empty + empty) == 0
         @test TropicalNN.evaluate(empty + empty, [0, 0]) == zero(R(0))
@@ -73,7 +74,7 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g = Signomial([R(3), R(4)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         h = f * g
-        @test length(h.exp) <= 4  # At most 2*2 = 4 monomials
+        @test length(h) <= 4  # At most 2*2 = 4 monomials
         # Check one specific monomial: (1,0) * (1,0) = (2,0) with coeff max(1+3) = 4
         @test get_coeff_by_exp(h, Rational{Int64}[2, 0]) == R(4)
 
@@ -81,7 +82,7 @@ using Test, TropicalNN, Oscar
         f_flt = Signomial([R(1), R(2)], [[1.0, 0.0], [0.0, 1.0]]; sorted = false)
         g_flt = Signomial([R(3)], [[1.0, 0.0]]; sorted = false)
         h_flt = f_flt * g_flt
-        @test length(h_flt.exp) == 2
+        @test length(h_flt) == 2
 
         # Test 3: Commutativity
         f3 = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -90,20 +91,9 @@ using Test, TropicalNN, Oscar
                 [1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
         left = f3 * g3
         right = g3 * f3
-        @test Set(left.exp) == Set(right.exp)
-        for exp_vec in left.exp
+        @test Set(TropicalNN.exponents(left)) == Set(TropicalNN.exponents(right))
+        for exp_vec in TropicalNN.exponents(left)
             @test get_coeff_by_exp(left, exp_vec) == get_coeff_by_exp(right, exp_vec)
-        end
-
-        # Test 4: Multiplication with quicksum variant
-        f4 = Signomial([R(2), R(3)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        g4 = Signomial([R(4), R(5)], [[1//1, 1//1], [2//1, 0//1]]; sorted = false)
-        h_std = f4 * g4
-        h_qs = TropicalNN.mul_with_quicksum(f4, g4)
-        # Results should be equivalent
-        @test Set(h_std.exp) == Set(h_qs.exp)
-        for exp_vec in h_std.exp
-            @test get_coeff_by_exp(h_std, exp_vec) == get_coeff_by_exp(h_qs, exp_vec)
         end
     end
 
@@ -118,12 +108,12 @@ using Test, TropicalNN, Oscar
             Signomial([R(5)], [[0//1, 1//1]]; sorted = false)
         ]
         result = TropicalNN.quicksum(polys)
-        @test length(result.exp) == 3
+        @test length(result) == 3
 
         # Test 2: Quicksum should give same result as sequential addition
         result_seq = polys[1] + polys[2] + polys[3]
-        @test Set(result.exp) == Set(result_seq.exp)
-        for exp_vec in result.exp
+        @test Set(TropicalNN.exponents(result)) == Set(TropicalNN.exponents(result_seq))
+        for exp_vec in TropicalNN.exponents(result)
             @test get_coeff_by_exp(result, exp_vec) == get_coeff_by_exp(result_seq, exp_vec)
         end
 
@@ -134,18 +124,18 @@ using Test, TropicalNN, Oscar
             Signomial([R(4), R(5)], [[0.0, 1.0], [2.0, 0.0]]; sorted = false)
         ]
         result_flt = TropicalNN.quicksum(polys_flt)
-        @test length(result_flt.exp) == 3
+        @test length(result_flt) == 3
 
         # Test 4: Quicksum with many polynomials
         many_polys = [Signomial([R(i)], [[i//1, 0//1]]; sorted = false)
                       for i in 1:10]
         result_many = TropicalNN.quicksum(many_polys)
-        @test length(result_many.exp) == 10  # All unique monomials
+        @test length(result_many) == 10  # All unique monomials
 
         # Test 5: Quicksum with single polynomial (edge case)
         single = [Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)]
         result_single = TropicalNN.quicksum(single)
-        @test length(result_single.exp) == 2
+        @test length(result_single) == 2
 
         # Test 6: Quicksum canonicalizes duplicate monomials
         duplicate_sum = TropicalNN.quicksum([
@@ -219,7 +209,7 @@ using Test, TropicalNN, Oscar
         # Test 1: Dedup with no zero-coefficient monomials (should be unchanged)
         g = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g_dedup = TropicalNN.dedup_monomials(g)
-        @test length(g_dedup.exp) == length(g.exp)
+        @test length(g_dedup) == length(g)
         @test TropicalNN.coefficients(g_dedup) == TropicalNN.coefficients(g)
 
         # Test 2: Dedup actually removes a zero-coefficient monomial
@@ -230,7 +220,7 @@ using Test, TropicalNN, Oscar
             [tropical_zero, R(2)], [
                 [1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g_with_zero_dedup = TropicalNN.dedup_monomials(g_with_zero)
-        @test length(g_with_zero_dedup.exp) == 1
+        @test length(g_with_zero_dedup) == 1
         @test get_coeff_by_exp(g_with_zero_dedup, [0//1, 1//1]) == R(2)
         @test monomial_count(g_with_zero) == 1
 
@@ -242,7 +232,7 @@ using Test, TropicalNN, Oscar
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         rat = RationalSignomial(num, den)
         rat_dedup = TropicalNN.dedup_monomials(rat)
-        @test rat_dedup.num isa AbstractSignomial
+        @test rat_dedup.num isa Signomial
     end
 
     #==========================================================================
@@ -252,17 +242,17 @@ using Test, TropicalNN, Oscar
         # Test 1: Constant polynomial
         template = Signomial([R(1)], [[0//1, 0//1]]; sorted = false)
         const_poly = Signomial_const(2, R(5), template)
-        @test length(const_poly.exp) == 1
+        @test length(const_poly) == 1
         @test get_coeff_by_exp(const_poly, [0//1, 0//1]) == R(5)
 
         # Test 2: One polynomial (multiplicative identity in tropical arithmetic)
         one = Signomial_one(2, template)
-        @test length(one.exp) == 1
+        @test length(one) == 1
         @test get_coeff_by_exp(one, [0//1, 0//1]) == R(0)  # Tropical one is 0
 
         # Test 3: Single monomial
         mono = SignomialMonomial(R(3), [2//1, 1//1])
-        @test length(mono.exp) == 1
+        @test length(mono) == 1
         @test get_coeff_by_exp(mono, [2//1, 1//1]) == R(3)
 
         # Test 4: Large number of variables
@@ -270,7 +260,7 @@ using Test, TropicalNN, Oscar
         f_large = Signomial([R(1)], [large_exp]; sorted = false)
         @test length(get_exp(f_large, 1)) == 20
 
-        # Test 5: Accessor arrays do not alias static polynomial internals
+        # Test 5: Accessor arrays do not alias matrix-backed polynomial internals
         accessor_poly = Signomial(
             [R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         original_coeff = get_coeff(accessor_poly, 1)
@@ -293,19 +283,19 @@ using Test, TropicalNN, Oscar
             [R(1), R(2)], [Rational{Int64}[1, 0], Rational{Int64}[0, 1]]; sorted = false)
         g_r64 = Signomial([R(3)], [Rational{Int64}[1, 1]]; sorted = false)
         h_r64 = f_r64 + g_r64
-        @test eltype(h_r64.exp[1]) == Rational{Int64}
+        @test eltype(TropicalNN.exponents(h_r64)[1]) == Rational{Int64}
 
         # Test 2: Rational{BigInt} operations maintain type
         f_rbig = Signomial(
             [R(1), R(2)], [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]; sorted = false)
         g_rbig = Signomial([R(3)], [Rational{BigInt}[1, 1]]; sorted = false)
         h_rbig = f_rbig + g_rbig
-        @test eltype(h_rbig.exp[1]) == Rational{BigInt}
+        @test eltype(TropicalNN.exponents(h_rbig)[1]) == Rational{BigInt}
 
         # Test 3: Float64 operations maintain type
         f_flt = Signomial([R(1), R(2)], [[1.0, 0.0], [0.0, 1.0]]; sorted = false)
         g_flt = Signomial([R(3)], [[1.0, 1.0]]; sorted = false)
         h_flt = f_flt + g_flt
-        @test eltype(h_flt.exp[1]) == Float64
+        @test eltype(TropicalNN.exponents(h_flt)[1]) == Float64
     end
 end

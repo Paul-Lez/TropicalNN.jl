@@ -5,7 +5,7 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     # random_pmap
     pmap=random_pmap(2, 4)
-    @test typeof(pmap) <: AbstractSignomial
+    @test typeof(pmap) <: Signomial
     @test nvars(pmap)==2
     @test monomial_count(pmap)==4
 
@@ -21,7 +21,8 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     # one-dimensional pmap 0*T^1 + 0*T^2 + -1*T^3
     pmap=Signomial(Rational{BigInt}.([0, 0, -1]),
-        [Rational{BigInt}.([1]), Rational{BigInt}.([2]), Rational{BigInt}.([3])], false)
+        [Rational{BigInt}.([1]), Rational{BigInt}.([2]), Rational{BigInt}.([3])];
+        sorted = false)
 
     reps=m_reps(pmap)
     @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[
@@ -55,10 +56,10 @@ using Test, TropicalNN, Oscar, CairoMakie
     pmap=TropicalNN.RationalSignomial(
         Signomial(
             Rational{BigInt}.([0, 0]), [
-                Rational{BigInt}.([3]), Rational{BigInt}.([0])], false),
+                Rational{BigInt}.([3]), Rational{BigInt}.([0])]; sorted = false),
         Signomial(
             Rational{BigInt}.([0, -1]), [
-                Rational{BigInt}.([1]), Rational{BigInt}.([2])], false))
+                Rational{BigInt}.([1]), Rational{BigInt}.([2])]; sorted = false))
 
     reps=formatted_reps(pmap)
     @test [vec.(v) for v in reps["m_reps"]]==Vector{Vector{Rational{BigInt}}}[
@@ -74,8 +75,8 @@ using Test, TropicalNN, Oscar, CairoMakie
 
     pmap=Signomial(Rational{BigInt}.([0, 0.5, 1, 0.1]),
         [Rational{BigInt}.([0, 1, 1]), Rational{BigInt}.([0.5, 0.5, 0.5]),
-            Rational{BigInt}.([1, 0, 0]), Rational{BigInt}.([0.5, 0.5, 1])],
-        false)
+            Rational{BigInt}.([1, 0, 0]), Rational{BigInt}.([0.5, 0.5, 1])];
+        sorted = false)
     reps=formatted_reps(pmap, rot_matrix = [1 0 0; 0 1 0; 0 0 1])
     @test reps["m_reps"]==Any[
         Array{Float64}[

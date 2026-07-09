@@ -181,17 +181,6 @@ function mlp_to_trop_with_quicksum(linear_maps::Vector{Matrix{T}}, bias,
 end
 
 """
-    mlp_to_trop_with_mul_with_quicksum(linear_maps, bias, thresholds)
-
-Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true)`.
-"""
-function mlp_to_trop_with_mul_with_quicksum(linear_maps::Vector{Matrix{T}}, bias,
-        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
-    @warn "mlp_to_trop_with_mul_with_quicksum is deprecated, use mlp_to_trop(..., quicksum=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true)
-end
-
-"""
     mlp_to_trop_with_dedup(linear_maps, bias, thresholds)
 
 Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, dedup=true)`.

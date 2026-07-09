@@ -31,7 +31,7 @@ f = Signomial(coeffs, exps)
 
 println("Original polynomial:")
 println("  Number of monomials: ", monomial_count(f))
-println("  Exponents (sorted):  ", f.exp)
+println("  Exponents (sorted):  ", exponents(f))
 
 # --- Run the pruning mechanism -----------------------------------------------
 
@@ -39,4 +39,4 @@ f_pruned = monomial_strong_elim(f)
 
 println("\nPruned polynomial:")
 println("  Number of monomials: ", monomial_count(f_pruned))
-println("  Exponents (sorted):  ", f_pruned.exp)
+println("  Exponents (sorted):  ", exponents(f_pruned))

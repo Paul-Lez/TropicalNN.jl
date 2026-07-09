@@ -28,13 +28,11 @@ import Oscar: convention
 
 export
        convention,
-# Abstract type and concrete implementations
-       AbstractSignomial,
-       SignomialStatic,
-       SignomialMatrix,
+# Concrete polynomial and rational-function types
        Signomial,
 # Primary names (used throughout the module)
        RationalSignomial,
+       OptimalTropicalRational,
        Signomial_const,
        Signomial_zero,
        Signomial_one,
@@ -47,6 +45,8 @@ export
        get_exp,
        get_coeff,
        get_coeff_by_exp,
+       eval_poly,
+       eval_rational,
        exponents,
        coefficients,
        monomial_pairs,
@@ -57,7 +57,6 @@ export
        *,
        ==,
        quicksum,
-       mul_with_quicksum,
        add_with_quicksum,
        div_with_quicksum,
        comp,
@@ -104,7 +103,8 @@ export
        vertex_collection,
        vertex_count
 
-include("tropical_poly_interface.jl")
+include("signomial.jl")
+include("rational_signomial.jl")
 include("tropical_number.jl")
 include("linear_regions_calculation_general.jl")
 include("mlp_to_trop.jl")

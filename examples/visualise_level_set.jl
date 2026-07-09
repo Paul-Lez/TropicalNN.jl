@@ -20,8 +20,8 @@ f=Signomial(
         Rational{BigInt}.([
             -2508142725340491//4503599627370496, -4491348586605881//9007199254740992]),
         Rational{BigInt}.([
-            1437914608837039//18014398509481984, 8253797924747951//9007199254740992])],
-    false)
+            1437914608837039//18014398509481984, 8253797924747951//9007199254740992])];
+    sorted = false)
 
 # Plot the linear regions with the level set of 0.5 identified in red
 fig, ax=plot_linear_regions(f, level_set_value = 0.5)
@@ -39,7 +39,7 @@ f=Signomial(
         Rational{BigInt}.([
             -2508142725340491//4503599627370496, -4491348586605881//9007199254740992]),
         Rational{BigInt}.([
-            1437914608837039//18014398509481984, 8253797924747951//9007199254740992])],
-    false)
+            1437914608837039//18014398509481984, 8253797924747951//9007199254740992])];
+    sorted = false)
 fig, ax=plot_linear_regions(f, level_set_value = 0.0)
 CairoMakie.save("./examples/outputs/tropical_polynomial_zero_level_set.png", fig)

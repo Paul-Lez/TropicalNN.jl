@@ -57,7 +57,7 @@ function _constraint_matrix(::Type{T}, values) where {T}
 end
 
 function _linear_region_constraints(
-        f::AbstractSignomial,
+        f::Signomial,
         i,
         ::Type{T};
         include_self::Bool = false,
@@ -330,13 +330,13 @@ function is_full_dimensional(region::_Polyhedra; mode::_HiGHS)
 end
 
 @doc raw"""
-    polyhedron(f::AbstractSignomial, i::Int, mode::LinearRegionsCalculationMode)
+    polyhedron(f::Signomial, i::Int, mode::LinearRegionsCalculationMode)
 
 Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f, using the selected backend
 mode.
 """
-function polyhedron(f::AbstractSignomial, i, mode::LinearRegionsCalculationMode)
+function polyhedron(f::Signomial, i, mode::LinearRegionsCalculationMode)
     if mode isa _Oscar
         coefficient_type = OSCAR_POLYHEDRON_COEFF_TYPE
     else
@@ -383,7 +383,7 @@ function regions_intersect(region_1, region_2; mode::LinearRegionsCalculationMod
 end
 
 """
-    enum_linear_regions_general(f::AbstractSignomial; mode)
+    enum_linear_regions_general(f::Signomial; mode)
 
 Compute all linear-region candidates for signomial `f` using the selected
 backend mode.
@@ -392,7 +392,7 @@ Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
 `f`.
 """
 function enum_linear_regions_general(
-        f::AbstractSignomial;
+        f::Signomial;
         mode::LinearRegionsCalculationMode
 )
     return map(Base.eachindex(f)) do i
@@ -401,7 +401,7 @@ function enum_linear_regions_general(
     end
 end
 
-function _linear_map_key(f::AbstractSignomial, g::AbstractSignomial, i, j)
+function _linear_map_key(f::Signomial, g::Signomial, i, j)
     coeff = Rational(get_coeff(f, i)) - Rational(get_coeff(g, j))
     exp = collect(get_exp(f, i)) - collect(get_exp(g, j))
     return (coeff, exp)

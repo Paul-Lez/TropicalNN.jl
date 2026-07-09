@@ -138,7 +138,7 @@ using Oscar: QQFieldElem, tropical_semiring
         [0.9082760922521331, -0.41837129471701884],
         [0.9362244504197527, -0.3514025874068547],
         [0.9985688191331709, -0.053481898386132855],
-        [0.9997429106220038, -0.02267405259419084],
+        [0.9997429106220038, -0.02267405259419084]
     ]
     actual_e_directions = sort(e_directions["full"]; by = d -> (d[1], d[2]))
     @test length(actual_e_directions) == length(expected_e_directions)
@@ -208,7 +208,7 @@ using Oscar: QQFieldElem, tropical_semiring
     @testset verbose = true "interior_points(Dict) — exercises the fixed code path" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
-        # interior_points(AbstractSignomial) routes through interior_points(Dict)
+        # interior_points(Signomial) routes through interior_points(Dict)
         # via map_statistic → separate_components → interior_points(Dict)
         result = interior_points(f_1d)
         @test result isa Dict
