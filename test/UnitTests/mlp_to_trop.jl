@@ -272,7 +272,7 @@ using Test, TropicalNN, Oscar
         dims = [2, 3, 1]
         W, b, t = random_mlp(dims)
         trop_func = mlp_to_trop(W, b, t)
-        regions = enum_linear_regions_rat_general(trop_func[1]; mode = OscarMode())
+        regions = linear_regions(trop_func[1]; mode = OscarMode())
         @test regions isa LinearRegions
         @test length(regions) > 0
 

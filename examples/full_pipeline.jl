@@ -46,7 +46,7 @@ println()
 # LP. It returns a LinearRegions object whose elements are LinearRegion values,
 # each holding one or more backend region objects encoding convex pieces.
 region_mode = HiGHSMode()
-regions = enum_linear_regions_rat_general(f; mode = region_mode)
+regions = linear_regions(f; mode = region_mode)
 
 println("Linear regions found: ", length(regions))
 println()

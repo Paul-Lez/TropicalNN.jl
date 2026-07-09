@@ -30,7 +30,7 @@ println()
 # --- Compute linear regions via HiGHS ----------------------------------------
 
 region_mode = HiGHSMode()
-regions = enum_linear_regions_rat_general(f; mode = region_mode)
+regions = linear_regions(f; mode = region_mode)
 
 println("Number of linear regions: ", length(regions))
 println()

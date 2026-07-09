@@ -28,7 +28,7 @@ using Test, TropicalNN, Oscar
         v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = u / v
 
-        regions_rat_highs = enum_linear_regions_rat_general(q; mode = highs_mode)
+        regions_rat_highs = linear_regions(q; mode = highs_mode)
         @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) == 2
 
@@ -47,7 +47,7 @@ using Test, TropicalNN, Oscar
         g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]]; sorted = false)
         q = f / g
 
-        regions_rat_highs = enum_linear_regions_rat_general(q; mode = highs_mode)
+        regions_rat_highs = linear_regions(q; mode = highs_mode)
         @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) > 0
     end
@@ -67,8 +67,8 @@ using Test, TropicalNN, Oscar
         v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = u / v
 
-        regions_oscar = enum_linear_regions_rat_general(q; mode = oscar_mode)
-        regions_highs = enum_linear_regions_rat_general(q; mode = highs_mode)
+        regions_oscar = linear_regions(q; mode = oscar_mode)
+        regions_highs = linear_regions(q; mode = highs_mode)
 
         @test regions_oscar isa LinearRegions
         @test regions_highs isa LinearRegions
@@ -80,20 +80,20 @@ using Test, TropicalNN, Oscar
         b_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t_fixed = [Rational{BigInt}.([0, 0])]
         trop_fixed = mlp_to_trop(W_fixed, b_fixed, t_fixed)[1]
-        regions_highs_fixed = enum_linear_regions_rat_general(trop_fixed; mode = highs_mode)
-        regions_oscar_fixed = enum_linear_regions_rat_general(trop_fixed; mode = oscar_mode)
+        regions_highs_fixed = linear_regions(trop_fixed; mode = highs_mode)
+        regions_oscar_fixed = linear_regions(trop_fixed; mode = oscar_mode)
         @test length(regions_highs_fixed) == length(regions_oscar_fixed)
 
         w, b, t = TropicalNN.random_mlp([2, 2, 1])
         trop = mlp_to_trop(w, b, t)[1]
-        regions_highs = enum_linear_regions_rat_general(trop; mode = highs_mode)
+        regions_highs = linear_regions(trop; mode = highs_mode)
         @test regions_highs isa LinearRegions
         @test length(regions_highs) > 0
     end
 
     @testset verbose = true "Repeated linear map (f/f) - 2D, 2 monomials" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        lr = enum_linear_regions_rat_general(f / f; mode = highs_mode)
+        lr = linear_regions(f / f; mode = highs_mode)
         @test lr isa LinearRegions
         @test length(lr) == 1
         @test length(lr[1].regions) == 2
@@ -105,7 +105,7 @@ using Test, TropicalNN, Oscar
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
             sorted = false
         )
-        lr6 = enum_linear_regions_rat_general(f6 / f6; mode = highs_mode)
+        lr6 = linear_regions(f6 / f6; mode = highs_mode)
         @test lr6 isa LinearRegions
         @test length(lr6) == 1
         @test length(lr6[1].regions) == 6
@@ -121,7 +121,7 @@ using Test, TropicalNN, Oscar
                 [1//1, 0//1], [1//1, 1//1], [1//1, 2//1]];
             sorted = false
         )
-        lr6_2d = enum_linear_regions_rat_general(f6_2d / f6_2d; mode = highs_mode)
+        lr6_2d = linear_regions(f6_2d / f6_2d; mode = highs_mode)
         @test lr6_2d isa LinearRegions
         @test length(lr6_2d) == 1
         @test length(lr6_2d[1].regions) == 6

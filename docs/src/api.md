@@ -49,7 +49,7 @@ polyhedron
 get_matrix
 get_vector
 enum_linear_regions_general
-enum_linear_regions_rat_general
+linear_regions
 components
 ```
 

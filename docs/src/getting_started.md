@@ -16,7 +16,7 @@ trop = mlp_to_trop(W, b, t)
 
 # 3. Enumerate the linear regions of the first output
 region_mode = HiGHSMode()
-regions = enum_linear_regions_rat_general(trop[1]; mode = region_mode)
+regions = linear_regions(trop[1]; mode = region_mode)
 println("Number of linear regions: ", length(regions))
 
 # 4. Count monomials (expressivity measure)

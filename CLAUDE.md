@@ -67,7 +67,7 @@ end
 ### linear_regions_calculation_general.jl - Region Analysis
 - `polyhedron(f, i, mode)` - Get backend region for i-th monomial
 - `enum_linear_regions_general(f; mode)` - Enumerate linear-region candidates of a polynomial
-- `enum_linear_regions_rat_general(f; mode)` - Enumerate linear regions of a rational function
+- `linear_regions(f; mode)` - Enumerate linear regions of a rational function
 - `OscarMode()` / `HiGHSMode()` - Select exact Oscar or LP-backed HiGHS calculations
 - `components(V, D)` / `n_components(V, D)` - Connected components
 
@@ -93,7 +93,7 @@ end
 MLP (weights, biases, thresholds)
     ↓ mlp_to_trop()
 Tropical Puiseux Rational
-    ↓ enum_linear_regions_rat_general(...; mode)
+    ↓ linear_regions(...; mode)
 Linear Regions (Polyhedra)
     ↓
 Statistics / Visualization

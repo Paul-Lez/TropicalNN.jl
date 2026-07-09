@@ -48,7 +48,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             zeros(Float64, 1, 1), Float64[0.0]; mode = UnsupportedLinearRegionsMode())
 
         empty = Signomial(Rational{BigInt}[], Vector{Vector{Rational{BigInt}}}(); sorted = false)
-        @test_throws ArgumentError TropicalNN.enum_linear_regions_rat_general(
+        @test_throws ArgumentError TropicalNN.linear_regions(
             RationalSignomial(empty, empty); mode = highs_mode)
     end
 
@@ -148,8 +148,8 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         for (label, q, expected_signature) in cases
             @testset "$label" begin
-                general_oscar_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = oscar_mode)
-                general_highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
+                general_oscar_regions = TropicalNN.linear_regions(q; mode = oscar_mode)
+                general_highs_regions = TropicalNN.linear_regions(q; mode = highs_mode)
 
                 @test rational_region_signature(general_oscar_regions) == expected_signature
                 @test rational_region_signature(general_highs_regions) == expected_signature
@@ -175,8 +175,8 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
         q = f / g
 
-        general_oscar_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = oscar_mode)
-        general_highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
+        general_oscar_regions = TropicalNN.linear_regions(q; mode = oscar_mode)
+        general_highs_regions = TropicalNN.linear_regions(q; mode = highs_mode)
 
         @test rational_region_signature(general_highs_regions) == (4, [1, 1, 1, 1])
         @test rational_region_signature(general_oscar_regions) ==
@@ -190,7 +190,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         g = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = f / g
 
-        highs_regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
+        highs_regions = TropicalNN.linear_regions(q; mode = highs_mode)
 
         @test highs_regions isa LinearRegions
         @test length(highs_regions) == 2
@@ -209,7 +209,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             sorted = false
         )
 
-        regions = TropicalNN.enum_linear_regions_rat_general(f / f; mode = highs_mode)
+        regions = TropicalNN.linear_regions(f / f; mode = highs_mode)
         @test regions isa LinearRegions
         @test length(regions) == 1
         @test length(regions[1]) == 6
@@ -224,7 +224,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
         q = f / g
 
-        regions = TropicalNN.enum_linear_regions_rat_general(q; mode = highs_mode)
+        regions = TropicalNN.linear_regions(q; mode = highs_mode)
         @test regions isa LinearRegions
         @test length(regions) == 4
         @test sort([length(region) for region in regions]) == [1, 1, 1, 1]

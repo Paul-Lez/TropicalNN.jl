@@ -79,7 +79,7 @@ export
        components,
        LinearRegion,
        LinearRegions,
-       enum_linear_regions_rat_general,
+       linear_regions,
        random_pmap, linearmap_matrices,
        tilde_matrices,
        tilde_vectors,
@@ -106,7 +106,7 @@ export
 include("signomial.jl")
 include("rational_signomial.jl")
 include("tropical_number.jl")
-include("linear_regions_calculation_general.jl")
+include("linear_regions.jl")
 include("mlp_to_trop.jl")
 include("util.jl")
 include("monomial.jl")

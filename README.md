@@ -45,7 +45,7 @@ trop = mlp_to_trop(W, b, t)
 
 # 3. Enumerate the linear regions of the first output
 region_mode = HiGHSMode()
-regions = enum_linear_regions_rat_general(trop[1]; mode = region_mode)
+regions = linear_regions(trop[1]; mode = region_mode)
 println("Number of linear regions: ", length(regions))
 
 # 4. Count monomials (expressivity measure)
@@ -85,7 +85,7 @@ using TropicalNN
 f = Signomial([1, 2, 3], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
 g = Signomial([0, 4, -5], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]])
 # Compute the linear regions of f/g as a LinearRegions object
-linear_regions = enum_linear_regions_rat_general(f / g; mode = OscarMode())
+linear_regions = linear_regions(f / g; mode = OscarMode())
 @show length(linear_regions)
 ```
 

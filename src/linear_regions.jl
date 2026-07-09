@@ -99,7 +99,7 @@ Base.getindex(lr::LinearRegion, i::Int) = lr.regions[i]
 @doc raw"""
     LinearRegions{T}
 
-The return type of `enum_linear_regions_rat_general`. Holds all linear regions
+The return type of `linear_regions`. Holds all linear regions
 of a tropical Puiseux rational function as a vector of `LinearRegion{T}` objects.
 
 Each element of `regions` is a `LinearRegion` corresponding to a distinct affine linear
@@ -408,12 +408,12 @@ function _linear_map_key(f::Signomial, g::Signomial, i, j)
 end
 
 """
-    enum_linear_regions_rat_general(q::RationalSignomial; mode)
+    linear_regions(q::RationalSignomial; mode)
 
 Compute the linear regions of a tropical Puiseux rational function using the
 algorithm indicated by `mode`.
 """
-function enum_linear_regions_rat_general(
+function linear_regions(
         q::RationalSignomial;
         mode::LinearRegionsCalculationMode
 )
