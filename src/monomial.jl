@@ -81,25 +81,3 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool = true)
     return [monomial_strong_elim(f; parallel = parallel) for f in F]
 end
-
-"""
-    mlp_to_trop_with_strong_elim(linear_maps, bias, thresholds)
-
-Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, strong_elim=true, dedup=true)`.
-"""
-function mlp_to_trop_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias,
-        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
-    @warn "mlp_to_trop_with_strong_elim is deprecated, use mlp_to_trop(..., strong_elim=true, dedup=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, strong_elim = true, dedup = true)
-end
-
-"""
-    mlp_to_trop_with_quicksum_with_strong_elim(linear_maps, bias, thresholds)
-
-Deprecated; use `mlp_to_trop(linear_maps, bias, thresholds, quicksum=true, strong_elim=true)`.
-"""
-function mlp_to_trop_with_quicksum_with_strong_elim(linear_maps::Vector{Matrix{T}}, bias,
-        thresholds) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
-    @warn "mlp_to_trop_with_quicksum_with_strong_elim is deprecated, use mlp_to_trop(..., quicksum=true, strong_elim=true) instead" maxlog=1
-    return mlp_to_trop(linear_maps, bias, thresholds, quicksum = true, strong_elim = true)
-end
