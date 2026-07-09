@@ -158,7 +158,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
                      comp(ith_tropical, output)
 
             if strong_elim
-                output = monomial_strong_elim(output)
+                output = reduce(output)
             end
         end
         if dedup

@@ -101,7 +101,7 @@ using Test, TropicalNN, Oscar
     # Take u to be the tropical polynomial max(0, x, 2x)
     u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
     # The monomial elimination of u should be max(0, 2x) since x is redundant
-    @test monomial_strong_elim(u) ==
+    @test reduce(u) ==
           Signomial([R(0), R(0)], [[0//1], [2//1]]; sorted = false)
 
     # TODO: add tests for mlp_to_trop functions and the rest of the tropical algebra functions

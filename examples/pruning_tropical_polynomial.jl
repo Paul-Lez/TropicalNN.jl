@@ -16,7 +16,7 @@
 #   exponent [2,0]  →  2x₁
 #   exponent [0,2]  →  2x₂
 #
-# The pruning mechanism (monomial_strong_elim) removes redundant monomials —
+# The pruning mechanism (reduce) removes redundant monomials —
 # those whose region of dominance is not full-dimensional — without changing
 # the function.
 
@@ -35,7 +35,7 @@ println("  Exponents (sorted):  ", exponents(f))
 
 # --- Run the pruning mechanism -----------------------------------------------
 
-f_pruned = monomial_strong_elim(f)
+f_pruned = reduce(f)
 
 println("\nPruned polynomial:")
 println("  Number of monomials: ", monomial_count(f_pruned))

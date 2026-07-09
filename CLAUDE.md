@@ -60,7 +60,7 @@ end
 - `mlp_to_trop_with_quicksum()` - Optimized version
 
 ### mlp_to_trop_with_elim.jl - Optimization
-- `monomial_strong_elim(f)` - Remove redundant monomials (non-full-dim polyhedra)
+- `reduce(f)` - Remove redundant monomials (non-full-dim polyhedra)
 - `mlp_to_trop_with_strong_elim()` - Convert with elimination
 - `mlp_to_trop_with_quicksum_with_strong_elim()` - Combined optimization
 

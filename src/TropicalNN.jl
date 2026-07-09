@@ -67,7 +67,7 @@ export
        single_to_trop,
        mlp_to_trop,
        random_mlp,
-       monomial_strong_elim,
+       reduce,
        LinearRegionsCalculationMode,
        OscarMode,
        HiGHSMode,

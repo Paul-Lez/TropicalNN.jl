@@ -36,7 +36,7 @@ mlp_to_trop
 single_to_trop
 random_mlp
 random_pmap
-monomial_strong_elim
+reduce
 ```
 
 ## Linear Regions

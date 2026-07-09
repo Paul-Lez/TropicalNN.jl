@@ -1,15 +1,17 @@
 # This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
 
 @doc raw"""
-    monomial_strong_elim(f::Signomial{T}; parallel::Bool=true)
+    reduce(f::Signomial{T}; parallel::Bool=true)
 
 Return a copy of `f` without monomials whose dominance polyhedron is not
 full-dimensional. If `parallel=true` and multiple Julia threads are available,
 the full-dimensionality checks run with `Threads.@threads`.
 """
-function monomial_strong_elim(f::Signomial{T}; parallel::Bool = true) where {T}
+function reduce(f::Signomial{T}; parallel::Bool = true) where {T}
     n = length(f)
 
+    # TODO: use HiGHS by default, allow user to chosose mode, and
+    # print warning if they try to run polymake in parallel (doesn't work!)
     if parallel && Threads.nthreads() > 1 && n > 1
         # Parallel version: check full-dimensionality for all monomials in parallel
         keep = Vector{Bool}(undef, n)
@@ -53,7 +55,7 @@ function monomial_strong_elim(f::Signomial{T}; parallel::Bool = true) where {T}
 end
 
 @doc raw"""
-    monomial_strong_elim(f::RationalSignomial{T}; parallel::Bool=true)
+    reduce(f::RationalSignomial{T}; parallel::Bool=true)
 
 Removes redundant monomials from both numerator and denominator of a tropical
 Puiseux rational function.
@@ -62,15 +64,15 @@ Puiseux rational function.
 - `f::RationalSignomial{T}`: The rational function to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(f::RationalSignomial; parallel::Bool = true)
+function reduce(f::RationalSignomial; parallel::Bool = true)
     return RationalSignomial(
-        monomial_strong_elim(f.num; parallel = parallel),
-        monomial_strong_elim(f.den; parallel = parallel)
+        reduce(f.num; parallel = parallel),
+        reduce(f.den; parallel = parallel)
     )
 end
 
 @doc raw"""
-    monomial_strong_elim(F::Vector{RationalSignomial{T}}; parallel::Bool=true)
+    reduce(F::Vector{RationalSignomial{T}}; parallel::Bool=true)
 
 Removes redundant monomials from a vector of tropical Puiseux rational functions.
 
@@ -78,6 +80,6 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 - `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
 - `parallel::Bool=true`: Whether to use parallel computation
 """
-function monomial_strong_elim(F::Vector{<:RationalSignomial}; parallel::Bool = true)
-    return [monomial_strong_elim(f; parallel = parallel) for f in F]
+function reduce(F::Vector{<:RationalSignomial}; parallel::Bool = true)
+    return [reduce(f; parallel = parallel) for f in F]
 end
