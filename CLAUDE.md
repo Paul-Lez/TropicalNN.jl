@@ -66,7 +66,7 @@ end
 
 ### linear_regions_calculation_general.jl - Region Analysis
 - `polyhedron(f, i, mode)` - Get backend region for i-th monomial
-- `enum_linear_regions_general(f; mode)` - Enumerate linear-region candidates of a polynomial
+- `linear_regions(f; mode)` - Enumerate linear-region candidates of a polynomial
 - `linear_regions(f; mode)` - Enumerate linear regions of a rational function
 - `OscarMode()` / `HiGHSMode()` - Select exact Oscar or LP-backed HiGHS calculations
 - `components(V, D)` / `n_components(V, D)` - Connected components

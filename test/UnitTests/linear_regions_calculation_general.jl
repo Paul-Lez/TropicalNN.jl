@@ -55,13 +55,13 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
     @testset verbose = true "Polynomial region enumeration by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
-        oscar_regions = TropicalNN.enum_linear_regions_general(f; mode = oscar_mode)
+        oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
 
         @test length(oscar_regions) == 2
         @test all(region -> region[2], oscar_regions)
         @test all(region -> region[1] isa Oscar.Polyhedron, oscar_regions)
 
-        highs_regions = TropicalNN.enum_linear_regions_general(f; mode = highs_mode)
+        highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
         @test length(oscar_regions) == length(highs_regions)
         @test count(region -> region[2], oscar_regions) ==
@@ -101,8 +101,8 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         for (label, f, expected_feasible, expected_full_dimensional) in cases
             @testset "$label" begin
-                general_oscar_regions = TropicalNN.enum_linear_regions_general(f; mode = oscar_mode)
-                general_highs_regions = TropicalNN.enum_linear_regions_general(f; mode = highs_mode)
+                general_oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
+                general_highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
                 @test [region[2] for region in general_oscar_regions] == expected_feasible
                 @test [region[2] for region in general_highs_regions] == expected_feasible

@@ -8,7 +8,7 @@ using Test, TropicalNN, Oscar
     @testset verbose = true "Basic polynomial max(x, y)" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
-        regions_highs = enum_linear_regions_general(u; mode = highs_mode)
+        regions_highs = TropicalNN.linear_regions(u; mode = highs_mode)
         @test length(regions_highs) == 2
         @test all(region -> region[2], regions_highs)
         @test all(
@@ -28,7 +28,7 @@ using Test, TropicalNN, Oscar
         v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = u / v
 
-        regions_rat_highs = linear_regions(q; mode = highs_mode)
+        regions_rat_highs = TropicalNN.linear_regions(q; mode = highs_mode)
         @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) == 2
 
@@ -47,7 +47,7 @@ using Test, TropicalNN, Oscar
         g = Signomial([R(0), R(0)], [[1//1, 1//1], [1//1, 2//1]]; sorted = false)
         q = f / g
 
-        regions_rat_highs = linear_regions(q; mode = highs_mode)
+        regions_rat_highs = TropicalNN.linear_regions(q; mode = highs_mode)
         @test regions_rat_highs isa LinearRegions
         @test length(regions_rat_highs) > 0
     end
@@ -55,7 +55,7 @@ using Test, TropicalNN, Oscar
     @testset verbose = true "Polynomial max(0, x, 2x)" begin
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
-        regions_highs = enum_linear_regions_general(u; mode = highs_mode)
+        regions_highs = linear_regions(u; mode = highs_mode)
         @test length(regions_highs) == 3
 
         feasible_count = sum([r[2] for r in regions_highs])
@@ -157,6 +157,45 @@ using Test, TropicalNN, Oscar
         A_line = [1.0 0.0; -1.0 0.0]
         b_line = [0.0; 0.0]
         @test TropicalNN.highs_is_full_dimensional(A_line, b_line) == false
+
+        A_infeasible_zero = zeros(Float64, 1, 1)
+        b_infeasible_zero = [-1.0]
+        @test TropicalNN.highs_is_empty(A_infeasible_zero, b_infeasible_zero) == true
+        @test TropicalNN.highs_is_full_dimensional(
+            A_infeasible_zero, b_infeasible_zero) == false
+
+        A_tiny_line = [1e-7; -1e-7;;]
+        b_tiny_line = [0.0; 0.0]
+        @test TropicalNN.highs_is_full_dimensional(A_tiny_line, b_tiny_line) == false
+    end
+
+    @testset verbose = true "Codimension one check" begin
+        oscar_mode = OscarMode()
+        highs_mode = HiGHSMode()
+        A = [1.0 0.0; 
+            -1.0 0.0]
+        b = [1.0; 
+            -1.0]
+        @test TropicalNN.codimension_le_one(A, b; mode = oscar_mode) == true
+        @test TropicalNN.codimension_le_one(A, b; mode = highs_mode) == true
+
+        # only one point here
+        A_point = [1.0 0.0; 
+                0.0 1.0;
+                -1.0 0.0;
+                0.0 -1.0]
+        b_point = [0.0; 0.0; 0.0; 0.0]
+        @test TropicalNN.codimension_le_one(A_point, b_point; mode = highs_mode) == false
+        @test TropicalNN.codimension_le_one(A_point, b_point; mode = oscar_mode) == false
+
+        A = [1.0 0.0; 
+            -1.0 0.0;
+            -1.0 0.0]
+        b = [1.0; 
+            -1.0;
+            1.0]
+        @test TropicalNN.codimension_le_one(A, b; mode = highs_mode) == true
+        @test TropicalNN.codimension_le_one(A, b; mode = oscar_mode) == true
 
         A_infeasible_zero = zeros(Float64, 1, 1)
         b_infeasible_zero = [-1.0]

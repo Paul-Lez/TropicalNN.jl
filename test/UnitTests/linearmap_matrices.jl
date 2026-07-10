@@ -48,7 +48,7 @@ end
 
     f_const = Signomial([R(3)], [[0//1, 0//1]]; sorted = false)
     g_const = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    lr = linear_regions(f_const / g_const; mode = oscar_mode)
+    lr = TropicalNN.linear_regions(f_const / g_const; mode = oscar_mode)
 
     @test length(lr) == 1
     @test length(lr[1].regions) == 1
@@ -56,6 +56,6 @@ end
 
     f2 = Signomial([R(7)], [[0//1, 0//1]]; sorted = false)
     g2 = Signomial([R(2)], [[0//1, 0//1]]; sorted = false)
-    lr2 = linear_regions(f2 / g2; mode = oscar_mode)
+    lr2 = TropicalNN.linear_regions(f2 / g2; mode = oscar_mode)
     @test length(lr2) == 1
 end

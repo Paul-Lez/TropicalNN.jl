@@ -48,7 +48,7 @@ HiGHSMode
 polyhedron
 get_matrix
 get_vector
-enum_linear_regions_general
+linear_regions
 linear_regions
 components
 ```

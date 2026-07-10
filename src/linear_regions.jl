@@ -165,6 +165,7 @@ function components(V, D)
 end
 
 function create_highs_model(; solver = HIGHS_DEFAULT_SOLVER)
+    # Creatate a JuMP model with the HiGHS optimizer
     model = Model(HiGHS.Optimizer)
     set_silent(model)
     set_attribute(model, "solver", solver)
@@ -199,6 +200,20 @@ function highs_is_empty(
     throw(ErrorException("HiGHS feasibility check ended with unexpected status $status"))
 end
 
+# Remove constant inequalities from a linear program (assuming they are satisfied)
+function filter_lp(A::Matrix{T}, b::Vector{T}) where {T}
+    m, n = size(A)
+
+    zero_rows = [i for i in 1:m if all(iszero, A[i, :])]
+    any(i -> b[i] < 0, zero_rows) && return false
+    non_trivial_rows = [i for i in 1:m if !(i in zero_rows)]
+
+    A_filtered = A[non_trivial_rows, :]
+    b_filtered = b[non_trivial_rows]
+
+    return A_filtered, b_filtered
+end
+
 """
     highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER)
 
@@ -218,18 +233,22 @@ function highs_is_full_dimensional(
     any(i -> b[i] < 0, zero_rows) && return false
     non_trivial_rows = [i for i in 1:m if !(i in zero_rows)]
 
+    # If there are no non-trivial rows then the polyhedron is all of R^n
     if isempty(non_trivial_rows)
         return true
     end
 
-    A_filtered = A[non_trivial_rows, :]
-    b_filtered = b[non_trivial_rows]
+    A_filtered,  b_filtered = filter_lp(A, b)
 
     model = create_highs_model(; solver = solver)
 
     @variable(model, x[1:n])
     @variable(model, ε)
-    @constraint(model, A_filtered * x .+ ε .<= b_filtered)
+    @constraints(model, begin
+        A_filtered * x .+ ε .<= b_filtered
+        # Make sure the problem is bounded
+        ε <= 1
+    end)
     @objective(model, Max, ε)
 
     optimize!(model)
@@ -265,6 +284,69 @@ function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Flo
     A_combined = vcat(A1, A2)
     b_combined = vcat(b1, b2)
     return highs_is_full_dimensional(A_combined, b_combined; tol = tol, solver = solver)
+end
+
+# returns true if the i-th inequality is _not_redundant.
+function highs_check_redundant(
+        A::Matrix{Float64}, b::Vector{Float64}, i::Int;
+        tol = HIGHS_DEFAULT_TOL,
+        solver = HIGHS_DEFAULT_SOLVER
+    )
+    m, n = size(A)
+    1 <= i <= m || throw(BoundsError("Row index $i out of bounds for matrix with $m rows"))
+
+    # Remove the i-th row from A and b
+    A_reduced = vcat(A[1:i-1, :], A[i+1:end, :])
+    b_reduced = vcat(b[1:i-1], b[i+1:end])
+
+    # Check if the intersection of the reduced polyhedron with the hyperplane defined by the i-th row is full-dimensional
+    return highs_intersect_is_full_dimensional(A_reduced, b_reduced, A[i:i, :], b[i:i]; tol = tol, solver = solver)
+end
+
+# Check if the polyhedron defined by Ax <= b is codimension one via LP using HiGHS.
+function _highs_codimension_le_one(A::Matrix{Float64},
+        b::Vector{Float64};
+        tol = HIGHS_DEFAULT_TOL,
+        solver = HIGHS_DEFAULT_SOLVER
+    )
+    m, n = size(A)
+
+    # Remove constant inequalities from the LP.
+    A_filtered, b_filtered = filter_lp(A, b)
+
+    redundantIdx = []
+
+    for i in 1:size(A_filtered, 1)
+        # if there are at least two independent redundant inequalities, then the polyhedron must have at least codimension two
+        if !highs_check_redundant(A_filtered, b_filtered, i; tol = tol, solver = solver)
+            push!(redundantIdx, i)
+        end
+        if length(redundantIdx) > 1
+            # We check independence by computing the rank of the matrix of redundant inequalities.
+            A_redundant = A_filtered[redundantIdx, :]
+            if rank(A_redundant) > 1
+                println("Found codimension greater than one...")
+                return false
+            end
+        end
+    end
+    return true
+end
+
+# check that the codimension of the polyhedron is at most one
+function codimension_le_one(A, b; mode::LinearRegionsCalculationMode)
+    if mode isa _Oscar
+        poly = make_polyhedron(A, b; mode = mode)
+        return Oscar.codim(poly) <= 1
+    elseif mode isa _HiGHS
+        return _highs_codimension_le_one(A, b; tol = mode.tol, solver = mode.solver)
+    end
+end
+
+function regions_intersect_codimension_le_one(region_1, region_2; mode::LinearRegionsCalculationMode)
+    A = vcat(get_matrix(region_1; mode = mode), get_matrix(region_2; mode = mode))
+    b = vcat(get_vector(region_1; mode = mode), get_vector(region_2; mode = mode))
+    return codimension_le_one(A, b; mode = mode)
 end
 
 function make_polyhedron(A, b; mode::LinearRegionsCalculationMode)
@@ -383,7 +465,7 @@ function regions_intersect(region_1, region_2; mode::LinearRegionsCalculationMod
 end
 
 """
-    enum_linear_regions_general(f::Signomial; mode)
+    linear_regions(f::Signomial; mode)
 
 Compute all linear-region candidates for signomial `f` using the selected
 backend mode.
@@ -391,7 +473,7 @@ backend mode.
 Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
 `f`.
 """
-function enum_linear_regions_general(
+function linear_regions(
         f::Signomial;
         mode::LinearRegionsCalculationMode
 )
@@ -424,8 +506,8 @@ function linear_regions(
     length(g) > 0 ||
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    lin_f = enum_linear_regions_general(f; mode = mode)
-    lin_g = enum_linear_regions_general(g; mode = mode)
+    lin_f = TropicalNN.linear_regions(f; mode = mode)
+    lin_g = TropicalNN.linear_regions(g; mode = mode)
     region_type = typeof(lin_f[begin][1])
     if region_type != typeof(lin_g[begin][1])
         throw(ArgumentError(
@@ -458,10 +540,9 @@ function linear_regions(
         else
             has_intersection = Dict()
             for (region_1, region_2) in Combinatorics.combinations(regions, 2)
-                has_intersection[(region_1, region_2)] = regions_intersect(region_1, region_2; mode = mode)
+                has_intersection[(region_1, region_2)] = regions_intersect_codimension_le_one(region_1, region_2; mode = mode)
             end
-            # TODO: eventually we should replace `components` by one of the functions here
-            # https://juliagraphs.org/Graphs.jl/stable/algorithms/connectivity/
+
             components(regions, has_intersection)
         end
 

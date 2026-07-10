@@ -4,7 +4,7 @@ using Test, TropicalNN, Oscar
     oscar_mode = OscarMode()
     w, b, t = TropicalNN.random_mlp([3, 2, 1])
     trop = mlp_to_trop(w, b, t)[1]
-    @test length(linear_regions(trop; mode = oscar_mode)) > 0
+    @test length(TropicalNN.linear_regions(trop; mode = oscar_mode)) > 0
     R = tropical_semiring(max)
     f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
     # Write down the tropical polynomial 0*X^1*Y^7 + 4*X^0*Y^1 + (-5)*X^9*Y^1
@@ -33,7 +33,7 @@ using Test, TropicalNN, Oscar
     u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
     # and v to be the tropical polynomial 0
     v = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    @test length(linear_regions(u / v; mode = oscar_mode)) == 2
+    @test length(TropicalNN.linear_regions(u / v; mode = oscar_mode)) == 2
 
     # test linear regions enumeration — repeated linear map (exists_reps = true)
     @testset verbose = true "linear_regions repeated-map path via f/f" begin
@@ -45,7 +45,7 @@ using Test, TropicalNN, Oscar
         # f = max(x, y) has 2 regions: {x ≥ y} and {y ≥ x}. Both share the same linear
         # map, so they are collected into a single LinearRegion with 2 convex pieces.
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        lr = linear_regions(f / f; mode = oscar_mode)
+        lr = TropicalNN.linear_regions(f / f; mode = oscar_mode)
 
         @test lr isa LinearRegions
         # One distinct linear map → one LinearRegion
@@ -68,7 +68,7 @@ using Test, TropicalNN, Oscar
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
             sorted = false
         )
-        lr6 = linear_regions(f6 / f6; mode = oscar_mode)
+        lr6 = TropicalNN.linear_regions(f6 / f6; mode = oscar_mode)
         @test lr6 isa LinearRegions
         @test length(lr6) == 1
         @test length(lr6[1].regions) == 6
@@ -101,7 +101,7 @@ using Test, TropicalNN, Oscar
     # Take u to be the tropical polynomial max(0, x, 2x)
     u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
     # The monomial elimination of u should be max(0, 2x) since x is redundant
-    @test reduce(u) ==
+    @test TropicalNN.reduce(u) ==
           Signomial([R(0), R(0)], [[0//1], [2//1]]; sorted = false)
 
     # TODO: add tests for mlp_to_trop functions and the rest of the tropical algebra functions
