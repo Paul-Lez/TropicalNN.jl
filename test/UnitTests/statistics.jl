@@ -198,8 +198,12 @@ using Oscar: QQFieldElem, tropical_semiring
     @testset verbose = true "interior_points(Array) — multiple polyhedra" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
-        regions = TropicalNN.linear_regions(f_1d; mode = OscarMode())
-        polys = [r[1] for r in regions if r[2]]  # all three regions are non-empty
+        mode = OscarMode()
+        regions = TropicalNN.linear_regions(f_1d; mode = mode)
+        polys = [
+            region
+            for (_, region) in regions if TropicalNN.is_feasible(region; mode = mode)
+        ]
         pts = TropicalNN.interior_points(polys)
         # one interior point per polyhedron
         @test length(pts) == length(polys)

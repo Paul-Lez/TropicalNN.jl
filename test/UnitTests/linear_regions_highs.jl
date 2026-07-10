@@ -4,20 +4,23 @@ using Test, TropicalNN, Oscar
     R = tropical_semiring(max)
     highs_mode = HiGHSMode()
     oscar_mode = OscarMode()
+    candidate_region(candidate) = candidate[2]
+    candidate_is_feasible(candidate) =
+        TropicalNN.is_feasible(candidate_region(candidate); mode = highs_mode)
 
     @testset verbose = true "Basic polynomial max(x, y)" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         regions_highs = TropicalNN.linear_regions(u; mode = highs_mode)
         @test length(regions_highs) == 2
-        @test all(region -> region[2], regions_highs)
+        @test all(candidate_is_feasible, regions_highs)
         @test all(
-            region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa
+            region -> TropicalNN.get_matrix(candidate_region(region); mode = highs_mode) isa
                       Matrix{Float64},
             regions_highs
         )
         @test all(
-            region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa
+            region -> TropicalNN.get_vector(candidate_region(region); mode = highs_mode) isa
                       Vector{Float64},
             regions_highs
         )
@@ -58,7 +61,7 @@ using Test, TropicalNN, Oscar
         regions_highs = linear_regions(u; mode = highs_mode)
         @test length(regions_highs) == 3
 
-        feasible_count = sum([r[2] for r in regions_highs])
+        feasible_count = count(candidate_is_feasible, regions_highs)
         @test feasible_count >= 2
     end
 

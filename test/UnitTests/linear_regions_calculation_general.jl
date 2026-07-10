@@ -10,8 +10,13 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
     rational_region_signature(regions) = (
         length(regions), sort([length(region) for region in regions]))
     rational_piece_count(regions) = sum([length(region) for region in regions])
-    general_full_dimensional_flags(regions, mode) = [TropicalNN.is_full_dimensional(region[1]; mode = mode)
-                                                     for region in regions]
+    candidate_region(candidate) = candidate[2]
+    candidate_is_feasible(candidate, mode) =
+        TropicalNN.is_feasible(candidate_region(candidate); mode = mode)
+    general_full_dimensional_flags(regions, mode) = [
+        TropicalNN.is_full_dimensional(candidate_region(region); mode = mode)
+        for region in regions
+    ]
 
     @testset verbose = true "Polyhedron construction by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -58,21 +63,22 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
 
         @test length(oscar_regions) == 2
-        @test all(region -> region[2], oscar_regions)
-        @test all(region -> region[1] isa Oscar.Polyhedron, oscar_regions)
+        @test all(region -> candidate_is_feasible(region, oscar_mode), oscar_regions)
+        @test all(region -> candidate_region(region) isa Oscar.Polyhedron, oscar_regions)
 
         highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
         @test length(oscar_regions) == length(highs_regions)
-        @test count(region -> region[2], oscar_regions) ==
-              count(region -> region[2], highs_regions)
-        @test [region[2] for region in highs_regions] == [true, true]
+        @test count(region -> candidate_is_feasible(region, oscar_mode), oscar_regions) ==
+              count(region -> candidate_is_feasible(region, highs_mode), highs_regions)
+        @test [candidate_is_feasible(region, highs_mode) for region in highs_regions] ==
+              [true, true]
         @test all(
-            region -> TropicalNN.get_matrix(region[1]; mode = highs_mode) isa
+            region -> TropicalNN.get_matrix(candidate_region(region); mode = highs_mode) isa
                       Matrix{Float64},
             highs_regions)
         @test all(
-            region -> TropicalNN.get_vector(region[1]; mode = highs_mode) isa
+            region -> TropicalNN.get_vector(candidate_region(region); mode = highs_mode) isa
                       Vector{Float64},
             highs_regions)
     end
@@ -104,8 +110,14 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 general_oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
                 general_highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
-                @test [region[2] for region in general_oscar_regions] == expected_feasible
-                @test [region[2] for region in general_highs_regions] == expected_feasible
+                @test [
+                    candidate_is_feasible(region, oscar_mode)
+                    for region in general_oscar_regions
+                ] == expected_feasible
+                @test [
+                    candidate_is_feasible(region, highs_mode)
+                    for region in general_highs_regions
+                ] == expected_feasible
 
                 @test general_full_dimensional_flags(general_highs_regions, highs_mode) ==
                       expected_full_dimensional

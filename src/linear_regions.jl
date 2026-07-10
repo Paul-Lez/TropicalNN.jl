@@ -188,7 +188,8 @@ function highs_is_empty(
 
     @variable(model, x[1:n])
     @constraint(model, A * x .<= b)
-
+    # Here we optimise with no objective, which means that
+    # JuMP will stop as soon as a solution is found.
     optimize!(model)
 
     status = termination_status(model)
@@ -205,7 +206,7 @@ function filter_lp(A::Matrix{T}, b::Vector{T}) where {T}
     m, n = size(A)
 
     zero_rows = [i for i in 1:m if all(iszero, A[i, :])]
-    any(i -> b[i] < 0, zero_rows) && return false
+    any(i -> b[i] < 0, zero_rows) && return nothing
     non_trivial_rows = [i for i in 1:m if !(i in zero_rows)]
 
     A_filtered = A[non_trivial_rows, :]
@@ -229,16 +230,17 @@ function highs_is_full_dimensional(
 
     m, n = size(A)
 
-    zero_rows = [i for i in 1:m if all(iszero, A[i, :])]
-    any(i -> b[i] < 0, zero_rows) && return false
-    non_trivial_rows = [i for i in 1:m if !(i in zero_rows)]
+    filtered = filter_lp(A, b)
+    # infeasible polyhedron is not full-dimensional
+    if filtered === nothing
+        return false
+    end
+    A_filtered, b_filtered = filtered
 
     # If there are no non-trivial rows then the polyhedron is all of R^n
-    if isempty(non_trivial_rows)
+    if isempty(b_filtered)
         return true
     end
-
-    A_filtered,  b_filtered = filter_lp(A, b)
 
     model = create_highs_model(; solver = solver)
 
@@ -286,8 +288,8 @@ function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Flo
     return highs_is_full_dimensional(A_combined, b_combined; tol = tol, solver = solver)
 end
 
-# returns true if the i-th inequality is _not_redundant.
-function highs_check_redundant(
+# returns true if the i-th inequality is redundant.
+function highs_check_implicit_equality(
         A::Matrix{Float64}, b::Vector{Float64}, i::Int;
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER
@@ -295,12 +297,30 @@ function highs_check_redundant(
     m, n = size(A)
     1 <= i <= m || throw(BoundsError("Row index $i out of bounds for matrix with $m rows"))
 
-    # Remove the i-th row from A and b
-    A_reduced = vcat(A[1:i-1, :], A[i+1:end, :])
-    b_reduced = vcat(b[1:i-1], b[i+1:end])
+    model = create_highs_model(; solver = solver)
 
-    # Check if the intersection of the reduced polyhedron with the hyperplane defined by the i-th row is full-dimensional
-    return highs_intersect_is_full_dimensional(A_reduced, b_reduced, A[i:i, :], b[i:i]; tol = tol, solver = solver)
+    @variable(model, x[1:n])
+    @variable(model, s)
+    @constraints(model, begin
+        A * x .<= b
+        s == b[i] - LinearAlgebra.dot(A[i, :], x)
+    end)
+    # We maximise a_i^T x - b_i to check if the i-th inequality is redundant.
+    @objective(model, Max, s)
+
+    optimize!(model)
+
+    status = termination_status(model)
+    if status == MOI.OPTIMAL
+        s_value = value(s)
+        return !(s_value > tol)
+    elseif status == MOI.INFEASIBLE_OR_UNBOUNDED || status == MOI.DUAL_INFEASIBLE
+        # The problem is unbounded, which means that the i-th inequality is not equality
+        return false
+    else
+        # The problem should always be feasible, so any other status is unexpected.
+        throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
+    end
 end
 
 # Check if the polyhedron defined by Ax <= b is codimension one via LP using HiGHS.
@@ -309,23 +329,36 @@ function _highs_codimension_le_one(A::Matrix{Float64},
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER
     )
-    m, n = size(A)
 
     # Remove constant inequalities from the LP.
-    A_filtered, b_filtered = filter_lp(A, b)
+    filtered = filter_lp(A, b)
+    # If the polyhedron is infeasible, it cannot be of codimension at most one
+    if filtered === nothing
+        return false
+    end
+    A_filtered, b_filtered = filtered
+
+    if highs_is_empty(A_filtered, b_filtered; solver = solver)
+        return false
+    end
+
+    if highs_is_full_dimensional(A_filtered, b_filtered; tol = tol, solver = solver)
+        return true
+    end
+
+    m, n = size(A)
 
     redundantIdx = []
 
     for i in 1:size(A_filtered, 1)
         # if there are at least two independent redundant inequalities, then the polyhedron must have at least codimension two
-        if !highs_check_redundant(A_filtered, b_filtered, i; tol = tol, solver = solver)
+        if highs_check_implicit_equality(A_filtered, b_filtered, i; tol = tol, solver = solver)
             push!(redundantIdx, i)
         end
         if length(redundantIdx) > 1
             # We check independence by computing the rank of the matrix of redundant inequalities.
             A_redundant = A_filtered[redundantIdx, :]
             if rank(A_redundant) > 1
-                println("Found codimension greater than one...")
                 return false
             end
         end
@@ -470,8 +503,8 @@ end
 Compute all linear-region candidates for signomial `f` using the selected
 backend mode.
 
-Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
-`f`.
+Returns a vector of `(index, region)` tuples indexed by the monomials of `f`.
+Feasibility of each candidate region can be checked with [`is_feasible`](@ref).
 """
 function linear_regions(
         f::Signomial;
@@ -479,14 +512,45 @@ function linear_regions(
 )
     return map(Base.eachindex(f)) do i
         region = polyhedron(f, i, mode)
-        return (region, is_feasible(region; mode = mode))
+        return (i, region)
     end
+end
+
+# Computes the linear regions of a vector of signomials, returning a vector of tuples
+# (index_tuple, region) where index_tuple is a tuple of indices into the vector of signomials 
+# and region is the intersection of the corresponding regions.
+function linear_regions(
+        f::AbstractVector{<:Signomial};
+        mode::LinearRegionsCalculationMode
+)
+    regions = []
+    linear_regions_vec = map(g -> linear_regions(g; mode = mode), f)
+    for idx in Iterators.product((Base.eachindex(g) for g in linear_regions_vec)...)
+        regionsIdx = map(i -> begin
+            idxj = idx[i]
+            @assert idxj <= length(linear_regions_vec[i])
+            u = linear_regions_vec[i][idx[i]][2]
+        end, 
+        Base.eachindex(f))
+        regionIdx = Base.reduce((r1, r2) -> region_intersection(r1, r2; mode = mode), regionsIdx)
+        if is_feasible(regionIdx; mode = mode)
+            push!(regions, (idx, regionIdx))
+        end
+    end
+
+    return regions
 end
 
 function _linear_map_key(f::Signomial, g::Signomial, i, j)
     coeff = Rational(get_coeff(f, i)) - Rational(get_coeff(g, j))
     exp = collect(get_exp(f, i)) - collect(get_exp(g, j))
     return (coeff, exp)
+end
+
+function _linear_map_key(f::Vector{<:Signomial}, g::Vector{<:Signomial}, idxf, idxg)
+    # All vectors in the inputs are assumed to have the same lengths
+    @assert length(f) == length(g) == length(idxf) == length(idxg)
+    return map(i -> _linear_map_key(f[i], g[i], idxf[i], idxg[i]), Base.eachindex(idxf))
 end
 
 """
@@ -496,38 +560,39 @@ Compute the linear regions of a tropical Puiseux rational function using the
 algorithm indicated by `mode`.
 """
 function linear_regions(
-        q::RationalSignomial;
+        q::AbstractVector{<:RationalSignomial};
         mode::LinearRegionsCalculationMode
 )
-    f = q.num
-    g = q.den
+    f = [Q.num for Q in q]
+    g = [Q.den for Q in q]
+    @assert length(f) == length(g)
     length(f) > 0 ||
+        throw(ArgumentError("RationalSignomial vector must have at least one component"))
+    any(Q -> length(Q.num) == 0, q) &&
         throw(ArgumentError("RationalSignomial numerator must have at least one monomial"))
-    length(g) > 0 ||
+    any(Q -> length(Q.den) == 0, q) &&
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
     lin_f = TropicalNN.linear_regions(f; mode = mode)
     lin_g = TropicalNN.linear_regions(g; mode = mode)
-    region_type = typeof(lin_f[begin][1])
-    if region_type != typeof(lin_g[begin][1])
+    region_type = typeof(lin_f[begin][2])
+    if region_type != typeof(lin_g[begin][2])
         throw(ArgumentError(
             "Numerator and denominator regions use incompatible representations: " *
-            "$region_type and $(typeof(lin_g[begin][1]))",
+            "$region_type and $(typeof(lin_g[begin][2]))",
         ))
     end
     map_to_regions = Dict{Any, Vector{region_type}}()
 
-    for i in Base.eachindex(f)
-        for j in Base.eachindex(g)
-            if lin_f[i][2] && lin_g[j][2]
-                intersection = region_intersection(lin_f[i][1], lin_g[j][1]; mode = mode)
-                if is_full_dimensional(intersection; mode = mode)
-                    key = _linear_map_key(f, g, i, j)
-                    if haskey(map_to_regions, key)
-                        push!(map_to_regions[key], intersection)
-                    else
-                        map_to_regions[key] = region_type[intersection]
-                    end
+    for (idxf, regionf) in lin_f
+        for (idxg, regiong) in lin_g
+            intersection = region_intersection(regionf, regiong; mode = mode)
+            if is_full_dimensional(intersection; mode = mode)
+                key = _linear_map_key(f, g, idxf, idxg)
+                if haskey(map_to_regions, key)
+                    push!(map_to_regions[key], intersection)
+                else
+                    map_to_regions[key] = region_type[intersection]
                 end
             end
         end
@@ -554,4 +619,12 @@ function linear_regions(
     isempty(linear_regions) &&
         throw(ArgumentError("No full-dimensional linear regions were found for the rational signomial"))
     return LinearRegions(linear_regions)
+end
+
+
+function linear_regions(
+        q::RationalSignomial;
+        mode::LinearRegionsCalculationMode
+)
+    return linear_regions([q]; mode = mode)
 end
