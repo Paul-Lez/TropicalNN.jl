@@ -178,6 +178,95 @@ function exact_hoff(A::Matrix)
 end
 
 @doc raw"""
+    pvz_hoff(A::Matrix; return_certificates::Bool=false)
+
+Computes the exact Hoffman constant of the matrix `A` using the
+Pena--Vera--Zuluaga pruning algorithm.
+
+Instead of testing every row subset independently, PVZ keeps a frontier of
+candidate subsets.  When a candidate is `A`-surjective, all of its subsets are
+known to be covered by that certificate and can be removed from the frontier.
+When a candidate is not `A`-surjective, the LP returns a nonzero support that
+must be broken; every remaining candidate containing that support is replaced
+by smaller candidates obtained by deleting one support index.
+
+The algorithm maintains:
+
+- `F`: row subsets certified to be `A`-surjective;
+- `I`: row subsets certified not to be `A`-surjective;
+- `J`: candidate row subsets not yet certified.
+
+For each candidate subset, it solves the same A-surjectivity LP as
+[`exact_hoff`](@ref).  Surjective candidates certify all of their subsets, and
+non-surjective candidates are split using the support of the LP certificate.
+This is still an exact algorithm, but it can avoid many LP solves compared with
+brute-force subset enumeration.
+"""
+function pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
+    m = size(A, 1)
+    H = -Inf
+    found_surjective = false
+
+    # Start from the full row set and let the PVZ updates shrink the frontier.
+    F = Vector{Vector{Int}}()
+    I = Vector{Vector{Int}}()
+    candidates = Vector{Vector{Int}}()
+    if m > 0
+        push!(candidates, collect(1:m))
+    end
+
+    while !isempty(candidates)
+        J = pop!(candidates)
+        # Test one frontier candidate with the PVZ A-surjectivity LP.
+        x, t = surjectivity_test(A[J, :]; tol = tol)
+
+        if t > 0
+            # A surjective set certifies itself and every subset below it.
+            push!(F, J)
+            H = max(H, 1 / t)
+            found_surjective = true
+
+            filter!(candidate -> !issubset(candidate, J), candidates)
+        else
+            # The positive support is an obstruction that no candidate may keep intact.
+            support = [J[index] for index in eachindex(J) if x[index] > tol]
+            support = sort(unique(support))
+            push!(I, support)
+
+            # Pull out all current candidates containing the obstruction support.
+            containing_support = Vector{Vector{Int}}()
+            push!(containing_support, J)
+            remaining_candidates = Vector{Vector{Int}}()
+            for candidate in candidates
+                if issubset(support, candidate)
+                    push!(containing_support, candidate)
+                else
+                    push!(remaining_candidates, candidate)
+                end
+            end
+            candidates = remaining_candidates
+
+            # Replace each obstructed candidate by the children that delete one support index.
+            for candidate in containing_support
+                for index in support
+                    reduced_candidate = setdiff(candidate, index)
+                    isempty(reduced_candidate) && continue
+                    any(F_set -> issubset(reduced_candidate, F_set), F) && continue
+                    reduced_candidate in candidates || push!(candidates, reduced_candidate)
+                end
+            end
+        end
+    end
+
+    hoff_const = found_surjective ? H : Inf
+    if return_certificates
+        return hoff_const, F, I
+    else
+        return hoff_const
+    end
+end
+
+@doc raw"""
     upper_hoff(A::Matrix)
 
 Computes an upper bound on Hoffman constant of the matrix `A` by using the lowest singular value as a proxy for the optimal value of the optimisation problem for A-surjectivity.
@@ -247,6 +336,27 @@ function exact_hoff(f::Union{Signomial, RationalSignomial}; return_matrices::Boo
     for tilde_matrix in tilde_matrices(A)
         # constant is taken to be the maximum over each of the tilde matrices
         hoff_const = max(hoff_const, exact_hoff(tilde_matrix))
+    end
+    if return_matrices
+        return hoff_const, A, b
+    else
+        return hoff_const
+    end
+end
+
+@doc raw"""
+    pvz_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+
+Returns the exact value of the Hoffman constant of a given tropical polynomial
+or tropical rational map, using [`pvz_hoff`](@ref) on each transformed tilde
+matrix.
+"""
+function pvz_hoff(f::Union{Signomial, RationalSignomial};
+        return_matrices::Bool = false, tol::Float64 = 1e-10)
+    hoff_const = 0
+    A, b = linearmap_matrices(f)
+    for tilde_matrix in tilde_matrices(A)
+        hoff_const = max(hoff_const, pvz_hoff(tilde_matrix; tol = tol))
     end
     if return_matrices
         return hoff_const, A, b
