@@ -89,6 +89,7 @@ export
        positive_component,
        surjectivity_test,
        exact_hoff,
+       pvz_hoff,
        upper_hoff,
        lower_hoff,
        exact_er,
