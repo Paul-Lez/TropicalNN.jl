@@ -1,4 +1,5 @@
 using Test, TropicalNN, Graphs, MetaGraphsNext
+import Oscar
 using Oscar: QQFieldElem, tropical_semiring
 
 @testset verbose = true "Statistics" begin
@@ -200,10 +201,8 @@ using Oscar: QQFieldElem, tropical_semiring
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         mode = OscarMode()
         regions = TropicalNN.linear_regions(f_1d; mode = mode)
-        polys = [
-            region
-            for (_, region) in regions if TropicalNN.is_feasible(region; mode = mode)
-        ]
+        polys = [region
+                 for (_, region) in regions if TropicalNN.is_feasible(region; mode = mode)]
         pts = TropicalNN.interior_points(polys)
         # one interior point per polyhedron
         @test length(pts) == length(polys)
@@ -242,5 +241,31 @@ using Oscar: QQFieldElem, tropical_semiring
         result = interior_points(trop)
         @test result isa Dict
         @test length(result) > 0
+    end
+
+    @testset verbose = true "separate_components uses facet connectivity" begin
+        square_A = Rational{BigInt}.([1 0; 0 1; -1 0; 0 -1])
+        p1 = Oscar.polyhedron(square_A, Rational{BigInt}.([1, 1, 0, 0]))
+        p2 = Oscar.polyhedron(square_A, Rational{BigInt}.([2, 2, -1, -1]))
+        p3 = Oscar.polyhedron(square_A, Rational{BigInt}.([2, 1, -1, 0]))
+
+        point_touching = Oscar.intersect(p1, p2)
+        @test Oscar.is_feasible(point_touching)
+        @test Oscar.codim(point_touching) == 2
+
+        edge_touching = Oscar.intersect(p1, p3)
+        @test Oscar.is_feasible(edge_touching)
+        @test Oscar.codim(edge_touching) == 1
+
+        linear_map = Any[0 // 1, Rational{BigInt}[0, 0]]
+        point_components = separate_components(
+            Dict(linear_map => Dict("polyhedra" => [p1, p2]))
+        )
+        edge_components = separate_components(
+            Dict(linear_map => Dict("polyhedra" => [p1, p3]))
+        )
+
+        @test sort(length.(only(values(point_components)))) == [1, 1]
+        @test length.(only(values(edge_components))) == [2]
     end
 end

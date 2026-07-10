@@ -62,7 +62,7 @@ export
        comp,
        comp_with_quicksum,
        dedup_monomials,
-       reduce, 
+       reduce,
        monomial_count,
        nvars,
        single_to_trop,

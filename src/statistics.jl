@@ -141,11 +141,13 @@ function separate_components(linear_regions::Dict)
     region_components = Dict()
     for (linear_map, value) in linear_regions
         polys = value["polyhedra"]
-        # identifying which polyhedra in the region have a non-trivial intersection
+        # Components should be joined only across shared facets, not isolated
+        # lower-codimension contacts such as a single point in two dimensions.
         has_intersect = Dict()
         for (poly1, poly2) in Combinatorics.combinations(polys, 2)
             intesection = Oscar.intersect(poly1, poly2)
-            has_intersect[(poly1, poly2)] = Oscar.is_feasible(intesection)
+            has_intersect[(poly1, poly2)] = Oscar.is_feasible(intesection) &&
+                                            Oscar.codim(intesection) <= 1
         end
         # using the intersection information we can determine whether the collection of polyhedra correspond to disjoint linear regions
         region_components[linear_map] = components(polys, has_intersect)

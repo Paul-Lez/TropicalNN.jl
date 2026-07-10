@@ -30,6 +30,25 @@ using Test, TropicalNN, Random, Oscar
     @test exact_er(single_monomial) == Inf
     @test upper_er(single_monomial) == Inf
 
+    tropical_zero = Signomial([zero(R(0))], [[0//1, 0//1]]; sorted = false)
+    @test monomial_count(tropical_zero) == 0
+    @test exact_hoff(tropical_zero) == Inf
+    @test pvz_hoff(tropical_zero) == Inf
+    @test upper_hoff(tropical_zero) == Inf
+    @test lower_hoff(tropical_zero) == Inf
+    @test exact_er(tropical_zero) == Inf
+    @test upper_er(tropical_zero) == Inf
+
+    empty_signomial = Signomial(
+        TropicalNN._TROPICAL_COEFF[],
+        Vector{Vector{Rational{BigInt}}}();
+        sorted = false
+    )
+    @test exact_hoff(empty_signomial) == Inf
+    @test pvz_hoff(empty_signomial) == Inf
+    @test upper_hoff(empty_signomial) == Inf
+    @test lower_hoff(empty_signomial) == Inf
+
     Random.seed!(42)
     mat = rand(3, 3)
     h_exact = exact_hoff(mat)
