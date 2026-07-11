@@ -98,9 +98,10 @@ if not provided, all thresholds are set to be zero.
 Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
 monomials with non-full-dimensional regions after each layer; `dedup` calls
 `dedup_monomials` after each layer. `elim_mode` selects the polyhedral backend
-for strong elimination. If `workers` is supplied and `strong_elim=true`, strong
-elimination uses those Julia worker processes. Throws `DimensionMismatch` for
-inconsistent layer sizes.
+for strong elimination, using the same `LinearRegionsCalculationMode` selectors
+as `linear_regions` (`OscarMode()` or `HiGHSMode(threads=n)`). If `workers` is
+supplied and `strong_elim=true`, strong elimination uses those Julia worker
+processes. Throws `DimensionMismatch` for inconsistent layer sizes.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;

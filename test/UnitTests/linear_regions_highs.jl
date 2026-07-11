@@ -242,10 +242,21 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
     end
 
     @testset verbose = true "Strong elimination with threaded HiGHS" begin
-        mode = HiGHSMode(threads = 1)
+        mode = HiGHSMode(threads = 2)
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
         @test TropicalNN.reduce(u; mode = mode) == TropicalNN.reduce(u)
+
+        v = Signomial([R(0)], [[0//1]]; sorted = false)
+        q_highs = TropicalNN.reduce(u / v; mode = mode)
+        q_oscar = TropicalNN.reduce(u / v)
+        @test q_highs.num == q_oscar.num
+        @test q_highs.den == q_oscar.den
+
+        vector_highs = TropicalNN.reduce([u / v]; mode = mode)
+        @test length(vector_highs) == 1
+        @test vector_highs[1].num == q_oscar.num
+        @test vector_highs[1].den == q_oscar.den
 
         W = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]

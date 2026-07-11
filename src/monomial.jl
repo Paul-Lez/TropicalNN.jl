@@ -8,7 +8,9 @@
 Return a copy of `f` without monomials whose dominance polyhedron is not
 full-dimensional. If `workers` is supplied and `parallel=true`, the
 full-dimensionality checks run on those Julia worker processes. `mode`
-selects the polyhedral backend used for the checks.
+selects the polyhedral backend used for the checks; use `OscarMode()` for exact
+Oscar polyhedra or `HiGHSMode(threads=n)` for HiGHS LP checks with `n` solver
+threads.
 """
 function reduce(
         f::Signomial;
@@ -81,7 +83,8 @@ Puiseux rational function.
 - `parallel::Bool=true`: Whether to use process-parallel computation when
   workers are supplied
 - `workers=nothing`: Optional Julia worker process ids
-- `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks
+- `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks.
+  Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
 """
 function reduce(
         f::RationalSignomial;
@@ -107,7 +110,8 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 - `parallel::Bool=true`: Whether to use process-parallel computation when
   workers are supplied
 - `workers=nothing`: Optional Julia worker process ids
-- `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks
+- `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks.
+  Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
 """
 function reduce(
         F::Vector{<:RationalSignomial};
