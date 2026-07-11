@@ -1,4 +1,4 @@
-using Test, TropicalNN, Oscar
+using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
 
 @testset verbose = true "Linear Regions HiGHS Mode" begin
     R = tropical_semiring(max)
@@ -7,6 +7,19 @@ using Test, TropicalNN, Oscar
     candidate_region(candidate) = candidate[2]
     candidate_is_feasible(candidate) =
         TropicalNN.is_feasible(candidate_region(candidate); mode = highs_mode)
+
+    @testset verbose = true "HiGHS thread count" begin
+        threaded_mode = HiGHSMode(threads = 2)
+        @test threaded_mode.threads == 2
+
+        model = TropicalNN.create_highs_model(
+            solver = threaded_mode.solver,
+            threads = threaded_mode.threads
+        )
+        @test JuMP.get_attribute(model, TropicalNN.MOI.NumberOfThreads()) == 2
+
+        @test_throws ArgumentError TropicalNN.create_highs_model(threads = 0)
+    end
 
     @testset verbose = true "Basic polynomial max(x, y)" begin
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -76,6 +89,23 @@ using Test, TropicalNN, Oscar
         @test regions_oscar isa LinearRegions
         @test regions_highs isa LinearRegions
         @test length(regions_oscar) == length(regions_highs)
+    end
+
+    @testset verbose = true "Non-rationalizable Float64 constraints" begin
+        coefficient = -0.0009592368123730325
+        @test_throws InexactError Rational(coefficient)
+
+        f = Signomial(
+            [R(Rational{BigInt}(coefficient)), R(0)],
+            [[coefficient], [0.0]];
+            sorted = false
+        )
+        mode = HiGHSMode(threads = 1)
+
+        region = TropicalNN.polyhedron(f, 1, mode)
+        @test TropicalNN.get_matrix(region; mode = mode) == [-coefficient;;]
+        @test TropicalNN.get_vector(region; mode = mode) == [coefficient]
+        @test length(TropicalNN.reduce(f; mode = mode)) == length(f)
     end
 
     @testset verbose = true "MLP-derived polynomial" begin
@@ -209,5 +239,53 @@ using Test, TropicalNN, Oscar
         A_tiny_line = [1e-7; -1e-7;;]
         b_tiny_line = [0.0; 0.0]
         @test TropicalNN.highs_is_full_dimensional(A_tiny_line, b_tiny_line) == false
+    end
+
+    @testset verbose = true "Strong elimination with threaded HiGHS" begin
+        mode = HiGHSMode(threads = 1)
+        u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
+
+        @test TropicalNN.reduce(u; mode = mode) == TropicalNN.reduce(u)
+
+        W = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
+        b = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
+        t = [Rational{BigInt}.([0, 0])]
+        highs_output = mlp_to_trop(
+            W,
+            b,
+            t;
+            quicksum = true,
+            strong_elim = true,
+            elim_mode = mode
+        )
+        oscar_output = mlp_to_trop(W, b, t; quicksum = true, strong_elim = true)
+        @test collect(monomial_pairs(highs_output[1].num)) ==
+              collect(monomial_pairs(oscar_output[1].num))
+        @test collect(monomial_pairs(highs_output[1].den)) ==
+              collect(monomial_pairs(oscar_output[1].den))
+    end
+
+    @testset verbose = true "Effective radius with threaded HiGHS" begin
+        mode = HiGHSMode(threads = 1)
+        f = Signomial(
+            [R(0), R(1), R(-1)],
+            [[0//1, 0//1], [1//1, 0//1], [0//1, 1//1]];
+            sorted = false
+        )
+
+        @test exact_er(f; mode = mode) ≈ exact_er(f)
+    end
+
+    @testset verbose = true "Graph construction with threaded HiGHS" begin
+        mode = HiGHSMode(threads = 1)
+        f = Signomial(
+            [R(0), R(0), R(0)],
+            [[0//1, 0//1], [1//1, 0//1], [0//1, 1//1]];
+            sorted = false
+        )
+
+        g_highs = get_graph(f; mode = mode)
+        @test g_highs isa MetaGraphsNext.MetaGraph
+        @test Graphs.ne(g_highs) == edge_count(f)
     end
 end

@@ -10,8 +10,12 @@ function intersect_reps(rep_1, rep_2)
     return [vcat(rep_1[1], rep_2[1]), vcat(rep_1[2], rep_2[2])]
 end
 
+function _hrep_is_full_dimensional(A, b, mode::LinearRegionsCalculationMode)
+    return is_full_dimensional(make_polyhedron(A, b; mode = mode); mode = mode)
+end
+
 """
-    m_reps(f::Signomial) -> Dict
+    m_reps(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode()) -> Dict
 
 Compute the H-representation `[A, b]` for every full-dimensional monomial region of the tropical
 polynomial `f`.  Each region is the polyhedron `{x : Ax ≤ b}` where row `j` of `A` is
@@ -22,7 +26,10 @@ Returns a `Dict` with keys:
 - `"m_reps"`: `Vector` of `[A, b]` pairs, one per full-dimensional region.
 - `"f_indices"`: corresponding monomial indices into `f.exp`.
 """
-function m_reps(f::Signomial)
+function m_reps(
+        f::Signomial;
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for i in Base.eachindex(f)
         A, b = _linear_region_constraints(
@@ -31,8 +38,7 @@ function m_reps(f::Signomial)
             OSCAR_POLYHEDRON_COEFF_TYPE;
             include_self = true
         )
-        p_oscar = Oscar.polyhedron(A, b)
-        if Oscar.is_fulldimensional(p_oscar)
+        if _hrep_is_full_dimensional(A, b, mode)
             push!(reps["m_reps"], [A, b])
             push!(reps["f_indices"], i)
         end
@@ -41,7 +47,7 @@ function m_reps(f::Signomial)
 end
 
 """
-    m_reps(f::RationalSignomial) -> Dict
+    m_reps(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode()) -> Dict
 
 Compute the H-representation for every full-dimensional region of the tropical rational function
 `f = num/den`.  Each region is the intersection of a monomial region of the numerator with a
@@ -51,15 +57,17 @@ Returns a `Dict` with keys:
 - `"m_reps"`: `Vector` of `[A, b]` pairs encoding the intersection polyhedra.
 - `"f_indices"`: `Vector` of `[i_num, i_den]` index pairs into `f.num.exp` and `f.den.exp`.
 """
-function m_reps(f::RationalSignomial)
-    n_reps = m_reps(f.num)
-    d_reps = m_reps(f.den)
+function m_reps(
+        f::RationalSignomial;
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    n_reps = m_reps(f.num; mode = mode)
+    d_reps = m_reps(f.den; mode = mode)
     reps = Dict("m_reps" => [], "f_indices" => [])
     for (n_m_rep, n_f_idx) in zip(n_reps["m_reps"], n_reps["f_indices"])
         for (d_m_rep, d_f_idx) in zip(d_reps["m_reps"], d_reps["f_indices"])
             int_rep = intersect_reps(n_m_rep, d_m_rep)
-            p_oscar = Oscar.polyhedron(int_rep[1], int_rep[2])
-            if Oscar.is_fulldimensional(p_oscar)
+            if _hrep_is_full_dimensional(int_rep[1], int_rep[2], mode)
                 push!(reps["m_reps"], [int_rep[1], int_rep[2]])
                 push!(reps["f_indices"], [n_f_idx, d_f_idx])
             end
@@ -156,7 +164,7 @@ function separate_components(linear_regions::Dict)
 end
 
 @doc raw"""
-    map_statistic(statistic, f)
+    map_statistic(statistic, f; mode::LinearRegionsCalculationMode=OscarMode())
 
 Applies a statistic function to a tropical polynomial or tropical rational map by calling the statistic on the corresponding linear regions.
 
@@ -167,9 +175,13 @@ Applies a statistic function to a tropical polynomial or tropical rational map b
 # Returns
 - Result of applying `statistic` to the identified linear regions
 """
-function map_statistic(statistic::Function, f::Union{Signomial, RationalSignomial})
+function map_statistic(
+        statistic::Function,
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     # Obtain the unbounded matrix representations
-    reps = m_reps(f)
+    reps = m_reps(f; mode = mode)
     # Obtain the corresponding polyhedron representations
     polys = polyhedra_from_reps(reps, true)
     # Retrive the linear maps operating on the polyhedra
@@ -231,8 +243,11 @@ end
 
 Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function interior_points(f::Union{Signomial, RationalSignomial})
-    return map_statistic(interior_points, f)
+function interior_points(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return map_statistic(interior_points, f; mode = mode)
 end
 
 # Bounded
@@ -269,8 +284,11 @@ end
 
 Determines whether the polyhedra constituting the linear region of a tropical polynomial or a tropical rational map are bounded.
 """
-function bounds(f::Union{Signomial, RationalSignomial})
-    return map_statistic(bounds, f)
+function bounds(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return map_statistic(bounds, f; mode = mode)
 end
 
 # Volumes of regions
@@ -321,8 +339,11 @@ end
 
 Finds the volumes of the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function volumes(f::Union{Signomial, RationalSignomial})
-    return map_statistic(volumes, f)
+function volumes(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return map_statistic(volumes, f; mode = mode)
 end
 
 # Number faces contributing to a linear region
@@ -344,8 +365,11 @@ end
 
 Returns the number of polyhedra in each linear region of the tropical polynomial or tropical rational map.
 """
-function polyhedron_counts(f::Union{Signomial, RationalSignomial})
-    return map_statistic(polyhedron_counts, f)
+function polyhedron_counts(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return map_statistic(polyhedron_counts, f; mode = mode)
 end
 
 # Construct graph
@@ -449,12 +473,16 @@ function _canonical_direction(direction)
 end
 
 @doc raw"""
-    get_graph(f::Union{Signomial,RationalSignomial})
+    get_graph(f::Union{Signomial,RationalSignomial};
+              mode::LinearRegionsCalculationMode=OscarMode())
 
 Constructs a graph of linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function get_graph(f::Union{Signomial, RationalSignomial})
-    return map_statistic(get_graph, f)
+function get_graph(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return map_statistic(get_graph, f; mode = mode)
 end
 
 # Count edges
@@ -469,11 +497,15 @@ function edge_count(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_count(f::Union{Signomial,RationalSignomial})
+    edge_count(f::Union{Signomial,RationalSignomial};
+               mode::LinearRegionsCalculationMode=OscarMode())
 
 Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
 """
-function edge_count(f::Union{Signomial, RationalSignomial})
+function edge_count(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     if nvars(f) != 2
         throw(
             ArgumentError(
@@ -481,7 +513,7 @@ function edge_count(f::Union{Signomial, RationalSignomial})
         ),
         )
     end
-    return Graphs.ne(get_graph(f))
+    return Graphs.ne(get_graph(f; mode = mode))
 end
 
 # Get edge gradients
@@ -529,7 +561,10 @@ end
 
 Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_gradients(f::Union{Signomial, RationalSignomial})
+function edge_gradients(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     if nvars(f) != 2
         throw(
             ArgumentError(
@@ -537,7 +572,7 @@ function edge_gradients(f::Union{Signomial, RationalSignomial})
         ),
         )
     end
-    return edge_gradients(get_graph(f))
+    return edge_gradients(get_graph(f; mode = mode))
 end
 
 # Edge lengths
@@ -576,11 +611,15 @@ function edge_lengths(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_lengths(f::Union{Signomial,RationalSignomial})
+    edge_lengths(f::Union{Signomial,RationalSignomial};
+                 mode::LinearRegionsCalculationMode=OscarMode())
 
 Calculates the lengths of the edges emanating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function edge_lengths(f::Union{Signomial, RationalSignomial})
+function edge_lengths(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     if nvars(f) != 2
         throw(
             ArgumentError(
@@ -588,7 +627,7 @@ function edge_lengths(f::Union{Signomial, RationalSignomial})
         ),
         )
     end
-    return edge_lengths(get_graph(f))
+    return edge_lengths(get_graph(f; mode = mode))
 end
 
 # Edge directions
@@ -639,11 +678,15 @@ function edge_directions(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_directions(f::Union{Signomial,RationalSignomial})
+    edge_directions(f::Union{Signomial,RationalSignomial};
+                    mode::LinearRegionsCalculationMode=OscarMode())
 
 Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
 """
-function edge_directions(f::Union{Signomial, RationalSignomial})
+function edge_directions(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     if nvars(f) != 2
         throw(
             ArgumentError(
@@ -651,7 +694,7 @@ function edge_directions(f::Union{Signomial, RationalSignomial})
         ),
         )
     end
-    return edge_directions(get_graph(f))
+    return edge_directions(get_graph(f; mode = mode))
 end
 
 # Collect vertices
@@ -684,8 +727,11 @@ end
 
 Collects the vertices of the linear regions corresponding to the tropical polynomial or tropical rational map, along with their multiplicities, that is, how many regions share that vertex. 
 """
-function vertex_collection(f::Union{Signomial, RationalSignomial})
-    return vertex_collection(get_graph(f))
+function vertex_collection(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return vertex_collection(get_graph(f; mode = mode))
 end
 
 # Count vertices
@@ -704,6 +750,9 @@ end
 
 Counts the number of vertices in the linear regions corresponding to the tropical polynomial or tropical rational map.
 """
-function vertex_count(f::Union{Signomial, RationalSignomial})
-    return vertex_count(get_graph(f))
+function vertex_count(
+        f::Union{Signomial, RationalSignomial};
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    return vertex_count(get_graph(f; mode = mode))
 end

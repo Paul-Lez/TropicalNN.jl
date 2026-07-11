@@ -1,11 +1,11 @@
 ############### Utilities ###############
 
 @doc raw"""
-    linearmap_matrices(f::Signomial)
+    linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
 """
-function linearmap_matrices(f::Signomial)
+function linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
     f = dedup_monomials(f)
     if length(f) == 0
         return zeros(Float64, 0, nvars(f)), Any[]
@@ -18,7 +18,8 @@ function linearmap_matrices(f::Signomial)
         exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
         # we only want the linear maps that are realised
-        if Oscar.is_fulldimensional(polyhedron(f, i, OscarMode()))
+        poly = polyhedron(f, i, mode)
+        if is_full_dimensional(poly; mode = mode)
             linear_map = [Rational(coeff_i), collect(exp_i)]
             # we are only interested in the unique linear map
             if !(linear_map in linear_maps_acc)
@@ -37,13 +38,16 @@ function linearmap_matrices(f::Signomial)
 end
 
 @doc raw"""
-    linearmap_matrices(f::RationalSignomial)
+    linearmap_matrices(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical rational map.
 """
-function linearmap_matrices(f::RationalSignomial)
-    Anum, bnum = linearmap_matrices(f.num)
-    Aden, bden = linearmap_matrices(f.den)
+function linearmap_matrices(
+        f::RationalSignomial;
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
+    Anum, bnum = linearmap_matrices(f.num; mode = mode)
+    Aden, bden = linearmap_matrices(f.den; mode = mode)
     return (Anum, Aden), (bnum, bden)
 end
 
@@ -362,14 +366,17 @@ function lower_hoff(A::Matrix, num_samples::Int = 10; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    exact_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+    exact_hoff(f::Union{Signomial,RationalSignomial};
+               return_matrices::Bool=false, mode::LinearRegionsCalculationMode=OscarMode())
 
 Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
 function exact_hoff(f::Union{Signomial, RationalSignomial};
-        return_matrices::Bool = false, tol::Float64 = 1e-10)
+        return_matrices::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode(),
+        tol::Float64 = 1e-10)
     hoff_const = 0
-    A, b = linearmap_matrices(f)
+    A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
@@ -391,9 +398,11 @@ or tropical rational map, using [`pvz_hoff`](@ref) on each transformed tilde
 matrix.
 """
 function pvz_hoff(f::Union{Signomial, RationalSignomial};
-        return_matrices::Bool = false, tol::Float64 = 1e-10)
+        return_matrices::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode(),
+        tol::Float64 = 1e-10)
     hoff_const = 0
-    A, b = linearmap_matrices(f)
+    A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
@@ -407,34 +416,18 @@ function pvz_hoff(f::Union{Signomial, RationalSignomial};
 end
 
 @doc raw"""
-    pvz_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
-
-Returns the exact value of the Hoffman constant of a given tropical polynomial
-or tropical rational map, using [`pvz_hoff`](@ref) on each transformed tilde
-matrix.
-"""
-function pvz_hoff(f::Union{Signomial, RationalSignomial};
-        return_matrices::Bool = false, tol::Float64 = 1e-10)
-    hoff_const = 0
-    A, b = linearmap_matrices(f)
-    for tilde_matrix in tilde_matrices(A)
-        hoff_const = max(hoff_const, pvz_hoff(tilde_matrix; tol = tol))
-    end
-    if return_matrices
-        return hoff_const, A, b
-    else
-        return hoff_const
-    end
-end
-
-@doc raw"""
-    upper_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+    upper_hoff(f::Union{Signomial,RationalSignomial};
+               return_matrices::Bool=false, mode::LinearRegionsCalculationMode=OscarMode())
 
 Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
-function upper_hoff(f::Union{Signomial, RationalSignomial}; return_matrices::Bool = false)
+function upper_hoff(
+        f::Union{Signomial, RationalSignomial};
+        return_matrices::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode()
+)
     hoff_upper = 0
-    A, b = linearmap_matrices(f)
+    A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
@@ -454,8 +447,11 @@ end
 Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
 """
 function lower_hoff(f::Union{Signomial, RationalSignomial},
-        num_samples::Int = 10; return_matrices::Bool = false, tol::Float64 = 1e-10)
-    A, b = linearmap_matrices(f)
+        num_samples::Int = 10;
+        return_matrices::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode(),
+        tol::Float64 = 1e-10)
+    A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     # if we are taking more samples than there are submatrices we are using exact
@@ -478,12 +474,12 @@ end
 ############### Effective Radius ###############
 
 @doc raw"""
-    exact_er(f::Signomial)
+    exact_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
 """
-function exact_er(f::Signomial)
-    hoff_const, A, b = exact_hoff(f, return_matrices = true)
+function exact_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
     isinf(hoff_const) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_const *
@@ -491,12 +487,12 @@ function exact_er(f::Signomial)
 end
 
 @doc raw"""
-    upper_er(f::Signomial)
+    upper_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
 """
-function upper_er(f::Signomial)
-    hoff_upper, A, b = upper_hoff(f, return_matrices = true)
+function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)
     isinf(hoff_upper) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_upper *
@@ -504,23 +500,23 @@ function upper_er(f::Signomial)
 end
 
 @doc raw"""
-    exact_er(f::RationalSignomial)
+    exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Provides an upper bound on the effective radius of a tropical rational map using exact Hoffman constant computations.
 """
-function exact_er(f::RationalSignomial)
-    hoff_const, A, b = exact_hoff(f, return_matrices = true)
+function exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
     isinf(hoff_const) && return Inf
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
 @doc raw"""
-    upper_er(f::RationalSignomial)
+    upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
 Provides an upper bound on the effective radius of a tropical rational map using upper bound approximations of the Hoffman constant.
 """
-function upper_er(f::RationalSignomial)
-    hoff_upper, A, b = upper_hoff(f, return_matrices = true)
+function upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)
     isinf(hoff_upper) && return Inf
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end

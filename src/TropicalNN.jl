@@ -23,7 +23,8 @@ using LinearAlgebra
 using Graphs
 using MetaGraphsNext
 
-import Base: string, +, *, /
+import Distributed
+import Base: string, +, *, /, reduce
 import Oscar: convention
 
 export
@@ -62,7 +63,6 @@ export
        comp,
        comp_with_quicksum,
        dedup_monomials,
-       reduce,
        monomial_count,
        nvars,
        single_to_trop,
@@ -75,6 +75,7 @@ export
        polyhedron,
        get_matrix,
        get_vector,
+       enum_linear_regions_general,
        codimension_le_one,
        regions_intersect_codimension_le_one,
        linear_regions,

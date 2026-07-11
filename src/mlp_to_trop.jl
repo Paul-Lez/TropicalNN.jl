@@ -84,7 +84,9 @@ function affine_to_trop(A::Matrix{T},
 end
 
 """
-    mlp_to_trop(linear_maps, bias, thresholds; quicksum=false, strong_elim=false, dedup=false)
+    mlp_to_trop(linear_maps, bias, thresholds;
+                quicksum=false, strong_elim=false, dedup=false,
+                elim_mode=OscarMode(), workers=nothing)
 
 Convert a ReLU MLP with affine output layer to tropical rational functions,
 one per output neuron. `linear_maps`, `bias`, and `thresholds` are layer-wise
@@ -95,13 +97,17 @@ if not provided, all thresholds are set to be zero.
 
 Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
 monomials with non-full-dimensional regions after each layer; `dedup` calls
-`dedup_monomials` after each layer. Throws `DimensionMismatch` for inconsistent
-layer sizes.
+`dedup_monomials` after each layer. `elim_mode` selects the polyhedral backend
+for strong elimination. If `workers` is supplied and `strong_elim=true`, strong
+elimination uses those Julia worker processes. Throws `DimensionMismatch` for
+inconsistent layer sizes.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
         quicksum::Bool = false, strong_elim::Bool = false,
-        dedup::Bool = false) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+        dedup::Bool = false,
+        elim_mode::LinearRegionsCalculationMode = OscarMode(),
+        workers = nothing) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     if isempty(linear_maps)
         throw(ArgumentError("mlp_to_trop requires at least one layer"))
     end
@@ -158,7 +164,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
                      comp(ith_tropical, output)
 
             if strong_elim
-                output = reduce(output)
+                output = reduce(output; mode = elim_mode, workers = workers)
             end
         end
         if dedup
