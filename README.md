@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Paul-Lez/TropicalNN.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://paul-lez.github.io/TropicalNN.jl/dev/)
 
-# WARNING: the library is currently being refactored, so is not usable at `HEAD`.
+# WARNING: the library is currently being developed, and some changes have not yet been merged into `main` (soon!).
 
 ## Installation
 
