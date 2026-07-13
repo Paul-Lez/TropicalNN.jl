@@ -14,11 +14,13 @@ function linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = O
     linear_maps_acc = Vector{Vector{Any}}()
     exponents_acc = Vector{Vector{Float64}}()
     coefficients_acc = Vector{Any}()
+    # Monomials found not to be realised can be dropped
+    competitors = collect(Base.eachindex(f))
     for i in Base.eachindex(f)
         exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
         # we only want the linear maps that are realised
-        poly = polyhedron(f, i, mode)
+        poly = polyhedron(f, i, mode; competitors = competitors)
         if is_full_dimensional(poly; mode = mode)
             linear_map = [Rational(coeff_i), collect(exp_i)]
             # we are only interested in the unique linear map
@@ -27,6 +29,8 @@ function linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = O
                 push!(coefficients_acc, linear_map[1])
                 push!(linear_maps_acc, linear_map)
             end
+        else
+            deleteat!(competitors, searchsortedfirst(competitors, i))
         end
     end
     if isempty(exponents_acc)

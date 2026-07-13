@@ -113,9 +113,10 @@ function _linear_region_constraints(
         i,
         ::Type{T};
         include_self::Bool = false,
+        competitors = Base.eachindex(f),
         empty_rows::Int = 1
 ) where {T}
-    indices = [j for j in Base.eachindex(f) if include_self || j != i]
+    indices = [j for j in competitors if include_self || j != i]
     if isempty(indices)
         return zeros(T, empty_rows, nvars(f)), zeros(T, empty_rows)
     end
@@ -490,12 +491,14 @@ end
 function _linear_region_constraint_data(
         f::Signomial,
         i,
-        mode::LinearRegionsCalculationMode
+        mode::LinearRegionsCalculationMode;
+        competitors = Base.eachindex(f)
 )
     return _linear_region_constraints(
         f,
         i,
         _linear_region_coefficient_type(mode);
+        competitors = competitors,
         empty_rows = _linear_region_empty_rows(mode),
     )
 end
@@ -551,14 +554,25 @@ function is_full_dimensional(region::_Polyhedra; mode::_HiGHS)
 end
 
 @doc raw"""
-    polyhedron(f::Signomial, i::Int, mode::LinearRegionsCalculationMode)
+    polyhedron(f::Signomial, i::Int, mode::LinearRegionsCalculationMode; competitors=Base.eachindex(f))
 
 Outputs the polyhedron corresponding to points where f is given by the
 linear map corresponding to the i-th monomial of f, using the selected backend
 mode.
+
+`competitors` restricts the monomials that the i-th monomial is compared
+against. Callers may drop monomials already known to be redundant (i.e. whose
+dominance polyhedron is not full-dimensional): removing such a monomial does
+not change `f` as a function, so the resulting polyhedron is the same set
+described by fewer inequalities.
 """
-function polyhedron(f::Signomial, i, mode::LinearRegionsCalculationMode)
-    A, b = _linear_region_constraint_data(f, i, mode)
+function polyhedron(
+        f::Signomial,
+        i,
+        mode::LinearRegionsCalculationMode;
+        competitors = Base.eachindex(f)
+)
+    A, b = _linear_region_constraint_data(f, i, mode; competitors = competitors)
     # The polyhedron is then the set of points x such that Ax ≤ b.
     return make_polyhedron(A, b; mode = mode)
 end

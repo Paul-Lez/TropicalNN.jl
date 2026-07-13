@@ -63,9 +63,15 @@ end
 function _strong_elim_keep_chunk(args)
     f, inds, mode = args
     keep = Vector{Bool}(undef, length(inds))
+    # A discarded monomial never attains the maximum on an open set, so
+    # we can remove it from the next full-dimensionality checks.
+    competitors = collect(Base.eachindex(f))
     for (j, i) in pairs(inds)
-        poly = polyhedron(f, i, mode)
+        poly = polyhedron(f, i, mode; competitors = competitors)
         keep[j] = is_full_dimensional(poly; mode = mode)
+        if !keep[j]
+            deleteat!(competitors, searchsortedfirst(competitors, i))
+        end
     end
     return keep
 end
