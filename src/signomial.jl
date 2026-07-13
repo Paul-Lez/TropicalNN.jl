@@ -427,7 +427,7 @@ function Signomial(
 ) where {T}
     R = Oscar.tropical_semiring(max)
     return Signomial{T}(
-        Oscar.TropicalSemiringElem{typeof(max)}[R(c) for c in coeffs],
+        Oscar.TropicalSemiringElem{typeof(max)}[R(Rational{BigInt}(c)) for c in coeffs],
         [Vector{T}(e) for e in exp_vecs], sorted)
 end
 

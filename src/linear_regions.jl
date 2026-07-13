@@ -92,6 +92,10 @@ function _constraint_scalar(::Type{Float64}, x)
     return Float64(Rational(x))
 end
 
+function _constraint_scalar(::Type{OSCAR_POLYHEDRON_COEFF_TYPE}, x::AbstractFloat)
+    return OSCAR_POLYHEDRON_COEFF_TYPE(x)
+end
+
 function _constraint_scalar(::Type{OSCAR_POLYHEDRON_COEFF_TYPE}, x)
     return OSCAR_POLYHEDRON_COEFF_TYPE(Rational(x))
 end

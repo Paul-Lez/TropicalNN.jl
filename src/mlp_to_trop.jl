@@ -28,9 +28,9 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
     end
     R = tropical_semiring(max)
     # first make sure that the entries of b are elements of the tropical semiring
-    b = [R(Rational(i)) for i in b]
+    b = [R(Rational{BigInt}(i)) for i in b]
     # and same for t
-    t = [R(Rational(i)) for i in t]
+    t = [R(Rational{BigInt}(i)) for i in t]
     sizehint!(G, size(A, 1))
     for i in axes(A, 1)
         # first split the i-th line of A into its positive and negative components
@@ -67,7 +67,7 @@ function affine_to_trop(A::Matrix{T},
     end
 
     R = tropical_semiring(max)
-    b = [R(Rational(i)) for i in b]
+    b = [R(Rational{BigInt}(i)) for i in b]
     sizehint!(G, size(A, 1))
     for i in axes(A, 1)
         pos = Vector{T}()
