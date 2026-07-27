@@ -100,15 +100,17 @@ monomials with non-full-dimensional regions after each layer; `dedup` calls
 `dedup_monomials` after each layer. `elim_mode` selects the polyhedral backend
 for strong elimination, using the same `LinearRegionsCalculationMode` selectors
 as `linear_regions` (`OscarMode()` or `HiGHSMode(threads=n)`). If `workers` is
-supplied and `strong_elim=true`, strong elimination uses those Julia worker
-processes. Throws `DimensionMismatch` for inconsistent layer sizes.
+supplied as an `AbstractWorkerPool` and `strong_elim=true`, strong elimination
+uses its Julia worker processes. Throws `DimensionMismatch` for inconsistent
+layer sizes.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
         quicksum::Bool = false, strong_elim::Bool = false,
         dedup::Bool = false,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
-        workers = nothing) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     if isempty(linear_maps)
         throw(ArgumentError("mlp_to_trop requires at least one layer"))
     end

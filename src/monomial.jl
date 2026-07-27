@@ -6,8 +6,9 @@
            mode::LinearRegionsCalculationMode=OscarMode())
 
 Return a copy of `f` without monomials whose dominance polyhedron is not
-full-dimensional. If `workers` is supplied and `parallel=true`, the
-full-dimensionality checks run on those Julia worker processes. `mode`
+full-dimensional. If `workers` is supplied as an `AbstractWorkerPool` and
+`parallel=true`, the full-dimensionality checks run on its Julia worker
+processes. `mode`
 selects the polyhedral backend used for the checks; use `OscarMode()` for exact
 Oscar polyhedra or `HiGHSMode(threads=n)` for HiGHS LP checks with `n` solver
 threads.
@@ -15,7 +16,7 @@ threads.
 function reduce(
         f::Signomial;
         parallel::Bool = true,
-        workers = nothing,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         mode::LinearRegionsCalculationMode = OscarMode()
 )
     keep = if parallel
@@ -43,18 +44,21 @@ function _filter_monomials(f::Signomial{T}, keep::AbstractVector{Bool}) where {T
     return Signomial(new_coeff, new_exp)
 end
 
-function _strong_elim_keep_mask(f::Signomial, workers, mode::LinearRegionsCalculationMode)
+function _strong_elim_keep_mask(
+        f::Signomial,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool},
+        mode::LinearRegionsCalculationMode
+)
     n = length(f)
-    worker_ids = _normalise_worker_ids(workers)
-    if worker_ids === nothing || n <= 1
+    if workers === nothing || n <= 1
         return _strong_elim_keep_chunk((f, 1:n, mode))
     end
 
-    _ensure_tropicalnn_loaded(worker_ids)
-    chunks = _index_chunks(n, length(worker_ids))
+    _assert_tropicalnn_loaded(workers)
+    chunks = _index_chunks(n, length(Distributed.workers(workers)))
     chunk_results = Distributed.pmap(
         _strong_elim_keep_chunk,
-        Distributed.WorkerPool(worker_ids),
+        workers,
         [(f, chunk, mode) for chunk in chunks],
     )
     return Base.reduce(vcat, chunk_results)
@@ -88,14 +92,14 @@ Puiseux rational function.
 - `f::RationalSignomial{T}`: The rational function to simplify
 - `parallel::Bool=true`: Whether to use process-parallel computation when
   workers are supplied
-- `workers=nothing`: Optional Julia worker process ids
+- `workers=nothing`: Optional `AbstractWorkerPool`
 - `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks.
   Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
 """
 function reduce(
         f::RationalSignomial;
         parallel::Bool = true,
-        workers = nothing,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         mode::LinearRegionsCalculationMode = OscarMode()
 )
     return RationalSignomial(
@@ -115,14 +119,14 @@ Removes redundant monomials from a vector of tropical Puiseux rational functions
 - `F::Vector{RationalSignomial{T}}`: The vector of rational functions to simplify
 - `parallel::Bool=true`: Whether to use process-parallel computation when
   workers are supplied
-- `workers=nothing`: Optional Julia worker process ids
+- `workers=nothing`: Optional `AbstractWorkerPool`
 - `mode=OscarMode()`: Polyhedral backend used for full-dimensionality checks.
   Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
 """
 function reduce(
         F::Vector{<:RationalSignomial};
         parallel::Bool = true,
-        workers = nothing,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         mode::LinearRegionsCalculationMode = OscarMode()
 )
     return [reduce(f; parallel = parallel, workers = workers, mode = mode) for f in F]

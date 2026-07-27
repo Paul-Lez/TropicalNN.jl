@@ -5,34 +5,20 @@ const OSCAR_POLYHEDRON_COEFF_TYPE = Rational{BigInt}
 const HIGHS_DEFAULT_TOL = 1e-6
 const HIGHS_DEFAULT_SOLVER = "choose"
 
-function _normalise_worker_ids(workers)
-    workers === nothing && return nothing
+"""
+    _assert_tropicalnn_loaded(pool)
 
-    worker_ids = unique(Int[worker for worker in workers])
-    filter!(pid -> pid != Distributed.myid(), worker_ids)
-    isempty(worker_ids) && return nothing
-
-    active_processes = Distributed.procs()
-    inactive = setdiff(worker_ids, active_processes)
-    if !isempty(inactive)
-        throw(ArgumentError("Inactive Julia worker process ids: $(join(inactive, ", "))"))
+Check that the TropicalNN module is loaded on all workers in `pool`.
+"""
+function _assert_tropicalnn_loaded(pool::Distributed.AbstractWorkerPool)
+    unloaded = filter(Distributed.workers(pool)) do pid
+        !Distributed.remotecall_fetch(isdefined, pid, Main, :TropicalNN)
     end
-    return worker_ids
-end
 
-function _ensure_tropicalnn_loaded(worker_ids)
-    for pid in worker_ids
-        try
-            Distributed.remotecall_wait(Core.eval, pid, Main, :(using TropicalNN))
-        catch err
-            throw(ArgumentError(
-                "Worker $pid could not load TropicalNN. Start workers with the same " *
-                "project, for example addprocs(...; exeflags=[\"--project=.\"]), " *
-                "before passing worker ids. Original error: $err",
-            ))
-        end
-    end
-    return nothing
+    isempty(unloaded) || throw(ArgumentError(
+        "TropicalNN is not loaded on worker(s): $(join(unloaded, ", ")). " *
+        "Run `@everywhere using TropicalNN` after adding workers.",
+    ))
 end
 
 function _index_chunks(n::Int, nworkers::Int)
@@ -51,8 +37,19 @@ API.
 """
 abstract type LinearRegionsCalculationMode end
 
+"""
+    _Oscar
+
+Use Oscar's exact polyhedra and rational arithmetic for linear-region calculations.
+"""
 struct _Oscar <: LinearRegionsCalculationMode end
 
+"""
+    _HiGHS(; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
+
+Use HiGHS to check feasibility and full-dimensionality of linear regions.
+`tol` sets the solver tolerance for full-dimensionality checks. `threads` optionally sets the HiGHS thread count.
+"""
 Base.@kwdef struct _HiGHS <: LinearRegionsCalculationMode
     tol::Float64 = HIGHS_DEFAULT_TOL
     solver::String = HIGHS_DEFAULT_SOLVER
@@ -153,7 +150,7 @@ Base.getindex(lr::LinearRegion, i::Int) = lr.regions[i]
     LinearRegions{T}
 
 The return type of `linear_regions`. Holds all linear regions
-of a tropical Puiseux rational function as a vector of `LinearRegion{T}` objects.
+of a tropical (rational) signomial as a vector of `LinearRegion{T}` objects.
 
 Each element of `regions` is a `LinearRegion` corresponding to a distinct affine linear
 map realised by the rational function on one connected component. A
@@ -617,17 +614,21 @@ function _linear_region_data_chunk(args)
     return [_linear_region_data((f, i, mode)) for i in inds]
 end
 
-function _linear_region_data_parallel(f::Signomial, mode, worker_ids)
+function _linear_region_data_parallel(
+        f::Signomial,
+        mode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool}
+)
     n = length(f)
-    if worker_ids === nothing || n <= 1
+    if workers === nothing || n <= 1
         return [_linear_region_data((f, i, mode)) for i in Base.eachindex(f)]
     end
 
-    _ensure_tropicalnn_loaded(worker_ids)
-    chunks = _index_chunks(n, length(worker_ids))
+    _assert_tropicalnn_loaded(workers)
+    chunks = _index_chunks(n, length(Distributed.workers(workers)))
     chunk_results = Distributed.pmap(
         _linear_region_data_chunk,
-        Distributed.WorkerPool(worker_ids),
+        workers,
         [(f, chunk, mode) for chunk in chunks],
     )
     return Base.reduce(vcat, chunk_results)
@@ -642,8 +643,8 @@ end
     enum_linear_regions_general(f::Signomial; mode, workers=nothing)
 
 Compute all linear-region candidates for signomial `f` using the selected
-backend mode. If `workers` is supplied, candidate construction and feasibility
-checks run on those Julia worker processes.
+backend mode. If `workers` is supplied as an `AbstractWorkerPool`, candidate
+construction and feasibility checks run on its Julia worker processes.
 
 Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
 `f`.
@@ -651,10 +652,9 @@ Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
 function enum_linear_regions_general(
         f::Signomial;
         mode::LinearRegionsCalculationMode,
-        workers = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    worker_ids = _normalise_worker_ids(workers)
-    region_data = _linear_region_data_parallel(f, mode, worker_ids)
+    region_data = _linear_region_data_parallel(f, mode, workers)
     return [_linear_region_from_data(data, mode) for data in region_data]
 end
 
@@ -662,7 +662,8 @@ end
     linear_regions(f::Signomial; mode, workers=nothing)
 
 Compute all linear-region candidates for signomial `f` using the selected
-backend mode.
+backend mode. If `workers` is supplied as an `AbstractWorkerPool`, candidate
+construction and feasibility checks run on its Julia worker processes.
 
 Returns a vector of `(index, region)` tuples indexed by the monomials of `f`.
 Feasibility of each candidate region can be checked with [`is_feasible`](@ref).
@@ -670,10 +671,9 @@ Feasibility of each candidate region can be checked with [`is_feasible`](@ref).
 function linear_regions(
         f::Signomial;
         mode::LinearRegionsCalculationMode,
-        workers = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    worker_ids = _normalise_worker_ids(workers)
-    region_data = _linear_region_data_parallel(f, mode, worker_ids)
+    region_data = _linear_region_data_parallel(f, mode, workers)
     return [(i, make_polyhedron(data[1], data[2]; mode = mode))
             for (i, data) in pairs(region_data)]
 end
@@ -684,7 +684,7 @@ end
 function linear_regions(
         f::AbstractVector{<:Signomial};
         mode::LinearRegionsCalculationMode,
-        workers = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
     regions = []
     linear_regions_vec = map(g -> linear_regions(g; mode = mode, workers = workers), f)
@@ -732,7 +732,14 @@ function _rational_region_intersections_chunk(args)
     return intersections
 end
 
-function _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, worker_ids)
+function _rational_region_intersections_parallel(
+        f,
+        g,
+        lin_f,
+        lin_g,
+        mode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool}
+)
     pairs = Tuple{Int, Int}[]
     for i in Base.eachindex(f)
         for j in Base.eachindex(g)
@@ -743,16 +750,16 @@ function _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, worke
     end
 
     isempty(pairs) && return Tuple{Any, Any, Any}[]
-    if worker_ids === nothing || length(pairs) <= 1
+    if workers === nothing || length(pairs) <= 1
         return _rational_region_intersections_chunk((f, g, lin_f, lin_g, pairs, mode))
     end
 
-    _ensure_tropicalnn_loaded(worker_ids)
-    chunks = _index_chunks(length(pairs), length(worker_ids))
+    _assert_tropicalnn_loaded(workers)
+    chunks = _index_chunks(length(pairs), length(Distributed.workers(workers)))
     pair_chunks = [pairs[chunk] for chunk in chunks]
     chunk_results = Distributed.pmap(
         _rational_region_intersections_chunk,
-        Distributed.WorkerPool(worker_ids),
+        workers,
         [(f, g, lin_f, lin_g, pair_chunk, mode) for pair_chunk in pair_chunks],
     )
     return Base.reduce(vcat, chunk_results)
@@ -786,16 +793,20 @@ function _linear_regions_from_region_map(
     return LinearRegions(linear_regions)
 end
 
-function _linear_regions_rat_distributed(q::RationalSignomial, mode, worker_ids)
+function _linear_regions_rat_distributed(
+        q::RationalSignomial,
+        mode,
+        workers::Distributed.AbstractWorkerPool
+)
     f = q.num
     g = q.den
 
-    lin_f = _linear_region_data_parallel(f, mode, worker_ids)
-    lin_g = _linear_region_data_parallel(g, mode, worker_ids)
+    lin_f = _linear_region_data_parallel(f, mode, workers)
+    lin_g = _linear_region_data_parallel(g, mode, workers)
     region_type = typeof(make_polyhedron(lin_f[begin][1], lin_f[begin][2]; mode = mode))
     map_to_regions = Dict{Any, Vector{region_type}}()
 
-    intersections = _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, worker_ids)
+    intersections = _rational_region_intersections_parallel(f, g, lin_f, lin_g, mode, workers)
     for (key, A, b) in intersections
         intersection = make_polyhedron(A, b; mode = mode)
         if haskey(map_to_regions, key)
@@ -812,12 +823,13 @@ end
     linear_regions(q::AbstractVector{<:RationalSignomial}; mode, workers=nothing)
 
 Compute the linear regions of a vector-valued tropical Puiseux rational function
-using the algorithm indicated by `mode`.
+using the algorithm indicated by `mode`. If `workers` is supplied as an
+`AbstractWorkerPool`, its Julia worker processes construct candidate regions.
 """
 function linear_regions(
         q::AbstractVector{<:RationalSignomial};
         mode::LinearRegionsCalculationMode,
-        workers = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
     f = [Q.num for Q in q]
     g = [Q.den for Q in q]
@@ -863,22 +875,21 @@ end
 
 Compute the linear regions of a tropical Puiseux rational function using the
 algorithm indicated by `mode`. If `workers` is `nothing`, this runs locally;
-otherwise independent candidate and intersection checks run on those Julia
-worker processes.
+otherwise it must be an `AbstractWorkerPool`, whose Julia worker processes run
+independent candidate and intersection checks.
 """
 function linear_regions(
         q::RationalSignomial;
         mode::LinearRegionsCalculationMode,
-        workers = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
     length(q.num) > 0 ||
         throw(ArgumentError("RationalSignomial numerator must have at least one monomial"))
     length(q.den) > 0 ||
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    worker_ids = _normalise_worker_ids(workers)
-    if worker_ids !== nothing
-        return _linear_regions_rat_distributed(q, mode, worker_ids)
+    if workers !== nothing
+        return _linear_regions_rat_distributed(q, mode, workers)
     end
     return linear_regions([q]; mode = mode)
 end
