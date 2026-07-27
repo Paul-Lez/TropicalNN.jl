@@ -74,8 +74,9 @@ using TropicalNN
 W, b, t = random_mlp([3, 2, 2])
 # Compute a tropical rational expression of this network
 trop1 = mlp_to_trop(W, b, t)
-# Compute a reduced tropical expression (faster, fewer monomials)
-trop2 = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true)
+# Compute a reduced tropical expression using threaded HiGHS pruning
+mode = HiGHSMode(threads=4)
+trop2 = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true, elim_mode=mode)
 ```
 
 ### Computing Linear Regions of Tropical Rational Functions

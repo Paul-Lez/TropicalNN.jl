@@ -36,7 +36,7 @@ mlp_to_trop
 single_to_trop
 random_mlp
 random_pmap
-reduce
+prune
 ```
 
 ## Linear Regions
@@ -76,6 +76,7 @@ vertex_count
 ```@docs
 surjectivity_test
 exact_hoff
+pvz_hoff
 upper_hoff
 lower_hoff
 exact_er

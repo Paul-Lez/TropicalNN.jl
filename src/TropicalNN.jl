@@ -23,7 +23,8 @@ using LinearAlgebra
 using Graphs
 using MetaGraphsNext
 
-import Base: string, +, *, /
+import Distributed
+import Base: string, +, *, /, reduce
 import Oscar: convention
 
 export
@@ -62,13 +63,13 @@ export
        comp,
        comp_with_quicksum,
        dedup_monomials,
-       reduce, 
        monomial_count,
        nvars,
        single_to_trop,
        mlp_to_trop,
        random_mlp,
        reduce,
+       prune,
        LinearRegionsCalculationMode,
        OscarMode,
        HiGHSMode,
@@ -77,7 +78,6 @@ export
        get_vector,
        codimension_le_one,
        regions_intersect_codimension_le_one,
-       linear_regions,
        linear_regions,
        n_components,
        components,
@@ -89,6 +89,7 @@ export
        positive_component,
        surjectivity_test,
        exact_hoff,
+       pvz_hoff,
        upper_hoff,
        lower_hoff,
        exact_er,
