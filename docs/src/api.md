@@ -36,7 +36,7 @@ mlp_to_trop
 single_to_trop
 random_mlp
 random_pmap
-reduce
+prune
 ```
 
 ## Linear Regions

@@ -49,5 +49,5 @@ calculations. For LP-based pruning with threaded HiGHS:
 ```julia
 mode = HiGHSMode(threads=4)
 trop_fast = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true, elim_mode=mode)
-pruned = reduce(trop_fast[1]; mode=mode)
+pruned = prune(trop_fast[1]; mode=mode)
 ```

@@ -167,7 +167,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
                      comp(ith_tropical, output)
 
             if strong_elim
-                output = reduce(output; mode = elim_mode, workers = workers)
+                output = prune(output; mode = elim_mode, workers = workers)
             end
         end
         if dedup

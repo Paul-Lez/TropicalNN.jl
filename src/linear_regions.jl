@@ -134,23 +134,23 @@ end
 
 """
     _linear_region_constraints(f, i, T; include_self=false,
-                               competitors=eachindex(f), empty_rows=1)
+                               competitors=eachindex(f))
 
 Construct the halfspace system `{x : Ax ≤ b}` on which the `i`th monomial of
 `f` dominates the selected competing monomials. `T` determines the constraint
-coefficient type.
+coefficient type. If there are no competitors, return the zero-row system that
+represents the full ambient space.
 """
 function _linear_region_constraints(
         f::Signomial,
         i,
         ::Type{T};
         include_self::Bool = false,
-        competitors = Base.eachindex(f),
-        empty_rows::Int = 1
+        competitors = Base.eachindex(f)
 ) where {T}
     indices = [j for j in competitors if include_self || j != i]
     if isempty(indices)
-        return zeros(T, empty_rows, nvars(f)), zeros(T, empty_rows)
+        return zeros(T, 0, nvars(f)), T[]
     end
 
     exp_i = _constraint_vector(T, get_exp(f, i))
@@ -423,7 +423,7 @@ function highs_check_implicit_equality(
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
-    )
+)
     m, n = size(A)
     1 <= i <= m || throw(BoundsError("Row index $i out of bounds for matrix with $m rows"))
 
@@ -464,7 +464,7 @@ function _highs_codimension_le_one(A::Matrix{Float64},
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
-    )
+)
 
     # Remove constant inequalities from the LP.
     filtered = filter_lp(A, b)
@@ -478,7 +478,8 @@ function _highs_codimension_le_one(A::Matrix{Float64},
         return false
     end
 
-    if highs_is_full_dimensional(A_filtered, b_filtered; tol = tol, solver = solver, threads = threads)
+    if highs_is_full_dimensional(
+        A_filtered, b_filtered; tol = tol, solver = solver, threads = threads)
         return true
     end
 
@@ -488,7 +489,8 @@ function _highs_codimension_le_one(A::Matrix{Float64},
 
     for i in 1:size(A_filtered, 1)
         # if there are at least two independent redundant inequalities, then the polyhedron must have at least codimension two
-        if highs_check_implicit_equality(A_filtered, b_filtered, i; tol = tol, solver = solver, threads = threads)
+        if highs_check_implicit_equality(
+            A_filtered, b_filtered, i; tol = tol, solver = solver, threads = threads)
             push!(redundantIdx, i)
         end
         if length(redundantIdx) > 1
@@ -567,20 +569,6 @@ function _linear_region_coefficient_type(mode::LinearRegionsCalculationMode)
 end
 
 """
-    _linear_region_empty_rows(mode)
-
-Return the number of placeholder rows used for an unconstrained region in
-`mode`.
-"""
-function _linear_region_empty_rows(mode::LinearRegionsCalculationMode)
-    if mode isa _HiGHS
-        return 0
-    else
-        return 1
-    end
-end
-
-"""
     _linear_region_constraint_data(f, i, mode; competitors=eachindex(f))
 
 Return the backend-typed constraint matrix and vector for the dominance region
@@ -596,8 +584,7 @@ function _linear_region_constraint_data(
         f,
         i,
         _linear_region_coefficient_type(mode);
-        competitors = competitors,
-        empty_rows = _linear_region_empty_rows(mode),
+        competitors = competitors
     )
 end
 
@@ -758,58 +745,28 @@ function _linear_region_data_parallel(
     chunk_results = Distributed.pmap(
         _linear_region_data_chunk,
         workers,
-        [(f, chunk, mode) for chunk in chunks],
+        [(f, chunk, mode) for chunk in chunks]
     )
     return Base.reduce(vcat, chunk_results)
 end
 
 """
-    _linear_region_from_data(data, mode)
-
-Materialize a backend polyhedron from `(A, b, feasible)` constraint data.
-"""
-function _linear_region_from_data(data, mode::LinearRegionsCalculationMode)
-    A, b, feasible = data
-    return (make_polyhedron(A, b; mode = mode), feasible)
-end
-
-"""
-    enum_linear_regions_general(f::Signomial; mode, workers=nothing)
-
-Compute all linear-region candidates for signomial `f` using the selected
-backend mode. If `workers` is supplied as an `AbstractWorkerPool`, candidate
-construction and feasibility checks run on its Julia worker processes.
-
-Returns a vector of `(region, is_feasible)` tuples indexed by the monomials of
-`f`.
-"""
-function enum_linear_regions_general(
-        f::Signomial;
-        mode::LinearRegionsCalculationMode,
-        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
-)
-    region_data = _linear_region_data_parallel(f, mode, workers)
-    return [_linear_region_from_data(data, mode) for data in region_data]
-end
-
-"""
     linear_regions(f::Signomial; mode, workers=nothing)
 
-Compute all linear-region candidates for signomial `f` using the selected
-backend mode. If `workers` is supplied as an `AbstractWorkerPool`, candidate
-construction and feasibility checks run on its Julia worker processes.
+Compute the feasible linear-region candidates for signomial `f` using the
+selected backend mode. This method uses the vector-signomial implementation.
+If `workers` is supplied as an `AbstractWorkerPool`, candidate construction and
+feasibility checks run on its Julia worker processes.
 
 Returns a vector of `(index, region)` tuples indexed by the monomials of `f`.
-Feasibility of each candidate region can be checked with [`is_feasible`](@ref).
 """
 function linear_regions(
         f::Signomial;
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    region_data = _linear_region_data_parallel(f, mode, workers)
-    return [(i, make_polyhedron(data[1], data[2]; mode = mode))
-            for (i, data) in pairs(region_data)]
+    vector_regions = linear_regions([f]; mode = mode, workers = workers)
+    return [(only(index), region) for (index, region) in vector_regions]
 end
 
 """
@@ -825,17 +782,23 @@ function linear_regions(
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
     regions = []
-    linear_regions_vec = map(g -> linear_regions(g; mode = mode, workers = workers), f)
-    for idx in Iterators.product((Base.eachindex(g) for g in linear_regions_vec)...)
-        regionsIdx = map(i -> begin
-            idxj = idx[i]
-            @assert idxj <= length(linear_regions_vec[i])
-            u = linear_regions_vec[i][idx[i]][2]
-        end, 
-        Base.eachindex(f))
-        regionIdx = Base.reduce((r1, r2) -> region_intersection(r1, r2; mode = mode), regionsIdx)
-        if is_feasible(regionIdx; mode = mode)
-            push!(regions, (idx, regionIdx))
+    isempty(f) && return regions
+
+    linear_regions_vec = map(f) do signomial
+        region_data = _linear_region_data_parallel(signomial, mode, workers)
+        return [(i, make_polyhedron(data[1], data[2]; mode = mode))
+                for (i, data) in pairs(region_data) if data[3]]
+    end
+
+    for candidates in Iterators.product(linear_regions_vec...)
+        index = map(first, candidates)
+        candidate_regions = map(last, candidates)
+        region = Base.reduce(
+            (region_1, region_2) -> region_intersection(region_1, region_2; mode = mode),
+            candidate_regions
+        )
+        if length(candidate_regions) == 1 || is_feasible(region; mode = mode)
+            push!(regions, (index, region))
         end
     end
 
@@ -864,11 +827,16 @@ end
     _region_constraint_data(region; mode)
 
 Return the native halfspace matrix and vector for `region`, preserving exact
-coefficients when the Oscar backend is used.
+coefficients when the Oscar backend is used. Encode each affine-hull equation
+as two inequalities.
 """
 function _region_constraint_data(region::Oscar.Polyhedron; mode::_Oscar)
-    pair = Oscar.halfspace_matrix_pair(Oscar.facets(region))
-    return (pair.A, pair.b)
+    facets = Oscar.halfspace_matrix_pair(Oscar.facets(region))
+    affine_hull = Oscar.halfspace_matrix_pair(Oscar.affine_hull(region))
+    return (
+        vcat(facets.A, affine_hull.A, -affine_hull.A),
+        vcat(facets.b, affine_hull.b, -affine_hull.b)
+    )
 end
 
 function _region_constraint_data(region::_Polyhedra; mode::_HiGHS)
@@ -946,7 +914,7 @@ function _rational_region_intersections_parallel(
     chunk_results = Distributed.pmap(
         _rational_region_intersections_chunk,
         workers,
-        [(f, g, lin_f, lin_g, pair_chunk, mode) for pair_chunk in pair_chunks],
+        [(f, g, lin_f, lin_g, pair_chunk, mode) for pair_chunk in pair_chunks]
     )
     return Base.reduce(vcat, chunk_results)
 end
@@ -968,9 +936,11 @@ function _linear_regions_from_region_map(
             (regions,)
         else
             has_intersection = Dict()
+            # TODO: also run this in parallel.
             for (region_1, region_2) in Combinatorics.combinations(regions, 2)
-                has_intersection[(region_1, region_2)] =
-                    regions_intersect_codimension_le_one(region_1, region_2; mode = mode)
+                has_intersection[(
+                    region_1, region_2)] = regions_intersect_codimension_le_one(
+                    region_1, region_2; mode = mode)
             end
 
             components(regions, has_intersection)
@@ -1028,7 +998,7 @@ function linear_regions(
         partition_f,
         partition_g,
         mode,
-        workers,
+        workers
     )
     for (key, A, b) in intersections
         intersection = make_polyhedron(A, b; mode = mode)
@@ -1041,7 +1011,6 @@ function linear_regions(
 
     return _linear_regions_from_region_map(map_to_regions, mode)
 end
-
 
 """
     linear_regions(q::RationalSignomial; mode, workers=nothing)

@@ -5,8 +5,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
     highs_mode = HiGHSMode()
     oscar_mode = OscarMode()
     candidate_region(candidate) = candidate[2]
-    candidate_is_feasible(candidate) =
-        TropicalNN.is_feasible(candidate_region(candidate); mode = highs_mode)
+    candidate_is_feasible(candidate) = TropicalNN.is_feasible(candidate_region(candidate); mode = highs_mode)
 
     @testset verbose = true "HiGHS thread count" begin
         threaded_mode = HiGHSMode(threads = 2)
@@ -105,7 +104,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         region = TropicalNN.polyhedron(f, 1, mode)
         @test TropicalNN.get_matrix(region; mode = mode) == [-coefficient;;]
         @test TropicalNN.get_vector(region; mode = mode) == [coefficient]
-        @test length(TropicalNN.reduce(f; mode = mode)) == length(f)
+        @test length(prune(f; mode = mode)) == length(f)
     end
 
     @testset verbose = true "MLP-derived polynomial" begin
@@ -205,28 +204,28 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
     @testset verbose = true "Codimension one check" begin
         oscar_mode = OscarMode()
         highs_mode = HiGHSMode()
-        A = [1.0 0.0; 
-            -1.0 0.0]
-        b = [1.0; 
-            -1.0]
+        A = [1.0 0.0;
+             -1.0 0.0]
+        b = [1.0;
+             -1.0]
         @test TropicalNN.codimension_le_one(A, b; mode = oscar_mode) == true
         @test TropicalNN.codimension_le_one(A, b; mode = highs_mode) == true
 
         # only one point here
-        A_point = [1.0 0.0; 
-                0.0 1.0;
-                -1.0 0.0;
-                0.0 -1.0]
+        A_point = [1.0 0.0;
+                   0.0 1.0;
+                   -1.0 0.0;
+                   0.0 -1.0]
         b_point = [0.0; 0.0; 0.0; 0.0]
         @test TropicalNN.codimension_le_one(A_point, b_point; mode = highs_mode) == false
         @test TropicalNN.codimension_le_one(A_point, b_point; mode = oscar_mode) == false
 
-        A = [1.0 0.0; 
-            -1.0 0.0;
-            -1.0 0.0]
-        b = [1.0; 
-            -1.0;
-            1.0]
+        A = [1.0 0.0;
+             -1.0 0.0;
+             -1.0 0.0]
+        b = [1.0;
+             -1.0;
+             1.0]
         @test TropicalNN.codimension_le_one(A, b; mode = highs_mode) == true
         @test TropicalNN.codimension_le_one(A, b; mode = oscar_mode) == true
 
@@ -245,15 +244,15 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         mode = HiGHSMode(threads = 2)
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
-        @test TropicalNN.reduce(u; mode = mode) == TropicalNN.reduce(u)
+        @test prune(u; mode = mode) == prune(u)
 
         v = Signomial([R(0)], [[0//1]]; sorted = false)
-        q_highs = TropicalNN.reduce(u / v; mode = mode)
-        q_oscar = TropicalNN.reduce(u / v)
+        q_highs = prune(u / v; mode = mode)
+        q_oscar = prune(u / v)
         @test q_highs.num == q_oscar.num
         @test q_highs.den == q_oscar.den
 
-        vector_highs = TropicalNN.reduce([u / v]; mode = mode)
+        vector_highs = prune([u / v]; mode = mode)
         @test length(vector_highs) == 1
         @test vector_highs[1].num == q_oscar.num
         @test vector_highs[1].den == q_oscar.den

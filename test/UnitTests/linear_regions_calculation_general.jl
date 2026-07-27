@@ -11,12 +11,10 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         length(regions), sort([length(region) for region in regions]))
     rational_piece_count(regions) = sum([length(region) for region in regions])
     candidate_region(candidate) = candidate[2]
-    candidate_is_feasible(candidate, mode) =
-        TropicalNN.is_feasible(candidate_region(candidate); mode = mode)
-    general_full_dimensional_flags(regions, mode) = [
-        TropicalNN.is_full_dimensional(candidate_region(region); mode = mode)
-        for region in regions
-    ]
+    candidate_is_feasible(candidate, mode) = TropicalNN.is_feasible(candidate_region(candidate); mode = mode)
+    general_full_dimensional_flags(regions,
+        mode) = [TropicalNN.is_full_dimensional(candidate_region(region); mode = mode)
+                 for region in regions]
 
     @testset verbose = true "Polyhedron construction by mode" begin
         f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
@@ -42,6 +40,12 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test b2 == [0.0]
 
         constant = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
+        for mode in (oscar_mode, highs_mode)
+            A, b = TropicalNN._linear_region_constraint_data(constant, 1, mode)
+            @test size(A) == (0, 2)
+            @test isempty(b)
+        end
+
         whole_space = TropicalNN.polyhedron(constant, 1, highs_mode)
         @test size(TropicalNN.get_matrix(whole_space; mode = highs_mode)) == (0, 2)
         @test TropicalNN.get_vector(whole_space; mode = highs_mode) == Float64[]
@@ -88,42 +92,62 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             (
                 "single monomial",
                 Signomial([R(0)], [[0//1, 0//1]]; sorted = false),
-                [true],
+                [1],
                 [true]
             ),
             (
                 "lower-dimensional dominance region",
                 Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false),
-                [true, true, true],
+                [1, 2, 3],
                 [true, false, true]
             ),
             (
                 "empty dominance region",
                 Signomial([R(0), R(0), R(-1)], [[0//1], [2//1], [1//1]]; sorted = false),
-                [true, false, true],
-                [true, false, true]
+                [1, 3],
+                [true, true]
             )
         ]
 
-        for (label, f, expected_feasible, expected_full_dimensional) in cases
+        for (label, f, expected_indices, expected_full_dimensional) in cases
             @testset "$label" begin
                 general_oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
                 general_highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
-                @test [
-                    candidate_is_feasible(region, oscar_mode)
-                    for region in general_oscar_regions
-                ] == expected_feasible
-                @test [
-                    candidate_is_feasible(region, highs_mode)
-                    for region in general_highs_regions
-                ] == expected_feasible
+                @test first.(general_oscar_regions) == expected_indices
+                @test first.(general_highs_regions) == expected_indices
+                @test all(
+                    region -> candidate_is_feasible(region, oscar_mode),
+                    general_oscar_regions
+                )
+                @test all(
+                    region -> candidate_is_feasible(region, highs_mode),
+                    general_highs_regions
+                )
 
                 @test general_full_dimensional_flags(general_highs_regions, highs_mode) ==
                       expected_full_dimensional
                 @test general_full_dimensional_flags(general_oscar_regions, oscar_mode) ==
                       expected_full_dimensional
             end
+        end
+    end
+
+    @testset verbose = true "Vector enumeration filters infeasible candidates" begin
+        has_empty_region = Signomial(
+            [R(0), R(0), R(-1)],
+            [[0//1], [2//1], [1//1]];
+            sorted = false
+        )
+        constant = Signomial([R(0)], [[0//1]]; sorted = false)
+
+        for mode in (oscar_mode, highs_mode)
+            regions = TropicalNN.linear_regions(
+                [has_empty_region, constant];
+                mode = mode
+            )
+            @test first.(regions) == [(1, 1), (3, 1)]
+            @test all(region -> candidate_is_feasible(region, mode), regions)
         end
     end
 

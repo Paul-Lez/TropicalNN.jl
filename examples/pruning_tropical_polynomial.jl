@@ -16,7 +16,7 @@
 #   exponent [2,0]  →  2x₁
 #   exponent [0,2]  →  2x₂
 #
-# The pruning mechanism (reduce) removes redundant monomials —
+# The `prune` function removes redundant monomials —
 # those whose region of dominance is not full-dimensional — without changing
 # the function.
 
@@ -35,7 +35,7 @@ println("  Exponents (sorted):  ", exponents(f))
 
 # --- Run the pruning mechanism -----------------------------------------------
 
-f_pruned = reduce(f)
+f_pruned = prune(f)
 
 println("\nPruned polynomial:")
 println("  Number of monomials: ", monomial_count(f_pruned))
