@@ -1,50 +1,38 @@
-# This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function
+# Convert an MLP to a tropical rational map.
 
 """
     single_to_trop(A, b, t)
 
-Convert a single ReLU layer to tropical Puiseux rational functions.
+Convert `x -> max.(A * x + b, t)` to tropical rational functions.
 
-# Arguments
-- `A::Matrix{T}`: Weight matrix
-- `b::AbstractVector`: Bias vector
-- `t::AbstractVector`: Activation threshold vector
-
-# Returns
-- `Vector{RationalSignomial{T}}`: Tropical representation of max(Ax+b, t)
-
-# Throws
-- `DimensionMismatch`: If dimensions don't match (A has size(A,1) rows, b and t must have the same length)
+The lengths of `b` and `t` must equal `size(A, 1)`.
 """
 function single_to_trop(A::Matrix{T}, b::AbstractVector,
         t::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     G = RationalSignomial[]
 
-    # Check dimensions match
+    # Check the output dimension.
     if size(A, 1) != length(b) || size(A, 1) != length(t)
         throw(DimensionMismatch(
             "Dimension mismatch: A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
         ))
     end
     R = tropical_semiring(max)
-    # first make sure that the entries of b are elements of the tropical semiring
+    # Convert the bias and threshold to max-plus scalars.
     b = [R(Rational{BigInt}(i)) for i in b]
-    # and same for t
     t = [R(Rational{BigInt}(i)) for i in t]
     sizehint!(G, size(A, 1))
     for i in axes(A, 1)
-        # first split the i-th line of A into its positive and negative components
+        # Split row i into positive and negative parts.
         pos = Vector{T}()
         neg = Vector{T}()
         for j in axes(A, 2)
             push!(pos, max(A[i, j], 0))
             push!(neg, max(-A[i, j], 0))
         end
-        # the numerator is the monomial given by the positive part, with coeff b[i], plus the monomial given by the negative part
-        # with coeff t[i]
+        # The numerator is max(b[i] + pos⋅x, t[i] + neg⋅x).
         num = SignomialMonomial(b[i], pos) + SignomialMonomial(t[i], neg)
-        # the denominator is the monomial given by the negative part, with coeff the tropical multiplicative 
-        # unit, i.e. 0
+        # The denominator is neg⋅x.
         den = SignomialMonomial(one(t[i]), neg)
         push!(G, num/den)
     end
@@ -54,7 +42,9 @@ end
 """
     affine_to_trop(A, b)
 
-Convert a single affine layer to tropical Puiseux rational functions.
+Convert `x -> A * x + b` to tropical rational functions.
+
+The length of `b` must equal `size(A, 1)`.
 """
 function affine_to_trop(A::Matrix{T},
         b::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
@@ -88,21 +78,9 @@ end
                 quicksum=false, strong_elim=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
 
-Convert a ReLU MLP with affine output layer to tropical rational functions,
-one per output neuron. `linear_maps`, `bias`, and `thresholds` are layer-wise
-weights, biases, and activation thresholds. `thresholds` has one entry for
-each hidden layer, so it must have length `length(linear_maps) - 1`; the final
-layer is affine and has no threshold. The vector of thresholds is optional; 
-if not provided, all thresholds are set to be zero. 
-
-Options: `quicksum` uses the `quicksum` approach for computing sums; `strong_elim` removes
-monomials with non-full-dimensional regions after each layer; `dedup` calls
-`dedup_monomials` after each layer. `elim_mode` selects the polyhedral backend
-for strong elimination, using the same `LinearRegionsCalculationMode` selectors
-as `linear_regions` (`OscarMode()` or `HiGHSMode(threads=n)`). If `workers` is
-supplied as an `AbstractWorkerPool` and `strong_elim=true`, strong elimination
-uses its Julia worker processes. Throws `DimensionMismatch` for inconsistent
-layer sizes.
+Convert an MLP with an affine output layer to tropical rational functions.
+Each hidden layer applies `max.(z, thresholds[i])`. Omit `thresholds` to use
+ReLU. The options control batched sums, pruning, and deduplication.
 """
 function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
@@ -120,7 +98,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         ))
     end
     expected_thresholds = length(linear_maps) - 1
-    # If thresholds aren't provided, then we take them all to be zero.
+    # Use zero thresholds when the caller omits them.
     if thresholds === nothing
         thresholds = [zeros(T, size(linear_maps[i], 1)) for i in 1:expected_thresholds]
     elseif length(thresholds) != expected_thresholds
@@ -131,12 +109,12 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
 
     output = RationalSignomial[]
 
-    # Iterate through the layers and compose variable output with the current layer at each step
+    # Compose the layers in network order.
     for i in Base.eachindex(linear_maps)
         A = linear_maps[i]
         b = bias[i]
 
-        # Check dimensions match
+        # Check the output dimension.
         if size(A, 1) != length(b)
             throw(
                 DimensionMismatch(
@@ -145,7 +123,7 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
             )
         end
 
-        # Hidden layers are ReLU-clamped; the final layer is affine.
+        # Hidden layers apply apply `max(threshold, . )`. The final layer is affine.
         if i == lastindex(linear_maps)
             ith_tropical = affine_to_trop(A, b)
         else

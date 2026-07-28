@@ -1,15 +1,19 @@
-############### Geometry Helpers (formerly visualise.jl) ###############
+# Geometry helpers.
 
 """
     intersect_reps(rep_1, rep_2) -> [A, b]
 
-Combine two H-representations `[A₁, b₁]` and `[A₂, b₂]` (each encoding `{x : Aᵢx ≤ bᵢ}`)
-into the H-representation of their intersection by vertically stacking the constraint matrices.
+Stack two `[A, b]` halfspace representations to represent their intersection.
 """
 function intersect_reps(rep_1, rep_2)
     return [vcat(rep_1[1], rep_2[1]), vcat(rep_1[2], rep_2[2])]
 end
 
+"""
+    _hrep_is_full_dimensional(A, b, mode)
+
+Check whether the polyhedron `Ax ≤ b` is full-dimensional.
+"""
 function _hrep_is_full_dimensional(A, b, mode::LinearRegionsCalculationMode)
     return is_full_dimensional(make_polyhedron(A, b; mode = mode); mode = mode)
 end
@@ -17,14 +21,9 @@ end
 """
     m_reps(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode()) -> Dict
 
-Compute the H-representation `[A, b]` for every full-dimensional monomial region of the tropical
-polynomial `f`.  Each region is the polyhedron `{x : Ax ≤ b}` where row `j` of `A` is
-`αⱼ - αᵢ` and `bⱼ = c(αᵢ) - c(αⱼ)` (with `αᵢ` the exponent of the dominant monomial and
-`c(·)` the coefficient).
-
-Returns a `Dict` with keys:
-- `"m_reps"`: `Vector` of `[A, b]` pairs, one per full-dimensional region.
-- `"f_indices"`: corresponding monomial indices into `f.exp`.
+Return `[A, b]` for each full-dimensional monomial region of `f`.
+The `"m_reps"` and `"f_indices"` entries contain the representations and
+matching monomial indices.
 """
 function m_reps(
         f::Signomial;
@@ -49,13 +48,8 @@ end
 """
     m_reps(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode()) -> Dict
 
-Compute the H-representation for every full-dimensional region of the tropical rational function
-`f = num/den`.  Each region is the intersection of a monomial region of the numerator with a
-monomial region of the denominator (see the `Signomial` overload for details).
-
-Returns a `Dict` with keys:
-- `"m_reps"`: `Vector` of `[A, b]` pairs encoding the intersection polyhedra.
-- `"f_indices"`: `Vector` of `[i_num, i_den]` index pairs into `f.num.exp` and `f.den.exp`.
+Return `[A, b]` for each full-dimensional numerator-denominator region
+intersection of `f`. The `"f_indices"` entry contains the matching index pairs.
 """
 function m_reps(
         f::RationalSignomial;
@@ -79,10 +73,8 @@ end
 """
     polyhedra_from_reps(reps::Dict, oscar::Bool=false) -> Vector
 
-Convert a collection of H-representations (as returned by [`m_reps`](@ref)) into polyhedron objects.
-
-- `oscar=true`: returns `Oscar.Polyhedron` objects using exact rational coefficients.
-- `oscar=false` (default): returns `Polyhedra.jl` polyhedra via CDDLib with exact rational arithmetic.
+Convert the output of [`m_reps`](@ref) to exact Oscar polyhedra when
+`oscar=true` or exact CDDLib-backed polyhedra otherwise.
 """
 function polyhedra_from_reps(reps, oscar::Bool = false)
     if oscar
@@ -96,11 +88,7 @@ end
 """
     get_linear_maps(f::Union{Signomial,RationalSignomial}, f_indices) -> Vector
 
-Extract the affine linear map `[constant, exponent_vector]` that `f` realises on each region
-identified by `f_indices` (as returned by [`m_reps`](@ref)).
-
-For a `Signomial`, the linear map on region `i` is `c(αᵢ) + αᵢ · x`.
-For a `RationalSignomial`, it is `(c_num(αᵢ) - c_den(αⱼ)) + (αᵢ - αⱼ) · x` for index pair `[i, j]`.
+Return `[constant, exponent_vector]` for each region index in `f_indices`.
 """
 function get_linear_maps(f::Union{Signomial, RationalSignomial}, f_indices)
     linear_maps = Vector{Vector{Any}}()
@@ -120,11 +108,8 @@ end
 """
     get_linear_regions(polyhedra, linear_maps) -> Dict
 
-Group a collection of polyhedra by their associated linear map.  Regions sharing the same
-linear map (same constant and exponent vector) are collected into a single dict entry; their
-union is the (potentially disconnected) set where `f` acts by that affine function.
-
-Returns a `Dict` mapping each unique linear map to `Dict("polyhedra" => [poly, ...])`.
+Group `polyhedra` by affine formula. Each result entry stores the matching
+polyhedra, which can have a disconnected union.
 """
 function get_linear_regions(polyhedra, linear_maps)
     linear_regions = Dict()
@@ -138,26 +123,25 @@ function get_linear_regions(polyhedra, linear_maps)
     return linear_regions
 end
 
-############### Utilities ###############
+# Region grouping.
 
 @doc raw"""
     separate_components(linear_regions::Dict)
 
-Separates linear regions into its disjoint components.
+Split each affine-map entry into components connected through codimension-zero
+or codimension-one intersections.
 """
 function separate_components(linear_regions::Dict)
     region_components = Dict()
     for (linear_map, value) in linear_regions
         polys = value["polyhedra"]
-        # Components should be joined only across shared facets, not isolated
-        # lower-codimension contacts such as a single point in two dimensions.
+        # Do not join pieces through higher-codimension contacts.
         has_intersect = Dict()
         for (poly1, poly2) in Combinatorics.combinations(polys, 2)
-            intesection = Oscar.intersect(poly1, poly2)
-            has_intersect[(poly1, poly2)] = Oscar.is_feasible(intesection) &&
-                                            Oscar.codim(intesection) <= 1
+            intersection = Oscar.intersect(poly1, poly2)
+            has_intersect[(poly1, poly2)] = Oscar.is_feasible(intersection) &&
+                                            Oscar.codim(intersection) <= 1
         end
-        # using the intersection information we can determine whether the collection of polyhedra correspond to disjoint linear regions
         region_components[linear_map] = components(polys, has_intersect)
     end
     return region_components
@@ -166,50 +150,36 @@ end
 @doc raw"""
     map_statistic(statistic, f; mode::LinearRegionsCalculationMode=OscarMode())
 
-Applies a statistic function to a tropical polynomial or tropical rational map by calling the statistic on the corresponding linear regions.
-
-# Arguments
-- `statistic::Function`: Function to apply to linear regions (e.g., `length` to count regions)
-- `f::Union{Signomial, RationalSignomial}`: The tropical function to analyze
-
-# Returns
-- Result of applying `statistic` to the identified linear regions
+Apply a function `statistic` to the linear-region dictionary for `f`.
 """
 function map_statistic(
         statistic::Function,
         f::Union{Signomial, RationalSignomial};
         mode::LinearRegionsCalculationMode = OscarMode()
 )
-    # Obtain the unbounded matrix representations
+    # Get the unbounded halfspace representations.
     reps = m_reps(f; mode = mode)
-    # Obtain the corresponding polyhedron representations
+    # Construct exact Oscar polyhedra.
     polys = polyhedra_from_reps(reps, true)
-    # Retrive the linear maps operating on the polyhedra
+    # Get the affine formula for each polyhedron.
     linear_maps = get_linear_maps(f, reps["f_indices"])
-    # Identify the disjoint linear regions
+    # Split sets that do not have codimension-zero or codimension-one links.
     linear_regions = separate_components(get_linear_regions(polys, linear_maps))
-    # Apply the statistics to the linear regions
     return statistic(linear_regions)
 end
 
-############### Region ###############
-
-# Interior point
+# Region measures.
 
 @doc raw"""
     interior_points(polys::Array)
 
-Returns an approximate interior point for each polyhedron in `polys`, computed as the
-**centroid of the vertex set** (i.e. the average of `Oscar.vertices(poly)`).
-
-!!! warning
-    For polyhedra with no vertices, this returns `nothing` for that polyhedron
-    instead of an approximate interior point.
+Return the finite-vertex centroid of each polyhedron. Return `nothing` when a
+polyhedron has no vertices.
 """
 function interior_points(polys::Array)
     component_interiors = Vector{Any}()
     for poly in polys
-        # Obtain an interior point for each polyhedron in the collection
+        # Average the finite vertices.
         vertices = Oscar.vertices(poly)
         if isempty(vertices)
             push!(component_interiors, nothing)
@@ -223,11 +193,10 @@ end
 @doc raw"""
     interior_points(linear_regions::Dict)
 
-Returns interior points for the collection of polyhedron comprising linear regions.
+Return finite-vertex centroids for the polyhedra in `linear_regions`.
 """
 function interior_points(linear_regions::Dict)
     result = Dict()
-    # Iterate through each linear region and identify interior points
     for (linear_map, components) in linear_regions
         components_interiors = Vector{Any}()
         for polys in components
@@ -239,9 +208,10 @@ function interior_points(linear_regions::Dict)
 end
 
 @doc raw"""
-    interior_points(linear_regions::Dict)
+    interior_points(f::Union{Signomial,RationalSignomial};
+                    mode::LinearRegionsCalculationMode=OscarMode())
 
-Returns interior points for the collection of polyhedron comprising linear regions corresponding to the tropical polynomial or tropical rational map.
+Return finite-vertex centroids for the linear-region polyhedra of `f`.
 """
 function interior_points(
         f::Union{Signomial, RationalSignomial};
@@ -250,12 +220,10 @@ function interior_points(
     return map_statistic(interior_points, f; mode = mode)
 end
 
-# Bounded
-
 @doc raw"""
     bounds(polys::Array)
 
-Determines whether the polyhedra in a collection are bounded.
+Check boundedness for each polyhedron in `polys`.
 """
 function bounds(polys::Array)
     return Oscar.is_bounded.(polys)
@@ -264,11 +232,10 @@ end
 @doc raw"""
     bounds(linear_regions::Dict)
 
-Determines whether the polyhedra constituting linear regions are bounded.
+Check boundedness for all polyhedra in `linear_regions`.
 """
 function bounds(linear_regions::Dict)
     bounded = Dict()
-    # Iterate through the linear regions and note the polyhedra which are bounded
     for (linear_map, components) in linear_regions
         components_bounded = Vector{Vector{Bool}}()
         for polys in components
@@ -280,9 +247,10 @@ function bounds(linear_regions::Dict)
 end
 
 @doc raw"""
-    bounds(f::Union{Signomial,RationalSignomial})
+    bounds(f::Union{Signomial,RationalSignomial};
+           mode::LinearRegionsCalculationMode=OscarMode())
 
-Determines whether the polyhedra constituting the linear region of a tropical polynomial or a tropical rational map are bounded.
+Check boundedness for the linear regions of `f`.
 """
 function bounds(
         f::Union{Signomial, RationalSignomial};
@@ -291,19 +259,16 @@ function bounds(
     return map_statistic(bounds, f; mode = mode)
 end
 
-# Volumes of regions
-
 @doc raw"""
     volumes(polys::Array)
 
-Finds the volumes of the polyhedra in a collection.
+Return each polyhedron's `Float64` volume. Return `Inf` for an unbounded
+polyhedron.
 """
 function volumes(polys::Array)
-    # Determine the bounded polyhedra
     bds = bounds(polys)
     vols = Vector{Float64}()
     for (poly, bd) in zip(polys, bds)
-        # Compute the volume of the bounded
         if bd
             push!(vols, Float64.(Oscar.volume(poly)))
         else
@@ -316,17 +281,14 @@ end
 @doc raw"""
     volumes(linear_regions::Dict)
 
-Finds the volumes of the linear regions.
+Return one volume for each linear region by summing the volumes
+of the (full-dimensional) polyhedra that it the union of.
 """
 function volumes(linear_regions::Dict)
     vols = Dict()
-    # Iterate through the linear regions and compute their volume
-    # by summing the volumes of the constituent polyhedra
     for (linear_map, components) in linear_regions
         components_vols = Vector{Float64}()
         for polys in components
-            # Take the sum of the volumes of the polyhedra
-            # within the linear regions
             push!(components_vols, sum(volumes(polys)))
         end
         vols[linear_map] = components_vols
@@ -335,9 +297,10 @@ function volumes(linear_regions::Dict)
 end
 
 @doc raw"""
-    volumes(f::Union{Signomial,RationalSignomial})
+    volumes(f::Union{Signomial,RationalSignomial};
+            mode::LinearRegionsCalculationMode=OscarMode())
 
-Finds the volumes of the linear regions corresponding to the tropical polynomial or tropical rational map.
+Return the volumes of the linear regions of `f`.
 """
 function volumes(
         f::Union{Signomial, RationalSignomial};
@@ -346,24 +309,23 @@ function volumes(
     return map_statistic(volumes, f; mode = mode)
 end
 
-# Number faces contributing to a linear region
-
 @doc raw"""
     polyhedron_counts(linear_regions::Dict)
 
-Returns the number of polyhedra in each linear region.
+Return the number of convex pieces in each linear region.
 """
 function polyhedron_counts(linear_regions::Dict)
-    # Count the number of polyhedra within each component for each linear map
     poly_counts = Dict(linear_map => [length(component) for component in components]
     for (linear_map, components) in linear_regions)
     return poly_counts
 end
 
 @doc raw"""
-    polyhedron_counts(f::Union{Signomial,RationalSignomial})
+    polyhedron_counts(f::Union{Signomial,RationalSignomial};
+                      mode::LinearRegionsCalculationMode=OscarMode())
 
-Returns the number of polyhedra in each linear region of the tropical polynomial or tropical rational map.
+Return the number of convex pieces in each linear region of
+`f`.
 """
 function polyhedron_counts(
         f::Union{Signomial, RationalSignomial};
@@ -372,12 +334,11 @@ function polyhedron_counts(
     return map_statistic(polyhedron_counts, f; mode = mode)
 end
 
-# Construct graph
-
 @doc raw"""
     get_graph(linear_regions::Dict)
 
-Constructs a graph from linear regions, where linear regions are connected if they share an edge.
+Construct the facet-adjacency graph of `linear_regions`, with one vertex per linear region.
+Edges correspond to linear regions intersecting along a codimension one edge.
 """
 function get_graph(linear_regions::Dict)
     function connection(polys_1, polys_2)
@@ -385,8 +346,7 @@ function get_graph(linear_regions::Dict)
             ndim = Oscar.ambient_dim(poly_1)
             for poly_2 in polys_2
                 intersection = Oscar.intersect(poly_1, poly_2)
-                # Only consider intersections that are non-trivial
-                # in the ambient dimension of the polyhedra
+                # Keep facet intersections.
                 if Oscar.dim(intersection) == ndim - 1
                     return intersection
                 end
@@ -394,7 +354,7 @@ function get_graph(linear_regions::Dict)
         end
         return nothing
     end
-    # Collect the regions and their corresponding linear maps
+    # Flatten the component dictionary.
     region_polys = Vector{Any}()
     linear_maps = Vector{Any}()
     for (linear_map, components) in linear_regions
@@ -404,27 +364,21 @@ function get_graph(linear_regions::Dict)
         end
     end
 
-    # Consider the graph with dictionary data such that we can populate
-    # them with various measures
     g = MetaGraph(Graphs.Graph(); label_type = Int, vertex_data_type = Dict,
         edge_data_type = Dict, graph_data = nothing)
 
     num_regions = length(region_polys)
 
-    # Add the nodes to the graph
     for k in 1:num_regions
-        # Populate the node data with an interior point 
-        # and the volume of the corresponding region
+        # Store one vertex centroid and volume for each convex piece.
         g[k] = Dict("interior_point" => interior_points(region_polys[k]), "volume" =>
             volumes(region_polys[k]))
     end
-    # Add the edges between regions that are connected
+    # Join regions that share a facet.
     for k in 1:(num_regions - 1)
         for l in (k + 1):num_regions
             int = connection(region_polys[k], region_polys[l])
             if int != nothing
-                # Populate the node data with the linear maps 
-                # and the intersection of the connected regions
                 g[k, l] = Dict("linear maps" => [linear_maps[k], linear_maps[l]], "intersection" =>
                     int)
             end
@@ -433,8 +387,15 @@ function get_graph(linear_regions::Dict)
     return g
 end
 
+"""
+    _edge_direction(edge_intersection)
+
+Return a direction vector for the intersection of two-dimensional polyhedra.
+"""
 function _edge_direction(edge_intersection)
     vertices = Oscar.vertices(edge_intersection)
+    # TODO: perhaps here we should throw an error if the intersection is not one dimensional (here
+    # we're implicitely assuming this and always use it in that context).
     if length(vertices) >= 2
         return [vertices[2][1] - vertices[1][1], vertices[2][2] - vertices[1][2]]
     end
@@ -447,13 +408,24 @@ function _edge_direction(edge_intersection)
     return nothing
 end
 
+"""
+    _edge_gradient(direction)
+
+Return the slope of a vector `direction`, using `Inf` for a vertical direction.
+"""
 function _edge_gradient(direction)
     direction === nothing && return nothing
     iszero(direction[1]) && return Inf
     return direction[2] / direction[1]
 end
 
+"""
+    _normalized_direction(direction)
+
+Normalize `direction` as a `Float64` vector.
+"""
 function _normalized_direction(direction)
+    # TODO: Maybe here we should just throw an error?
     direction === nothing && return nothing
     d = Float64.(direction)
     norm_d = sqrt(sum(x -> x^2, d))
@@ -461,8 +433,15 @@ function _normalized_direction(direction)
     return d ./ norm_d
 end
 
+"""
+    _canonical_direction(direction)
+
+Normalize `direction` and make its first nonzero component positive.
+(note that direction is a vector representing the direction of an edge, so we can replace it by its negative).
+"""
 function _canonical_direction(direction)
     d = _normalized_direction(direction)
+    # TODO: Maybe here we should just throw an error?
     d === nothing && return nothing
     for x in d
         if !iszero(x)
@@ -476,7 +455,7 @@ end
     get_graph(f::Union{Signomial,RationalSignomial};
               mode::LinearRegionsCalculationMode=OscarMode())
 
-Constructs a graph of linear regions corresponding to the tropical polynomial or tropical rational map.
+Return the facet-adjacency graph for the linear regions of `f`.
 """
 function get_graph(
         f::Union{Signomial, RationalSignomial};
@@ -485,22 +464,13 @@ function get_graph(
     return map_statistic(get_graph, f; mode = mode)
 end
 
-# Count edges
-
-@doc raw"""
-    edge_count(g::MetaGraph)
-
-Counts the number of edges in a graph.
-"""
-function edge_count(g::MetaGraph)
-    return Graphs.ne(g)
-end
-
 @doc raw"""
     edge_count(f::Union{Signomial,RationalSignomial};
                mode::LinearRegionsCalculationMode=OscarMode())
 
-Counts the number of edges in the graph constructed from the linear regions of the corresponding tropical polynomial or tropical rational map.
+Return the number of adjacencies between the two-dimensional linear regions
+of `f`.
+This only supports bivariate expressions `f`.
 """
 function edge_count(
         f::Union{Signomial, RationalSignomial};
@@ -516,17 +486,13 @@ function edge_count(
     return Graphs.ne(get_graph(f; mode = mode))
 end
 
-# Get edge gradients
-
-@doc raw"""
-    edge_gradients(edge_attributes::Dict)
-
-Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge.
 """
-function edge_gradients(g::MetaGraph)
-    # Each vertex can only have one outgoing edge of a certain gradient.
-    # However, multiple edges can exist with the same gradient.
-    # Here we collect the gradients and their multiplicities.
+    edge_gradients(g::MetaGraph)
+
+Return the slopes of the boundaries between polyhedra. The `"full"` entry contains all
+slopes; the other entries group slopes by finite boundary vertex.
+"""
+function _edge_gradients(g::MetaGraph)
     function add_g(gs, vertex, grad)
         if haskey(gs, vertex)
             push!(gs[vertex], grad)
@@ -535,9 +501,7 @@ function edge_gradients(g::MetaGraph)
         end
         return gs
     end
-    # We want to obtain the gradients of the linear regions as a collective
-    gs_full = Vector{Any}()   # gradients are QQFieldElem (Oscar rational field elements)
-    # We want to collect the gradients of the outgoing edges for each node separately
+    gs_full = Vector{Any}()
     gs_with_source = Dict()
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
@@ -557,9 +521,11 @@ function edge_gradients(g::MetaGraph)
 end
 
 @doc raw"""
-    edge_gradients(f::Union{Signomial,RationalSignomial})
+    edge_gradients(f::Union{Signomial,RationalSignomial};
+                   mode::LinearRegionsCalculationMode=OscarMode())
 
-Identifies the gradients of the edges emanating from each vertex, along with providing the gradients of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
+Return the slopes of the boundaries between two-dimensional linear regions
+of `f`.
 """
 function edge_gradients(
         f::Union{Signomial, RationalSignomial};
@@ -572,17 +538,16 @@ function edge_gradients(
         ),
         )
     end
-    return edge_gradients(get_graph(f; mode = mode))
+    return _edge_gradients(get_graph(f; mode = mode))
 end
 
-# Edge lengths
-
-@doc raw"""
-    edge_lengths(g::MetaGraph)
-
-Calculate the lengths of the edges at the intersection of linear regions. Only returns the lengths of finite edges.
 """
-function edge_lengths(g::MetaGraph)
+    _edge_lengths(g::MetaGraph)
+
+Return finite two-dimensional boundary lengths. The `"full"` entry contains
+all lengths; the other entries group lengths by boundary vertex.
+"""
+function _edge_lengths(g::MetaGraph)
     function add_l(ls, vertex, len)
         if haskey(ls, vertex)
             push!(ls[vertex], len)
@@ -591,16 +556,13 @@ function edge_lengths(g::MetaGraph)
         end
         return ls
     end
-    # We want to obtain the lengths of the linear regions as a collective
     ls_full = Vector{Float64}()
-    # We want to collect the lengths of the outgoing edges for each node separately
     ls_with_source = Dict()
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
         vs = Oscar.vertices(e_int)
-        if length(vs) >= 2 # We only want to consider finite edges
+        if length(vs) >= 2
             len = sqrt(Float64((vs[1][1] - vs[2][1])^2 + (vs[1][2] - vs[2][2])^2))
-            # We add the edge to each node
             ls_with_source = add_l(ls_with_source, vs[1], len)
             ls_with_source = add_l(ls_with_source, vs[2], len)
             push!(ls_full, len)
@@ -614,7 +576,8 @@ end
     edge_lengths(f::Union{Signomial,RationalSignomial};
                  mode::LinearRegionsCalculationMode=OscarMode())
 
-Calculates the lengths of the edges emanating from each vertex, along with providing the length of each unique edge, for the linear regions corresponding to the tropical polynomial or tropical rational map.
+Return the finite boundary lengths between two-dimensional linear regions of
+`f`.
 """
 function edge_lengths(
         f::Union{Signomial, RationalSignomial};
@@ -627,17 +590,17 @@ function edge_lengths(
         ),
         )
     end
-    return edge_lengths(get_graph(f; mode = mode))
+    return _edge_lengths(get_graph(f; mode = mode))
 end
 
-# Edge directions
-
-@doc raw"""
-    edge_directions(g::MetaGraph)
-
-Calculate the direction vector of the edges at the intersection of linear regions.
 """
-function edge_directions(g::MetaGraph)
+    _edge_directions(g::MetaGraph)
+
+Return normalized boundary directions. The `"full"` entry
+contains canonical directions; the other entries group outgoing directions
+by boundary vertex.
+"""
+function _edge_directions(g::MetaGraph)
     function add_d(ds, vertex, d)
         if haskey(ds, vertex)
             push!(ds[vertex], d)
@@ -646,12 +609,7 @@ function edge_directions(g::MetaGraph)
         end
         return ds
     end
-    # We want to obtain the directions of the edges of the linear regions as a collective
-    # We canonically choose the vector representation that is positive in the first component
     ds_full = Vector{Vector{Float64}}()
-    # We want to collect the directions of the outgoing edges for each node separately.
-    # We canonically choose the vector representation as the normalised direction vector from the
-    # source node to the destination node.
     ds_with_source = Dict()
     for e in collect(edge_labels(g))
         e_int = g[e[1], e[2]]["intersection"]
@@ -681,7 +639,8 @@ end
     edge_directions(f::Union{Signomial,RationalSignomial};
                     mode::LinearRegionsCalculationMode=OscarMode())
 
-Calculate the direction vector of the edges at the intersection of linear regions for the corresponding tropical polynomial or tropical rational map.
+Return normalized boundary directions for the two-dimensional linear regions
+of `f`.
 """
 function edge_directions(
         f::Union{Signomial, RationalSignomial};
@@ -694,23 +653,21 @@ function edge_directions(
         ),
         )
     end
-    return edge_directions(get_graph(f; mode = mode))
+    return _edge_directions(get_graph(f; mode = mode))
 end
 
-# Collect vertices
-
-@doc raw"""
-    vertex_collection(g::MetaGraph)
-
-Collects the vertices of the linear regions, along with their multiplicities, that is, how many regions share that vertex. 
 """
-function vertex_collection(g::MetaGraph)
-    # Here we collect all the vertices of the graph
+    _vertex_collection(g::MetaGraph)
+
+Return finite vertices and their occurrence counts in stored graph-edge
+intersections.
+"""
+function _vertex_collection(g::MetaGraph)
     vs = Vector{Any}()
     for e in collect(edge_labels(g))
         append!(vs, Oscar.vertices(g[e[1], e[2]]["intersection"]))
     end
-    # We then count the multiplicities of each vertex byinterating through vs
+    # Count occurrences of each vertex.
     vs_with_mult = Dict()
     for v in vs
         if haskey(vs_with_mult, v)
@@ -723,9 +680,10 @@ function vertex_collection(g::MetaGraph)
 end
 
 @doc raw"""
-    vertex_collection(f::Union{Signomial,RationalSignomial})
+    vertex_collection(f::Union{Signomial,RationalSignomial};
+                      mode::LinearRegionsCalculationMode=OscarMode())
 
-Collects the vertices of the linear regions corresponding to the tropical polynomial or tropical rational map, along with their multiplicities, that is, how many regions share that vertex. 
+Return finite vertices and occurrence counts at linear-region adjacencies.
 """
 function vertex_collection(
         f::Union{Signomial, RationalSignomial};
@@ -734,25 +692,24 @@ function vertex_collection(
     return vertex_collection(get_graph(f; mode = mode))
 end
 
-# Count vertices
-
 @doc raw"""
-    vertex_count(g::MetaGraph)
+    _vertex_count(g::MetaGraph)
 
-Counts the number of vertices in the linear regions from which the graph was obtained.
+Return the number of distinct finite vertices in graph-edge intersections.
 """
-function vertex_count(g::MetaGraph)
+function _vertex_count(g::MetaGraph)
     return length(collect(keys(vertex_collection(g))))
 end
 
 @doc raw"""
-    vertex_count(f::Union{Signomial,RationalSignomial})
+    vertex_count(f::Union{Signomial,RationalSignomial};
+                 mode::LinearRegionsCalculationMode=OscarMode())
 
-Counts the number of vertices in the linear regions corresponding to the tropical polynomial or tropical rational map.
+Return the number of distinct finite vertices found at region adjacencies.
 """
 function vertex_count(
         f::Union{Signomial, RationalSignomial};
         mode::LinearRegionsCalculationMode = OscarMode()
 )
-    return vertex_count(get_graph(f; mode = mode))
+    return _vertex_count(get_graph(f; mode = mode))
 end

@@ -1,9 +1,9 @@
-############### Utilities ###############
+# Matrix construction.
 
 @doc raw"""
     linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical polynomial.
+Return exponent matrix `A` and coefficient vector `b` for the non-redundant monomials of `f`.
 """
 function linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
     f = dedup_monomials(f)
@@ -14,16 +14,13 @@ function linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = O
     linear_maps_acc = Vector{Vector{Any}}()
     exponents_acc = Vector{Vector{Float64}}()
     coefficients_acc = Vector{Any}()
-    # Monomials found not to be realised can be dropped
     competitors = collect(Base.eachindex(f))
     for i in Base.eachindex(f)
         exp_i = get_exp(f, i)
         coeff_i = get_coeff(f, i)
-        # we only want the linear maps that are realised
         poly = polyhedron(f, i, mode; competitors = competitors)
         if is_full_dimensional(poly; mode = mode)
             linear_map = [Rational(coeff_i), collect(exp_i)]
-            # we are only interested in the unique linear map
             if !(linear_map in linear_maps_acc)
                 push!(exponents_acc, linear_map[2])
                 push!(coefficients_acc, linear_map[1])
@@ -44,7 +41,8 @@ end
 @doc raw"""
     linearmap_matrices(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Returns the matrix of coefficients of the linear maps operating on the polyhedra of a tropical rational map.
+Return the exponent matrices and coefficient vectors for the numerator and
+denominator of `f`.
 """
 function linearmap_matrices(
         f::RationalSignomial;
@@ -58,7 +56,7 @@ end
 @doc raw"""
     tilde_matrices(A::Matrix)
 
-Finds all of the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical polynomial.
+Return `A - ones(m) * A[i, :]'` for each row `i` of `A`.
 """
 function tilde_matrices(A::Matrix)
     m, n = size(A)
@@ -69,7 +67,8 @@ end
 @doc raw"""
     tilde_matrices(As::Tuple{Matrix, Matrix})
 
-Finds all of the transformed 'tilde' matrices whose Hoffman constants are considered when obtaining the Hoffman constant of the corresponding tropical rational map.
+Return the transformed matrices for all numerator-denominator row
+pairs.
 """
 function tilde_matrices(As::Tuple{Matrix, Matrix})
     m_1, n_1 = size(As[1])
@@ -85,7 +84,7 @@ end
 @doc raw"""
     tilde_vectors(b::Vector)
 
-Find the transformed vectors used to determine the effective radius of a tropical polynomial
+Return `b - b[i] * ones(length(b))` for each index `i`.
 """
 function tilde_vectors(b::Vector)
     return [b - b[row] * ones(length(b)) for row in 1:length(b)]
@@ -94,7 +93,7 @@ end
 @doc raw"""
     positive_component(b::Vector)
 
-Returns the vector with its negative entries set to zero.
+Return `max.(b, 0)` as a vector.
 """
 function positive_component(b::Vector)
     return vec([max(0, entry) for entry in b])
@@ -114,36 +113,8 @@ function _t_matrices_or_inf(A, b, return_matrices::Bool)
     return t_matrices, nothing
 end
 
-############### Hoffman Algorithms ###############
+# Hoffman calculations.
 
-@doc raw"""
-    surjectivity_test(A::Matrix) -> (x_val, t_val)
-
-Test whether the matrix `A` is *A-surjective* — a condition arising in Hoffman constant computation
-for tropical polynomials.
-
-A matrix ``\tilde{A}`` (a "tilde matrix" derived from the linear-map matrix ``A`` via
-[`tilde_matrices`](@ref)) is A-surjective if the image of the positive orthant under ``\tilde{A}^T``
-intersects every open halfspace through the origin; equivalently, there is no direction in which
-all rows of ``\tilde{A}`` have non-positive dot product.  A-surjectivity is the precondition under
-which the Hoffman constant ``H(\tilde{A})`` is finite (see [`exact_hoff`](@ref)).
-
-The test solves the LP
-
-```
-min  t
-s.t. ‖Aᵀx‖₁ ≤ t,  sum(x) = 1,  x ≥ 0
-```
-
-# Arguments
-- `A::Matrix`: A tilde matrix (typically one element of the vector returned by [`tilde_matrices`](@ref)).
-
-# Returns
-- `(x_val, t_val)`: the optimal primal variable `x` (a probability vector over the rows of `A`) and
-  the optimal objective value `t`.  If `t_val > 0` the matrix is A-surjective and
-  ``H(\tilde{A}) = 1 / t_{\min}`` where ``t_{\min}`` is the minimum over all feasible probability
-  vectors; if `t_val == 0` then `A` is **not** A-surjective and the Hoffman constant is infinite.
-"""
 function _surjectivity_scale(A::Matrix)
     return norm(A, Inf)
 end
@@ -153,6 +124,13 @@ function _surjectivity_objective_tol(A::Matrix, tol::Float64)
     return tol * _surjectivity_scale(A)
 end
 
+@doc raw"""
+    surjectivity_test(A::Matrix; tol=1e-10) -> (v, t)
+
+Test A-surjectivity with the GLPK problem
+`min ‖A'v‖₁` subject to `sum(v) = 1` and `v ≥ 0`. Return `(v, t)`; the rows
+are A-surjective when `t > 0`. `tol` removes small floating-point results.
+"""
 function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
     n = size(A, 2)
     m = size(A, 1)
@@ -160,7 +138,6 @@ function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
     scale = _surjectivity_scale(A)
     A_lp = iszero(scale) ? A : A ./ scale
 
-    # setting up the model
     model = Model(GLPK.Optimizer)
     set_silent(model)
     @variable(model, x[1:m] >= 0)
@@ -169,7 +146,6 @@ function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
     @constraint(model, [t; A_lp' * x] in MOI.NormOneCone(1 + n))
     @constraint(model, sum(x) == 1)
 
-    # solving the model
     optimize!(model)
     status = termination_status(model)
     status == MOI.OPTIMAL ||
@@ -178,36 +154,29 @@ function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
     x_val = value.(x)
     t_val = iszero(scale) ? value(t) : value(t) * scale
 
-    # accounting for numerical errors without destroying scale covariance
+    # Apply a scale-covariant tolerance to the result.
     x_val = map(v -> abs(v) < tol ? 0.0 : v, x_val)
     t_val = abs(t_val) < _surjectivity_objective_tol(A, tol) ? 0.0 : t_val
 
     return x_val, t_val
 end
 
-
 @doc raw"""
-    exact_hoff(A::Matrix)
+    exact_hoff(A::Matrix; tol=1e-10)
 
-Computes the exact Hoffman constant of the matrix `A` by iterating over all subsets of rows
-and solving an A-surjectivity LP for each subset.
-
-!!! warning "Exponential complexity"
-    This function iterates over all ``2^m`` subsets of the ``m`` rows of `A`.
-    Use [`upper_hoff`](@ref) or [`lower_hoff`](@ref) for large matrices.
+Compute the infinity-norm Hoffman constant by testing every nonempty row
+subset. The enumeration is exhaustive, and GLPK uses floating-point
+arithmetic.
 """
 function exact_hoff(A::Matrix; tol::Float64 = 1e-10)
     m = size(A, 1)
     H = -Inf
     found_surjective = false
-    # iterating over sub-matrices of A
     for j in 1:m
         for subset in Combinatorics.combinations(1:m, j)
             AA = A[subset, :]
-            # solving the optimisation problem
             y, t = surjectivity_test(AA; tol = tol)
             if t > 0
-                # in this case the subset is A-surjective
                 H = max(H, 1 / t)
                 found_surjective = true
             end
@@ -216,35 +185,16 @@ function exact_hoff(A::Matrix; tol::Float64 = 1e-10)
     if found_surjective
         return H
     else
-        # if no sub-matrix is A-surjective then the Hoffman constant is infinite
         return Inf
     end
 end
 
 @doc raw"""
-    pvz_hoff(A::Matrix; return_certificates::Bool=false)
+    pvz_hoff(A::Matrix; return_certificates=false, tol=1e-10)
 
-Computes the exact Hoffman constant of the matrix `A` using the
-Pena--Vera--Zuluaga pruning algorithm.
-
-Instead of testing every row subset independently, PVZ keeps a frontier of
-candidate subsets.  When a candidate is `A`-surjective, all of its subsets are
-known to be covered by that certificate and can be removed from the frontier.
-When a candidate is not `A`-surjective, the LP returns a nonzero support that
-must be broken; every remaining candidate containing that support is replaced
-by smaller candidates obtained by deleting one support index.
-
-The algorithm maintains:
-
-- `F`: row subsets certified to be `A`-surjective;
-- `I`: row subsets certified not to be `A`-surjective;
-- `J`: candidate row subsets not yet certified.
-
-For each candidate subset, it solves the same A-surjectivity LP as
-[`exact_hoff`](@ref).  Surjective candidates certify all of their subsets, and
-non-surjective candidates are split using the support of the LP certificate.
-This is still an exact algorithm, but it can avoid many LP solves compared with
-brute-force subset enumeration.
+Compute the infinity-norm Hoffman constant with the Peña-Vera-Zuluaga algoritm.
+With `return_certificates=true`, return `(H, F, I)` with the surjective sets
+and obstruction supports. GLPK uses floating-point arithmetic.
 """
 function pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
     m = size(A, 1)
@@ -313,19 +263,17 @@ end
 @doc raw"""
     upper_hoff(A::Matrix)
 
-Computes an upper bound on Hoffman constant of the matrix `A` by using the lowest singular value as a proxy for the optimal value of the optimisation problem for A-surjectivity.
+Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over
+nonempty full-rank row subsets `J`.
 """
 function upper_hoff(A::Matrix)
     m, n = size(A)
     HU = -Inf
     found_surjective = false
-    # iterating over sub-matrices of A
     for j in 1:m
         for subset in Combinatorics.combinations(1:m, j)
             AJ = A[subset, :]
-            # only considering full rank sub-matrices
             if rank(AJ) == min(j, n)
-                # compute lowest singular value of the sub-matrix
                 p_J = minimum(svdvals(AJ))
                 if p_J > 0
                     HU = max(HU, sqrt(length(subset)) / p_J)
@@ -337,26 +285,24 @@ function upper_hoff(A::Matrix)
     if found_surjective
         return HU
     else
-        # if no sub-matrix is A-surjective then the Hoffman constant is infinite
         return Inf
     end
 end
 
 @doc raw"""
-    lower_hoff(A::Matrix,num_samples::Int=10)
+    lower_hoff(A::Matrix, num_samples::Int=10; tol=1e-10)
 
-Computes a lower bound on Hoffman constant of the matrix `A` by only considering a fixed number of random sub-matrices of A.
+Return a lower bound from `num_samples` random nonempty row subsets. If
+`num_samples >= 2^m`, call [`exact_hoff`](@ref).
 """
 function lower_hoff(A::Matrix, num_samples::Int = 10; tol::Float64 = 1e-10)
     m, n = size(A)
     HL = 0.0
-    # if the number of sub-matrices we are considering exceeds the total number of sub-matrices in A
-    # we can just use the exact method with no additional computational resources
+    # Enumerate all nonempty subsets when sampling would require more tests.
     if num_samples >= 2^m
         return exact_hoff(A; tol = tol)
     else
         for i in 1:num_samples
-            # consider random sub-matrices
             K = rand(1:m)
             J = sort(unique(rand(1:m, K)))
             AJ = A[J, :]
@@ -371,9 +317,11 @@ end
 
 @doc raw"""
     exact_hoff(f::Union{Signomial,RationalSignomial};
-               return_matrices::Bool=false, mode::LinearRegionsCalculationMode=OscarMode())
+               return_matrices=false, mode=OscarMode(), tol=1e-10)
 
-Returns the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
+Compute the Hoffman constant for the stored expression of `f` by exhaustive
+subset enumeration. With `return_matrices=true`, return `(H, A, b)`. GLPK
+uses floating-point arithmetic.
 """
 function exact_hoff(f::Union{Signomial, RationalSignomial};
         return_matrices::Bool = false,
@@ -384,7 +332,6 @@ function exact_hoff(f::Union{Signomial, RationalSignomial};
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
-        # constant is taken to be the maximum over each of the tilde matrices
         hoff_const = max(hoff_const, exact_hoff(tilde_matrix; tol = tol))
     end
     if return_matrices
@@ -395,11 +342,11 @@ function exact_hoff(f::Union{Signomial, RationalSignomial};
 end
 
 @doc raw"""
-    pvz_hoff(f::Union{Signomial,RationalSignomial};return_matrices::Bool=false)
+    pvz_hoff(f::Union{Signomial,RationalSignomial};
+             return_matrices=false, mode=OscarMode(), tol=1e-10)
 
-Returns the exact value of the Hoffman constant of a given tropical polynomial
-or tropical rational map, using [`pvz_hoff`](@ref) on each transformed tilde
-matrix.
+Compute the Hoffman constant for the stored expression of `f` with the
+Peña-Vera-Zuluaga algorithm. With `return_matrices=true`, return `(H, A, b)`.
 """
 function pvz_hoff(f::Union{Signomial, RationalSignomial};
         return_matrices::Bool = false,
@@ -421,9 +368,10 @@ end
 
 @doc raw"""
     upper_hoff(f::Union{Signomial,RationalSignomial};
-               return_matrices::Bool=false, mode::LinearRegionsCalculationMode=OscarMode())
+               return_matrices=false, mode=OscarMode())
 
-Returns an upper bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
+Return a Hoffman-constant upper bound for the stored expression of `f`.
+With `return_matrices=true`, return `(bound, A, b)`.
 """
 function upper_hoff(
         f::Union{Signomial, RationalSignomial};
@@ -435,7 +383,6 @@ function upper_hoff(
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
-        # to ensure we have an upper bound we need to take the maximum across all upper bounds
         hoff_upper = max(hoff_upper, upper_hoff(tilde_matrix))
     end
     if return_matrices
@@ -446,9 +393,11 @@ function upper_hoff(
 end
 
 @doc raw"""
-    lower_hoff(f::Union{Signomial,RationalSignomial},num_samples::Int=10)
+    lower_hoff(f::Union{Signomial,RationalSignomial}, num_samples::Int=10;
+               return_matrices=false, mode=OscarMode(), tol=1e-10)
 
-Returns a lower bound on the exact value of the Hoffman constant of a given tropical polynomial or tropical rational map.
+Return a sampled Hoffman-constant lower bound for the stored expression of
+`f`. With `return_matrices=true`, return `(bound, A, b)`.
 """
 function lower_hoff(f::Union{Signomial, RationalSignomial},
         num_samples::Int = 10;
@@ -458,12 +407,8 @@ function lower_hoff(f::Union{Signomial, RationalSignomial},
     A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
-    # if we are taking more samples than there are submatrices we are using exact
-    # computations so we can take a maximum over the Hoffman constants
-    # The Hoffman constant of the tropical function is max_k H(tilde_matrix_k).
-    # Each lower_hoff(tilde_matrix_k, ...) is a lower bound on H(tilde_matrix_k).
-    # max over lower bounds is still a lower bound on the overall max, regardless of
-    # whether we are in the exact or sampling regime.
+    # The maximum of the per-matrix lower bounds is a lower bound for the
+    # maximum of the per-matrix Hoffman constants.
     hoff_lower = 0.0
     for tilde_matrix in t_matrices
         hoff_lower = max(hoff_lower, lower_hoff(tilde_matrix, num_samples; tol = tol))
@@ -475,12 +420,12 @@ function lower_hoff(f::Union{Signomial, RationalSignomial},
     end
 end
 
-############### Effective Radius ###############
+# Effective-radius bounds.
 
 @doc raw"""
     exact_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Provides an upper bound on the effective radius of a tropical polynomial using exact Hoffman constant computations.
+Return an infinity-norm effective-radius bound using [`exact_hoff`](@ref).
 """
 function exact_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
@@ -493,7 +438,7 @@ end
 @doc raw"""
     upper_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Provides an upper bound on the effective radius of a tropical polynomial using upper bound approximations of the Hoffman constant.
+Return an infinity-norm effective-radius bound using [`upper_hoff`](@ref).
 """
 function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)
@@ -506,7 +451,7 @@ end
 @doc raw"""
     exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Provides an upper bound on the effective radius of a tropical rational map using exact Hoffman constant computations.
+Return an infinity-norm effective-radius bound using [`exact_hoff`](@ref).
 """
 function exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
@@ -517,7 +462,7 @@ end
 @doc raw"""
     upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Provides an upper bound on the effective radius of a tropical rational map using upper bound approximations of the Hoffman constant.
+Return an infinity-norm effective-radius bound using [`upper_hoff`](@ref).
 """
 function upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)

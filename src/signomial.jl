@@ -76,13 +76,12 @@ end
 """
     Signomial{T}
 
-Tropical Puiseux polynomial whose exponent vectors are stored as columns of a
-matrix.
+Max-plus tropical signomial.
 
 # Fields
-- `exp::Matrix{T}`: Exponent matrix (dim x n_monomials), each column is one exponent
-- `coeff::Vector{TropicalSemiringElem}`: Coefficients parallel to exp columns
-- `dim::Int`: Dimension (number of variables)
+- `exp`: Exponent matrix with one exponent vector per column.
+- `coeff`: Coefficients in the same order as the exponent columns.
+- `dim`: Number of variables.
 """
 struct Signomial{T}
     exp::Matrix{T}
@@ -155,6 +154,7 @@ function Signomial{T}(
 end
 
 Oscar.nvars(f::Signomial) = f.dim
+
 Base.length(f::Signomial) = size(f.exp, 2)
 
 function get_exp(f::Signomial, i::Int)
@@ -317,8 +317,8 @@ function comp(f::Signomial{T}, G::Vector{<:Signomial}) where {T}
     # Get a zero polynomial in the output space
     zero_poly = Signomial(
         [_tropical_zero(f)],
-        [zeros(T, nvars(G[1]))],
-        true
+        [zeros(T, nvars(G[1]))];
+        sorted = true
     )
 
     result = zero_poly
@@ -327,8 +327,8 @@ function comp(f::Signomial{T}, G::Vector{<:Signomial}) where {T}
     for i in 1:length(f)
         term_poly = Signomial(
             [one(f.coeff[i])],
-            [zeros(T, nvars(G[1]))],
-            true
+            [zeros(T, nvars(G[1]))];
+            sorted = true
         )
 
         for d in 1:f.dim
@@ -398,7 +398,6 @@ Base.repr(f::Signomial) = string(f)
 #                    USER-FACING CONSTRUCTOR                                    #
 #==============================================================================#
 
-# Public constructors
 function Signomial(
         coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
         exp_vecs::Vector{<:AbstractVector{T}};
@@ -438,7 +437,7 @@ end
 """
     monomial_pairs(f::Signomial)
 
-Return an iterable of `(exp, coeff)` pairs in lexicographic exponent order.
+Return `(exponent, coefficient)` pairs in lexicographic exponent order.
 """
 function monomial_pairs(f::Signomial)
     return zip(exponents(f), coefficients(f))
@@ -451,8 +450,8 @@ end
 """
     Signomial_const(n, c, f::Signomial{T})
 
-Construct the constant `c` as a signomial in `n` variables.
-`f` is used only to infer the exponent numeric type `T`.
+Construct the constant `c` in `n` variables. Use `f` to infer the exponent
+type.
 """
 function Signomial_const(n, c, f::Signomial{T}) where {T}
     return Signomial([c], [zeros(T, n)]; sorted = true)
@@ -461,8 +460,7 @@ end
 """
     Signomial_zero(n, f::Signomial)
 
-Construct the tropical-zero (additive identity, -infinity) signomial in `n` variables.
-`f` is used only to infer the exponent type.
+Construct tropical zero in `n` variables. Use `f` to infer the types.
 """
 function Signomial_zero(n::Int, f::Signomial)
     return Signomial_const(n, _tropical_zero(f), f)
@@ -471,8 +469,7 @@ end
 """
     Signomial_one(n, f::Signomial)
 
-Construct the tropical-one (multiplicative identity, value 0) signomial in `n` variables.
-`f` is used only to infer the exponent type.
+Construct tropical one in `n` variables. Use `f` to infer the types.
 """
 function Signomial_one(n::Int, f::Signomial)
     return Signomial_const(n, _tropical_one(f), f)
@@ -481,7 +478,7 @@ end
 """
     SignomialMonomial(c, exp::Vector{T})
 
-Construct a single-monomial signomial with coefficient `c` and exponent vector `exp`.
+Construct a one-monomial signomial with coefficient `c` and exponent `exp`.
 """
 function SignomialMonomial(c, exp::Vector{T}) where {T}
     return Signomial([c], [exp]; sorted = true)
@@ -494,8 +491,7 @@ end
 """
     evaluate(f::Signomial, a::Vector)
 
-Evaluate the tropical polynomial `f` at the point `a`.
-Alias for `eval_poly`.
+Evaluate `f` at point `a`.
 """
 function evaluate(f::Signomial, a::Vector)
     return eval_poly(f, _coerce_evaluation_point(f, a))
@@ -523,7 +519,7 @@ end
 """
     dedup_monomials(f)
 
-Remove all monomials with tropical-zero coefficient from `f`.
+Remove all terms with a tropical-zero coefficient from `f`.
 """
 function dedup_monomials(f::Signomial{T}) where {T}
     length(f) == 0 && return f
@@ -551,7 +547,7 @@ end
 """
     monomial_count(f::Signomial)
 
-Return the number of monomials in `f`.
+Return the number of terms that do not have a tropical-zero coefficient.
 """
 function monomial_count(f::Signomial)
     length(f) == 0 && return 0

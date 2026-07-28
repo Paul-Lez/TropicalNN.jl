@@ -104,7 +104,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         region = TropicalNN.polyhedron(f, 1, mode)
         @test TropicalNN.get_matrix(region; mode = mode) == [-coefficient;;]
         @test TropicalNN.get_vector(region; mode = mode) == [coefficient]
-        @test length(prune(f; mode = mode)) == length(f)
+        @test length(TropicalNN.prune(f; mode = mode)) == length(f)
     end
 
     @testset verbose = true "MLP-derived polynomial" begin
@@ -244,15 +244,15 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         mode = HiGHSMode(threads = 2)
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
-        @test prune(u; mode = mode) == prune(u)
+        @test TropicalNN.prune(u; mode = mode) == TropicalNN.prune(u)
 
         v = Signomial([R(0)], [[0//1]]; sorted = false)
-        q_highs = prune(u / v; mode = mode)
-        q_oscar = prune(u / v)
+        q_highs = TropicalNN.prune(u / v; mode = mode)
+        q_oscar = TropicalNN.prune(u / v)
         @test q_highs.num == q_oscar.num
         @test q_highs.den == q_oscar.den
 
-        vector_highs = prune([u / v]; mode = mode)
+        vector_highs = TropicalNN.prune([u / v]; mode = mode)
         @test length(vector_highs) == 1
         @test vector_highs[1].num == q_oscar.num
         @test vector_highs[1].den == q_oscar.den
