@@ -208,8 +208,8 @@ using Test, TropicalNN, Oscar
     @testset verbose = true "Higher dimensions" begin
         # 8-variable polynomial
         exps_8 = [begin
-                      e = zeros(Rational{Int64}, 8);
-                      e[i] = 1 // 1;
+                      e = zeros(Rational{Int64}, 8)
+                      e[i] = 1 // 1
                       e
                   end
                   for i in 1:8]
@@ -223,8 +223,8 @@ using Test, TropicalNN, Oscar
 
         # 10-variable polynomial
         exps_10 = [begin
-                       e = zeros(Rational{Int64}, 10);
-                       e[i] = 1 // 1;
+                       e = zeros(Rational{Int64}, 10)
+                       e[i] = 1 // 1
                        e
                    end
                    for i in 1:10]

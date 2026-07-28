@@ -1,22 +1,12 @@
-# Example: full pipeline — MLP → tropical rational function → linear regions
+# Example: MLP to tropical rational function to linear regions
 #
-# This script demonstrates the complete TropicalNN.jl workflow:
-#   1. Construct a small ReLU MLP (architecture [2, 4, 1])
-#   2. Convert it to an equivalent tropical Puiseux rational function
-#   3. Enumerate its linear regions using the HiGHS LP backend
-#   4. Report summary statistics on the regions
-#
-# Each linear region is a maximal connected subset of R² on which the
-# network computes a single affine map.  The number of linear regions is
-# a standard expressivity measure for ReLU networks.
+# Generate a ReLU MLP with architecture [2, 4, 1]. Convert it to
+# a tropical rational function and compute its linear regions.
 
+using Random
 using TropicalNN
 
-# ---------------------------------------------------------------------------
-# Step 1: Generate a random MLP with architecture [2, 4, 1]
-# ---------------------------------------------------------------------------
-# random_mlp returns (weights, biases, thresholds).
-# By default thresholds are all zero (standard ReLU activation).
+Random.seed!(2026)
 weights, biases, thresholds = random_mlp([2, 4, 1])
 
 println("Network architecture: [2, 4, 1]")
@@ -24,61 +14,36 @@ println("  Layer 1 weight matrix size: ", size(weights[1]))
 println("  Layer 2 weight matrix size: ", size(weights[2]))
 println()
 
-# ---------------------------------------------------------------------------
-# Step 2: Convert to a tropical Puiseux rational function
-# ---------------------------------------------------------------------------
-# mlp_to_trop returns a Vector of RationalSignomial — one per output neuron.
-# quicksum=true uses a faster polynomial addition (slight accuracy trade-off);
-# strong_elim=true removes redundant monomials whose region is not full-dimensional.
-tropical_funcs = mlp_to_trop(weights, biases, thresholds;
-    quicksum = true, strong_elim = true)
-f = tropical_funcs[1]   # single output neuron
+f = only(mlp_to_trop(weights, biases, thresholds;
+    quicksum = true, strong_elim = true))
 
 println("Tropical rational function:")
 println("  Numerator monomials:   ", monomial_count(f.num))
 println("  Denominator monomials: ", monomial_count(f.den))
 println()
 
-# ---------------------------------------------------------------------------
-# Step 3: Enumerate linear regions (HiGHS LP backend)
-# ---------------------------------------------------------------------------
-# HiGHSMode uses JuMP/HiGHS to check feasibility of each candidate region via
-# LP. It returns a LinearRegions object whose elements are LinearRegion values,
-# each holding one or more backend region objects encoding convex pieces.
+# Compute regions with floating-point LP checks.
 region_mode = HiGHSMode()
 regions = linear_regions(f; mode = region_mode)
 
 println("Linear regions found: ", length(regions))
 println()
 
-# ---------------------------------------------------------------------------
-# Step 4: Summary statistics
-# ---------------------------------------------------------------------------
-n_connected = sum(1 for r in regions if length(r) == 1)
-n_disconnected = length(regions) - n_connected
+n_single_piece = count(region -> length(region) == 1, regions)
+n_multiple_pieces = length(regions) - n_single_piece
 
 println("Summary:")
-println("  Regions with a single convex piece:        ", n_connected)
-println("  Regions with multiple disconnected pieces: ", n_disconnected)
+println("  Regions with one convex piece:       ", n_single_piece)
+println("  Regions with multiple convex pieces: ", n_multiple_pieces)
 println()
 
-# Print the first three regions for illustration
 n_show = min(3, length(regions))
 println("First $n_show region(s):")
 for i in 1:n_show
     region = regions[i]
-    if length(region) == 1
-        A = get_matrix(region[1]; mode = region_mode)
-        b = get_vector(region[1]; mode = region_mode)
-        println("  Region $i  (1 convex piece, $(size(A, 1)) constraints)")
-        println("    A = ", A)
-        println("    b = ", b)
-    else
-        println("  Region $i  ($(length(region)) disconnected pieces)")
-        for (k, piece) in enumerate(region)
-            A = get_matrix(piece; mode = region_mode)
-            println("    Piece $k: $(size(A, 1)) constraints")
-        end
+    println("  Region $i: $(length(region)) convex piece(s)")
+    for (piece_index, piece) in enumerate(region)
+        A = get_matrix(piece; mode = region_mode)
+        println("    Piece $piece_index: $(size(A, 1)) constraints")
     end
-    println()
 end

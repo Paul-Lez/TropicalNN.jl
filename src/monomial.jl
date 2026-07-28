@@ -1,4 +1,4 @@
-# This file contains functions to convert a multilayer perceptron to a tropical Puiseux rational function, and to remove redundant monomials from the resulting function.
+# Remove monomials that do not affect a tropical function on an open set.
 
 @doc raw"""
     prune(f::Signomial{T};
@@ -6,12 +6,8 @@
           mode::LinearRegionsCalculationMode=OscarMode())
 
 Return a copy of `f` without monomials whose dominance polyhedron is not
-full-dimensional. If `workers` is supplied as an `AbstractWorkerPool` and
-`parallel=true`, the full-dimensionality checks run on its Julia worker
-processes. `mode`
-selects the polyhedral backend used for the checks; use `OscarMode()` for exact
-Oscar polyhedra or `HiGHSMode(threads=n)` for HiGHS LP checks with `n` solver
-threads.
+full-dimensional. `mode` selects the polyhedral backend. If `parallel=true`
+and `workers` is an `AbstractWorkerPool`, the checks run on those processes.
 """
 function prune(
         f::Signomial;
@@ -90,8 +86,7 @@ monomial with a full-dimensional dominance region.
 function _strong_elim_keep_chunk(args)
     f, inds, mode = args
     keep = Vector{Bool}(undef, length(inds))
-    # A discarded monomial never attains the maximum on an open set, so
-    # we can remove it from the next full-dimensionality checks.
+    # A discarded monomial does not affect later full-dimensionality checks.
     competitors = collect(Base.eachindex(f))
     for (j, i) in pairs(inds)
         poly = polyhedron(f, i, mode; competitors = competitors)
@@ -108,16 +103,14 @@ end
           parallel::Bool=true, workers=nothing,
           mode::LinearRegionsCalculationMode=OscarMode())
 
-Return a copy of `f` without redundant monomials in its numerator and
-denominator.
+Return a copy of `f` with its numerator and denominator pruned independently.
 
 # Arguments
+
 - `f::RationalSignomial{T}`: Rational function to prune.
-- `parallel::Bool=true`: Use process-parallel computation when workers are
-  supplied.
-- `workers=nothing`: Optional `AbstractWorkerPool`.
-- `mode=OscarMode()`: Polyhedral backend for full-dimensionality checks.
-  Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
+- `parallel=true`: Permit parallel checks.
+- `workers=nothing`: Optional Julia worker pool.
+- `mode=OscarMode()`: Backend for full-dimensionality checks.
 """
 function prune(
         f::RationalSignomial;
@@ -136,15 +129,14 @@ end
           parallel::Bool=true, workers=nothing,
           mode::LinearRegionsCalculationMode=OscarMode())
 
-Return a copy of `F` without redundant monomials.
+Prune each rational function in `F`.
 
 # Arguments
+
 - `F::Vector{RationalSignomial{T}}`: Rational functions to prune.
-- `parallel::Bool=true`: Use process-parallel computation when workers are
-  supplied.
-- `workers=nothing`: Optional `AbstractWorkerPool`.
-- `mode=OscarMode()`: Polyhedral backend for full-dimensionality checks.
-  Use `HiGHSMode(threads=n)` to run HiGHS checks with `n` solver threads.
+- `parallel=true`: Permit parallel checks.
+- `workers=nothing`: Optional Julia worker pool.
+- `mode=OscarMode()`: Backend for full-dimensionality checks.
 """
 function prune(
         F::Vector{<:RationalSignomial};

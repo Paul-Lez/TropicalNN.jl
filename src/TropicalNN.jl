@@ -1,10 +1,8 @@
 """
     TropicalNN
 
-Tools for tropical Puiseux polynomials, tropical rational functions, and ReLU
-MLP conversion. The main exported polynomial constructor is
-`Signomial`, and the main exported rational-function type is
-`RationalSignomial`.
+Tools for tropical polynomials, tropical rational functions, and MLP
+conversion.
 """
 module TropicalNN
 
@@ -29,9 +27,7 @@ import Oscar: convention
 
 export
        convention,
-# Concrete polynomial and rational-function types
        Signomial,
-# Primary names (used throughout the module)
        RationalSignomial,
        OptimalTropicalRational,
        Signomial_const,
@@ -42,7 +38,6 @@ export
        RationalSignomial_identity,
        RationalSignomial_zero,
        RationalSignomial_one,
-# Internal accessor API
        get_exp,
        get_coeff,
        get_coeff_by_exp,

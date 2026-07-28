@@ -7,7 +7,7 @@
 """
     RationalSignomial{T}
 
-Tropical Puiseux rational function, represented as a quotient of two signomials.
+Tropical rational function represented by a quotient of two signomials.
 """
 struct RationalSignomial{T}
     num::Signomial{T}
@@ -18,7 +18,6 @@ struct RationalSignomial{T}
     end
 end
 
-# Constructor from numerator and denominator data
 function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted = false)
     num = Signomial(num_coeffs, num_exp; sorted = sorted)
     den = Signomial(den_coeffs, den_exp; sorted = sorted)
@@ -51,7 +50,7 @@ end
 """
     signomial_to_rational(f::Signomial)
 
-Wrap a signomial as a `RationalSignomial` with denominator equal to tropical one.
+Return `f` as a `RationalSignomial` with denominator equal to tropical one.
 """
 function signomial_to_rational(f::Signomial)
     return RationalSignomial(f, Signomial_one(nvars(f), f))
@@ -60,9 +59,8 @@ end
 """
     RationalSignomial_identity(n, c)
 
-Return the vector of coordinate projections `[x1, x2, ..., xn]` as
-`RationalSignomial` values. `c` is a tropical semiring element used only to
-infer the coefficient type; only `one(c)` is called on it.
+Return the coordinate projections `[x₁, x₂, …, xₙ]`. Use `c` to infer the
+coefficient type.
 """
 function RationalSignomial_identity(n, c)
     output = Vector{RationalSignomial}()
@@ -79,18 +77,16 @@ end
 """
     RationalSignomial_zero(n, f::RationalSignomial)
 
-Construct the tropical-zero rational signomial in `n` variables.
-`f` is used only to infer types.
+Construct tropical zero in `n` variables. Use `f` to infer the types.
 """
 function RationalSignomial_zero(n::Int, f::RationalSignomial)
     return RationalSignomial(Signomial_zero(n, f.num), Signomial_one(n, f.den))
 end
 
 """
-    RationalSignomial_one(n, f)
+    RationalSignomial_one(n, f::RationalSignomial)
 
-Construct the tropical-one rational signomial in `n` variables.
-`f` must have a `.num` field (i.e. a `RationalSignomial`) used to infer types.
+Construct tropical one in `n` variables. Use `f` to infer the types.
 """
 function RationalSignomial_one(n::Int, f)
     return RationalSignomial(Signomial_one(n, f.num), Signomial_one(n, f.num))
@@ -126,7 +122,7 @@ end
 """
     evaluate(f::RationalSignomial, a::Vector)
 
-Evaluate the rational tropical function `f` at the point `a`.
+Evaluate `f` at point `a`.
 """
 function evaluate(f::RationalSignomial, a::Vector)
     return eval_rational(f, _coerce_evaluation_point(f.num, a))
@@ -135,7 +131,7 @@ end
 """
     evaluate(F::Vector{<:RationalSignomial}, a::Vector)
 
-Evaluate a vector of rational tropical functions at the point `a`.
+Evaluate each function in `F` at point `a`.
 """
 function evaluate(F::Vector{<:RationalSignomial}, a::Vector)
     return [evaluate(f, a) for f in F]
@@ -199,7 +195,7 @@ end
 """
     quicksum(F::Vector{<:RationalSignomial})
 
-Tropical sum of a vector of rational signomials: numerator/denominator arithmetic.
+Return the tropical sum of `F`.
 """
 function quicksum(F::Vector{<:RationalSignomial})
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
@@ -220,7 +216,7 @@ end
 """
     add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
 
-Add two rational signomials using quicksum addition for the numerator.
+Return the tropical sum of `f` and `g` by batching the numerator terms.
 """
 function add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
     num = quicksum([f.num * g.den, f.den * g.num])
@@ -231,7 +227,7 @@ end
 """
     div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
 
-Divide two rational signomials.
+Return the tropical quotient of `f` and `g`.
 """
 function div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
     num = f.num * g.den
@@ -246,8 +242,7 @@ end
 """
     comp(f::Signomial, G::Vector{<:RationalSignomial})
 
-Compose polynomial `f` with the vector of rational signomials `G`:
-computes `f(G[1], G[2], ..., G[n])`.
+Substitute `G[i]` for variable `i` in `f`.
 """
 function comp(f::Signomial, G::Vector{<:RationalSignomial})
     @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
@@ -265,7 +260,7 @@ end
 """
     comp(f::RationalSignomial, G::Vector{<:RationalSignomial})
 
-Compose rational signomial `f` with the vector `G`.
+Substitute `G[i]` for variable `i` in `f`.
 """
 function comp(f::RationalSignomial, G::Vector{<:RationalSignomial})
     num = comp(f.num, G)
@@ -276,7 +271,7 @@ end
 """
     comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
 
-Compose each element of `F` with `G`.
+Substitute `G` into each element of `F`.
 """
 function comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
     return [comp(f, G) for f in F]
@@ -285,7 +280,7 @@ end
 """
     comp_with_quicksum(f::Signomial, G::Vector{<:RationalSignomial})
 
-Composition using exact quicksum operations, which batch intermediate sums where available.
+Substitute `G` into `f` and batch intermediate tropical sums.
 """
 function comp_with_quicksum(f::Signomial, G::Vector{<:RationalSignomial})
     @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
@@ -303,7 +298,7 @@ end
 """
     comp_with_quicksum(f::RationalSignomial, G::Vector{<:RationalSignomial})
 
-Compose rational signomial `f` with `G` using quicksum operations.
+Substitute `G` into `f` and batch intermediate tropical sums.
 """
 function comp_with_quicksum(f::RationalSignomial, G::Vector{<:RationalSignomial})
     num = comp_with_quicksum(f.num, G)
@@ -314,7 +309,7 @@ end
 """
     comp_with_quicksum(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
 
-Compose each element of `F` with `G` using quicksum.
+Substitute `G` into each element of `F`. Batch intermediate tropical sums.
 """
 function comp_with_quicksum(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
     return [comp_with_quicksum(f, G) for f in F]

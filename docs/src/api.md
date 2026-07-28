@@ -1,6 +1,6 @@
 # API Reference
 
-## Core Types
+## Core types
 
 ```@docs
 Signomial
@@ -29,17 +29,17 @@ evaluate
 quicksum
 ```
 
-## MLP Conversion
+## MLP conversion
 
 ```@docs
-mlp_to_trop
 single_to_trop
+mlp_to_trop
 random_mlp
 random_pmap
 prune
 ```
 
-## Linear Regions
+## Linear regions
 
 ```@docs
 LinearRegionsCalculationMode
@@ -48,7 +48,6 @@ HiGHSMode
 polyhedron
 get_matrix
 get_vector
-linear_regions
 linear_regions
 components
 ```
@@ -71,7 +70,7 @@ vertex_collection
 vertex_count
 ```
 
-## Hoffman Constants
+## Hoffman constants
 
 ```@docs
 surjectivity_test

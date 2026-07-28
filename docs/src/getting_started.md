@@ -1,53 +1,43 @@
 # Getting Started
 
-## Full Pipeline Example
+## Full pipeline
 
-The following example converts a random 2-hidden-layer MLP to a tropical rational function,
-enumerates its linear regions, and computes basic statistics.
+This example converts an MLP to a tropical rational function, computes its linear regions, and counts its stored monomials.
 
 ```julia
 using TropicalNN
 
-# 1. Generate a random MLP with architecture [2, 4, 2, 1]
-W, b, t = random_mlp([2, 4, 2, 1])
+W, b, thresholds = random_mlp([2, 4, 2, 1])
+q = mlp_to_trop(W, b, thresholds)
+regions = linear_regions(q[1]; mode = HiGHSMode())
 
-# 2. Convert to a tropical rational function
-trop = mlp_to_trop(W, b, t)
-
-# 3. Enumerate the linear regions of the first output
-region_mode = HiGHSMode()
-regions = linear_regions(trop[1]; mode = region_mode)
-println("Number of linear regions: ", length(regions))
-
-# 4. Count monomials (expressivity measure)
-println("Monomial count: ", monomial_count(trop[1]))
+println("Linear regions: ", length(regions))
+println("Stored monomials: ", monomial_count(q[1]))
 ```
 
-## Tropical Arithmetic
-
-Tropical polynomials (signomials) support the standard arithmetic operations:
+## Tropical arithmetic
 
 ```julia
-f = Signomial([1, 2, 3], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]])
-g = Signomial([0, 4, -5], [[1//1, 7//1], [0//1, 1//1], [9//1, 1//1]])
+f = Signomial([1, 2, 3], [[1 // 1, 0 // 1], [0 // 1, 1 // 1], [1 // 1, 1 // 1]])
+g = Signomial([0, 4, -5], [[1 // 1, 7 // 1], [0 // 1, 1 // 1], [9 // 1, 1 // 1]])
 
-h = f + g   # tropical sum (pointwise max)
-p = f * g   # tropical product (sum of exponents, sum of coefficients)
+h = f + g # Pointwise maximum.
+p = f * g # Ordinary sum of the represented functions.
 ```
 
-## Performance Options
+## Control expression growth
 
-For larger networks, use `quicksum` and `strong_elim` to reduce monomial count:
-
-```julia
-trop_fast = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true)
-```
-
-Strong elimination uses the same polyhedral backend selector as linear-region
-calculations. For LP-based pruning with threaded HiGHS:
+You can use `quicksum` and `strong_elim` to accelerate computation and reduce intermediate expression size:
 
 ```julia
-mode = HiGHSMode(threads=4)
-trop_fast = mlp_to_trop(W, b, t; quicksum=true, strong_elim=true, elim_mode=mode)
-pruned = prune(trop_fast[1]; mode=mode)
+mode = HiGHSMode(threads = 4)
+q_reduced = mlp_to_trop(
+    W,
+    b,
+    thresholds;
+    quicksum = true,
+    strong_elim = true,
+    elim_mode = mode,
+)
+pruned = prune(q_reduced[1]; mode = mode)
 ```
