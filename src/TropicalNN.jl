@@ -22,14 +22,10 @@ using Graphs
 using MetaGraphsNext
 
 import Distributed
-import Base: string, +, *, /, reduce
-import Oscar: convention
 
 export
-       convention,
        Signomial,
        RationalSignomial,
-       OptimalTropicalRational,
        Signomial_const,
        Signomial_zero,
        Signomial_one,
@@ -41,29 +37,18 @@ export
        get_exp,
        get_coeff,
        get_coeff_by_exp,
-       eval_poly,
-       eval_rational,
        exponents,
        coefficients,
        monomial_pairs,
-       string,
        evaluate,
-       +,
-       /,
-       *,
-       ==,
        quicksum,
-       add_with_quicksum,
-       div_with_quicksum,
        comp,
        comp_with_quicksum,
        dedup_monomials,
        monomial_count,
-       nvars,
        single_to_trop,
        mlp_to_trop,
        random_mlp,
-       reduce,
        prune,
        LinearRegionsCalculationMode,
        OscarMode,
@@ -71,10 +56,7 @@ export
        polyhedron,
        get_matrix,
        get_vector,
-       codimension_le_one,
-       regions_intersect_codimension_le_one,
        linear_regions,
-       n_components,
        components,
        LinearRegion,
        LinearRegions,
@@ -104,7 +86,6 @@ export
 
 include("signomial.jl")
 include("rational_signomial.jl")
-include("tropical_number.jl")
 include("linear_regions.jl")
 include("mlp_to_trop.jl")
 include("util.jl")

@@ -212,16 +212,6 @@ function _components_graph(V, D)
     return graph
 end
 
-"""
-    n_components(V, D)
-
-Return the number of connected components of the graph with vertices `V` and
-edges in `D`.
-"""
-function n_components(V, D)
-    return length(Graphs.connected_components(_components_graph(V, D)))
-end
-
 @doc raw"""
     components(V::Vector{T}, D::Dict{Tuple{T, T}, Bool})
 
@@ -661,15 +651,6 @@ function region_intersection(
         mode::_Oscar
 )
     return Oscar.intersect(region_1, region_2)
-end
-
-"""
-    regions_intersect(region_1, region_2; mode) -> Bool
-
-Return whether two regions have nonempty intersection.
-"""
-function regions_intersect(region_1, region_2; mode::LinearRegionsCalculationMode)
-    return is_feasible(region_intersection(region_1, region_2; mode = mode); mode = mode)
 end
 
 """

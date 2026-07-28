@@ -22,8 +22,7 @@ else
         "linear_regions_highs.jl",
         "exponentiation.jl",
         "printing.jl",
-        "linearmap_matrices.jl",
-        "tropical_number.jl"
+        "linearmap_matrices.jl"
     ]
 
     @testset verbose = true "TropicalNN.jl" begin

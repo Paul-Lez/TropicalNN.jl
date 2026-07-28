@@ -689,7 +689,7 @@ function vertex_collection(
         f::Union{Signomial, RationalSignomial};
         mode::LinearRegionsCalculationMode = OscarMode()
 )
-    return vertex_collection(get_graph(f; mode = mode))
+    return _vertex_collection(get_graph(f; mode = mode))
 end
 
 @doc raw"""
@@ -698,7 +698,7 @@ end
 Return the number of distinct finite vertices in graph-edge intersections.
 """
 function _vertex_count(g::MetaGraph)
-    return length(collect(keys(vertex_collection(g))))
+    return length(_vertex_collection(g))
 end
 
 @doc raw"""

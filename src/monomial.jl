@@ -146,24 +146,3 @@ function prune(
 )
     return [prune(f; parallel = parallel, workers = workers, mode = mode) for f in F]
 end
-
-Base.@deprecate reduce(
-    f::Signomial;
-    parallel::Bool = true,
-    workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
-    mode::LinearRegionsCalculationMode = OscarMode()
-) prune(f; parallel = parallel, workers = workers, mode = mode) false
-
-Base.@deprecate reduce(
-    f::RationalSignomial;
-    parallel::Bool = true,
-    workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
-    mode::LinearRegionsCalculationMode = OscarMode()
-) prune(f; parallel = parallel, workers = workers, mode = mode) false
-
-Base.@deprecate reduce(
-    F::Vector{<:RationalSignomial};
-    parallel::Bool = true,
-    workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
-    mode::LinearRegionsCalculationMode = OscarMode()
-) prune(F; parallel = parallel, workers = workers, mode = mode) false

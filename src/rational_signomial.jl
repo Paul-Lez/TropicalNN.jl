@@ -18,12 +18,6 @@ struct RationalSignomial{T}
     end
 end
 
-function OptimalTropicalRational(num_coeffs, num_exp, den_coeffs, den_exp, sorted = false)
-    num = Signomial(num_coeffs, num_exp; sorted = sorted)
-    den = Signomial(den_coeffs, den_exp; sorted = sorted)
-    return RationalSignomial(num, den)
-end
-
 # Arithmetic
 function Base.:+(f::RationalSignomial{T}, g::RationalSignomial{T}) where {T}
     num = f.num * g.den + f.den * g.num
@@ -37,10 +31,6 @@ end
 
 function Base.:/(f::RationalSignomial{T}, g::RationalSignomial{T}) where {T}
     return RationalSignomial(f.num * g.den, f.den * g.num)
-end
-
-function eval_rational(f::RationalSignomial, a::Vector)
-    return eval_poly(f.num, a) / eval_poly(f.den, a)
 end
 
 #==============================================================================#
@@ -125,7 +115,8 @@ end
 Evaluate `f` at point `a`.
 """
 function evaluate(f::RationalSignomial, a::Vector)
-    return eval_rational(f, _coerce_evaluation_point(f.num, a))
+    point = _coerce_evaluation_point(f.num, a)
+    return evaluate(f.num, point) / evaluate(f.den, point)
 end
 
 """
@@ -207,32 +198,6 @@ function quicksum(F::Vector{<:RationalSignomial})
         foldl(*, vcat([F[i].num], others))
     end
     return RationalSignomial(quicksum(summands), den)
-end
-
-#==============================================================================#
-#                    ADD / DIV WITH QUICKSUM                                    #
-#==============================================================================#
-
-"""
-    add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
-
-Return the tropical sum of `f` and `g` by batching the numerator terms.
-"""
-function add_with_quicksum(f::RationalSignomial, g::RationalSignomial)
-    num = quicksum([f.num * g.den, f.den * g.num])
-    den = f.den * g.den
-    return RationalSignomial(num, den)
-end
-
-"""
-    div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
-
-Return the tropical quotient of `f` and `g`.
-"""
-function div_with_quicksum(f::RationalSignomial, g::RationalSignomial)
-    num = f.num * g.den
-    den = f.den * g.num
-    return RationalSignomial(num, den)
 end
 
 #==============================================================================#

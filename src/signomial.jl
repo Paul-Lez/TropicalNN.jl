@@ -239,20 +239,6 @@ function Base.:*(f::Signomial{T}, g::Signomial{T}) where {T}
     return Signomial{T}(result_exp, result_coeff)
 end
 
-function eval_poly(f::Signomial{T}, a::Vector) where {T}
-    ev = zero(a[1])
-    dim = f.dim
-    for i in 1:length(f)
-        coeff_i = f.coeff[i]
-        term = one(a[1])
-        @inbounds for j in 1:dim
-            term *= a[j]^f.exp[j, i]
-        end
-        ev += coeff_i * term
-    end
-    return ev
-end
-
 function Base.:*(c::Oscar.TropicalSemiringElem, f::Signomial{T}) where {T}
     return Signomial{T}(copy(f.exp), c .* f.coeff)
 end
@@ -494,7 +480,16 @@ end
 Evaluate `f` at point `a`.
 """
 function evaluate(f::Signomial, a::Vector)
-    return eval_poly(f, _coerce_evaluation_point(f, a))
+    point = _coerce_evaluation_point(f, a)
+    result = zero(point[1])
+    for i in 1:length(f)
+        term = one(point[1])
+        @inbounds for j in 1:f.dim
+            term *= point[j]^f.exp[j, i]
+        end
+        result += f.coeff[i] * term
+    end
+    return result
 end
 
 _lift_evaluation_scalar(_, x::Oscar.TropicalSemiringElem) = x
