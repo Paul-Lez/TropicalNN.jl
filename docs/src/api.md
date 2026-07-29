@@ -66,10 +66,9 @@ vertex_count
 
 ```@docs
 surjectivity_test
-exact_hoff
-pvz_hoff
-upper_hoff
-lower_hoff
+hoffman_constant
+upper_hoffman_constant
+lower_hoffman_constant
 exact_er
 upper_er
 linearmap_matrices

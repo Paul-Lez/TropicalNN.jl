@@ -1,8 +1,9 @@
 # Example: Hoffman constants and bounds
 #
-# exact_hoff tests every nonempty row subset. pvz_hoff omits subsets that an
-# earlier test classified. Both functions solve floating-point LPs. upper_hoff
-# uses singular values. lower_hoff samples row subsets.
+# hoffman_constant uses the PVZ algorithm by default. With brute_force=true, it
+# tests every nonempty row subset instead. Both modes solve floating-point LPs.
+# upper_hoffman_constant uses singular values, and lower_hoffman_constant
+# samples row subsets.
 
 using Random
 using TropicalNN
@@ -10,12 +11,12 @@ using TropicalNN
 A = [1.0 0.0; 0.0 1.0; -1.0 -1.0]
 
 println("Matrix:")
-println("  enumerated value: ", exact_hoff(A))
-println("  PVZ value:        ", pvz_hoff(A))
-println("  upper bound:      ", upper_hoff(A))
+println("  PVZ value:        ", hoffman_constant(A))
+println("  enumerated value: ", hoffman_constant(A; brute_force = true))
+println("  upper bound:      ", upper_hoffman_constant(A))
 
 Random.seed!(2026)
-println("  sampled bound:    ", lower_hoff(A, 5))
+println("  sampled bound:    ", lower_hoffman_constant(A, 5))
 
 f = Signomial(
     [0, 0, 0],
@@ -28,12 +29,14 @@ g = Signomial(
 q = f / g
 
 println("\nTropical polynomial:")
-println("  enumerated value: ", exact_hoff(f))
-println("  upper bound:      ", upper_hoff(f))
+println("  PVZ value:        ", hoffman_constant(f))
+println("  enumerated value: ", hoffman_constant(f; brute_force = true))
+println("  upper bound:      ", upper_hoffman_constant(f))
 
 println("\nTropical rational function:")
-println("  enumerated value: ", exact_hoff(q))
-println("  upper bound:      ", upper_hoff(q))
+println("  PVZ value:        ", hoffman_constant(q))
+println("  enumerated value: ", hoffman_constant(q; brute_force = true))
+println("  upper bound:      ", upper_hoffman_constant(q))
 
 # exact_er returns an effective-radius bound about the origin.
 println("\nEffective-radius bounds:")

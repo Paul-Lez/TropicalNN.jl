@@ -162,13 +162,13 @@ function surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    exact_hoff(A::Matrix; tol=1e-10)
+    _brute_force_hoff(A::Matrix; tol=1e-10)
 
 Compute the infinity-norm Hoffman constant by testing every nonempty row
 subset. The enumeration is exhaustive, and GLPK uses floating-point
 arithmetic.
 """
-function exact_hoff(A::Matrix; tol::Float64 = 1e-10)
+function _brute_force_hoff(A::Matrix; tol::Float64 = 1e-10)
     m = size(A, 1)
     H = -Inf
     found_surjective = false
@@ -190,13 +190,13 @@ function exact_hoff(A::Matrix; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    pvz_hoff(A::Matrix; return_certificates=false, tol=1e-10)
+    _pvz_hoff(A::Matrix; return_certificates=false, tol=1e-10)
 
-Compute the infinity-norm Hoffman constant with the Peña-Vera-Zuluaga algoritm.
+Compute the infinity-norm Hoffman constant with the Peña--Vera--Zuluaga algorithm.
 With `return_certificates=true`, return `(H, F, I)` with the surjective sets
 and obstruction supports. GLPK uses floating-point arithmetic.
 """
-function pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
+function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
     m = size(A, 1)
     H = -Inf
     found_surjective = false
@@ -261,12 +261,27 @@ function pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1
 end
 
 @doc raw"""
-    upper_hoff(A::Matrix)
+    hoffman_constant(A::Matrix; brute_force=false, tol=1e-10)
+
+Compute the infinity-norm Hoffman constant of `A`. By default, use the
+Peña--Vera--Zuluaga algorithm. Set `brute_force=true` to test every nonempty
+row subset instead. Both algorithms solve floating-point LPs with GLPK.
+"""
+function hoffman_constant(A::Matrix; brute_force::Bool = false, tol::Float64 = 1e-10)
+    if brute_force
+        return _brute_force_hoff(A; tol = tol)
+    else
+        return _pvz_hoff(A; tol = tol)
+    end
+end
+
+@doc raw"""
+    upper_hoffman_constant(A::Matrix)
 
 Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over
 nonempty full-rank row subsets `J`.
 """
-function upper_hoff(A::Matrix)
+function upper_hoffman_constant(A::Matrix)
     m, n = size(A)
     HU = -Inf
     found_surjective = false
@@ -290,17 +305,21 @@ function upper_hoff(A::Matrix)
 end
 
 @doc raw"""
-    lower_hoff(A::Matrix, num_samples::Int=10; tol=1e-10)
+    lower_hoffman_constant(A::Matrix, num_samples::Int=10; tol=1e-10)
 
 Return a lower bound from `num_samples` random nonempty row subsets. If
-`num_samples >= 2^m`, call [`exact_hoff`](@ref).
+`num_samples >= 2^m`, compute the exact value with brute force.
 """
-function lower_hoff(A::Matrix, num_samples::Int = 10; tol::Float64 = 1e-10)
+function lower_hoffman_constant(
+        A::Matrix,
+        num_samples::Int = 10;
+        tol::Float64 = 1e-10
+)
     m, n = size(A)
     HL = 0.0
     # Enumerate all nonempty subsets when sampling would require more tests.
     if num_samples >= 2^m
-        return exact_hoff(A; tol = tol)
+        return hoffman_constant(A; brute_force = true, tol = tol)
     else
         for i in 1:num_samples
             K = rand(1:m)
@@ -316,14 +335,17 @@ function lower_hoff(A::Matrix, num_samples::Int = 10; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    exact_hoff(f::Union{Signomial,RationalSignomial};
-               return_matrices=false, mode=OscarMode(), tol=1e-10)
+    hoffman_constant(f::Union{Signomial,RationalSignomial};
+                     brute_force=false, return_matrices=false,
+                     mode=OscarMode(), tol=1e-10)
 
-Compute the Hoffman constant for the stored expression of `f` by exhaustive
-subset enumeration. With `return_matrices=true`, return `(H, A, b)`. GLPK
-uses floating-point arithmetic.
+Compute the Hoffman constant for the stored expression of `f`. By default, use
+the Peña--Vera--Zuluaga algorithm on every transformed matrix. Set
+`brute_force=true` to use exhaustive subset enumeration. With
+`return_matrices=true`, return `(H, A, b)`.
 """
-function exact_hoff(f::Union{Signomial, RationalSignomial};
+function hoffman_constant(f::Union{Signomial, RationalSignomial};
+        brute_force::Bool = false,
         return_matrices::Bool = false,
         mode::LinearRegionsCalculationMode = OscarMode(),
         tol::Float64 = 1e-10)
@@ -331,8 +353,9 @@ function exact_hoff(f::Union{Signomial, RationalSignomial};
     A, b = linearmap_matrices(f; mode = mode)
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
+    algorithm = brute_force ? _brute_force_hoff : _pvz_hoff
     for tilde_matrix in t_matrices
-        hoff_const = max(hoff_const, exact_hoff(tilde_matrix; tol = tol))
+        hoff_const = max(hoff_const, algorithm(tilde_matrix; tol = tol))
     end
     if return_matrices
         return hoff_const, A, b
@@ -342,38 +365,13 @@ function exact_hoff(f::Union{Signomial, RationalSignomial};
 end
 
 @doc raw"""
-    pvz_hoff(f::Union{Signomial,RationalSignomial};
-             return_matrices=false, mode=OscarMode(), tol=1e-10)
-
-Compute the Hoffman constant for the stored expression of `f` with the
-Peña-Vera-Zuluaga algorithm. With `return_matrices=true`, return `(H, A, b)`.
-"""
-function pvz_hoff(f::Union{Signomial, RationalSignomial};
-        return_matrices::Bool = false,
-        mode::LinearRegionsCalculationMode = OscarMode(),
-        tol::Float64 = 1e-10)
-    hoff_const = 0
-    A, b = linearmap_matrices(f; mode = mode)
-    t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
-    empty_return !== nothing && return empty_return
-    for tilde_matrix in t_matrices
-        hoff_const = max(hoff_const, pvz_hoff(tilde_matrix; tol = tol))
-    end
-    if return_matrices
-        return hoff_const, A, b
-    else
-        return hoff_const
-    end
-end
-
-@doc raw"""
-    upper_hoff(f::Union{Signomial,RationalSignomial};
-               return_matrices=false, mode=OscarMode())
+    upper_hoffman_constant(f::Union{Signomial,RationalSignomial};
+                           return_matrices=false, mode=OscarMode())
 
 Return a Hoffman-constant upper bound for the stored expression of `f`.
 With `return_matrices=true`, return `(bound, A, b)`.
 """
-function upper_hoff(
+function upper_hoffman_constant(
         f::Union{Signomial, RationalSignomial};
         return_matrices::Bool = false,
         mode::LinearRegionsCalculationMode = OscarMode()
@@ -383,7 +381,7 @@ function upper_hoff(
     t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
-        hoff_upper = max(hoff_upper, upper_hoff(tilde_matrix))
+        hoff_upper = max(hoff_upper, upper_hoffman_constant(tilde_matrix))
     end
     if return_matrices
         return hoff_upper, A, b
@@ -393,13 +391,14 @@ function upper_hoff(
 end
 
 @doc raw"""
-    lower_hoff(f::Union{Signomial,RationalSignomial}, num_samples::Int=10;
-               return_matrices=false, mode=OscarMode(), tol=1e-10)
+    lower_hoffman_constant(f::Union{Signomial,RationalSignomial},
+                           num_samples::Int=10; return_matrices=false,
+                           mode=OscarMode(), tol=1e-10)
 
 Return a sampled Hoffman-constant lower bound for the stored expression of
 `f`. With `return_matrices=true`, return `(bound, A, b)`.
 """
-function lower_hoff(f::Union{Signomial, RationalSignomial},
+function lower_hoffman_constant(f::Union{Signomial, RationalSignomial},
         num_samples::Int = 10;
         return_matrices::Bool = false,
         mode::LinearRegionsCalculationMode = OscarMode(),
@@ -411,7 +410,10 @@ function lower_hoff(f::Union{Signomial, RationalSignomial},
     # maximum of the per-matrix Hoffman constants.
     hoff_lower = 0.0
     for tilde_matrix in t_matrices
-        hoff_lower = max(hoff_lower, lower_hoff(tilde_matrix, num_samples; tol = tol))
+        hoff_lower = max(
+            hoff_lower,
+            lower_hoffman_constant(tilde_matrix, num_samples; tol = tol)
+        )
     end
     if return_matrices
         return hoff_lower, A, b
@@ -423,12 +425,19 @@ end
 # Effective-radius bounds.
 
 @doc raw"""
-    exact_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
+    exact_er(f::Signomial; brute_force=false, mode=OscarMode())
 
-Return an infinity-norm effective-radius bound using [`exact_hoff`](@ref).
+Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
 """
-function exact_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
+function exact_er(f::Signomial;
+        brute_force::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_const, _, b = hoffman_constant(
+        f;
+        brute_force = brute_force,
+        return_matrices = true,
+        mode = mode
+    )
     isinf(hoff_const) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_const *
@@ -438,10 +447,11 @@ end
 @doc raw"""
     upper_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Return an infinity-norm effective-radius bound using [`upper_hoff`](@ref).
+Return an infinity-norm effective-radius bound using
+[`upper_hoffman_constant`](@ref).
 """
 function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)
+    hoff_upper, _, b = upper_hoffman_constant(f, return_matrices = true, mode = mode)
     isinf(hoff_upper) && return Inf
     tilde_bs = tilde_vectors(b)
     return hoff_upper *
@@ -449,12 +459,19 @@ function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode()
 end
 
 @doc raw"""
-    exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
+    exact_er(f::RationalSignomial; brute_force=false, mode=OscarMode())
 
-Return an infinity-norm effective-radius bound using [`exact_hoff`](@ref).
+Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
 """
-function exact_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_const, A, b = exact_hoff(f, return_matrices = true, mode = mode)
+function exact_er(f::RationalSignomial;
+        brute_force::Bool = false,
+        mode::LinearRegionsCalculationMode = OscarMode())
+    hoff_const, _, b = hoffman_constant(
+        f;
+        brute_force = brute_force,
+        return_matrices = true,
+        mode = mode
+    )
     isinf(hoff_const) && return Inf
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
@@ -462,10 +479,11 @@ end
 @doc raw"""
     upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
 
-Return an infinity-norm effective-radius bound using [`upper_hoff`](@ref).
+Return an infinity-norm effective-radius bound using
+[`upper_hoffman_constant`](@ref).
 """
 function upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_upper, A, b = upper_hoff(f, return_matrices = true, mode = mode)
+    hoff_upper, _, b = upper_hoffman_constant(f, return_matrices = true, mode = mode)
     isinf(hoff_upper) && return Inf
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
