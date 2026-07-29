@@ -37,13 +37,13 @@ function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = f
 end
 
 @doc raw"""
-    random_pmap(n_vars, n_mons)
+    random_signomial(n_vars, n_mons)
 
 Return a random `Signomial` with `n_vars` variables and `n_mons` terms.
 Sample coefficients and exponents from `Normal(0, 1 / sqrt(2))` and convert
 them to `Rational{BigInt}`.
 """
-function random_pmap(n_vars, n_mons)
+function random_signomial(n_vars, n_mons)
     return Signomial(Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_mons)),
         [Rational{BigInt}.(rand(Normal(0, 1/sqrt(2)), n_vars)) for _ in 1:n_mons];
         sorted = false)

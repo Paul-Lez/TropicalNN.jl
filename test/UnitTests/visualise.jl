@@ -3,8 +3,8 @@ using Test, TropicalNN, Oscar, CairoMakie
 
 @testset verbose = true "Visualise" begin
 
-    # random_pmap
-    pmap=random_pmap(2, 4)
+    # random_signomial
+    pmap = random_signomial(2, 4)
     @test typeof(pmap) <: Signomial
     @test nvars(pmap)==2
     @test monomial_count(pmap)==4

@@ -35,7 +35,7 @@ quicksum
 single_to_trop
 mlp_to_trop
 random_mlp
-random_pmap
+random_signomial
 prune
 ```
 

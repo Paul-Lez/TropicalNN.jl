@@ -60,7 +60,7 @@ using Test, TropicalNN, Random, Oscar
     @test h_exact >= h_lower
 
     Random.seed!(42)
-    pmap = random_pmap(3, 3)
+    pmap = random_signomial(3, 3)
     h_exact = exact_hoff(pmap)
     h_pvz = pvz_hoff(pmap)
     h_upper = upper_hoff(pmap)
@@ -83,7 +83,7 @@ using Test, TropicalNN, Random, Oscar
     # effective radius tests
 
     Random.seed!(42)
-    pmap = random_pmap(3, 3)
+    pmap = random_signomial(3, 3)
     er_exact = exact_er(pmap)
     er_upper = upper_er(pmap)
     @test er_exact <= er_upper
