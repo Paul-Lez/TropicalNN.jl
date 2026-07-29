@@ -25,33 +25,41 @@ using Test, TropicalNN, Random, Oscar
 
     R = tropical_semiring(max)
     single_monomial = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    # Degenerate one-piece case: there is no finite A-surjectivity certificate
-    # and no linear-region boundary, so these APIs use Inf as the convention.
-    @test hoffman_constant(single_monomial) == Inf
-    @test hoffman_constant(single_monomial; brute_force = true) == Inf
-    @test upper_hoffman_constant(single_monomial) == Inf
-    @test lower_hoffman_constant(single_monomial) == Inf
-    @test exact_er(single_monomial) == Inf
-    @test upper_er(single_monomial) == Inf
+    # A one-piece function has no linear-region boundary, so its Hoffman
+    # constant and effective radius are both zero.
+    @test hoffman_constant(single_monomial) == 0
+    @test hoffman_constant(single_monomial; brute_force = true) == 0
+    @test upper_hoffman_constant(single_monomial) == 0
+    @test lower_hoffman_constant(single_monomial) == 0
+    @test exact_er(single_monomial) == 0
+    @test upper_er(single_monomial) == 0
 
     tropical_zero = Signomial([zero(R(0))], [[0//1, 0//1]]; sorted = false)
     @test monomial_count(tropical_zero) == 0
-    @test hoffman_constant(tropical_zero) == Inf
-    @test hoffman_constant(tropical_zero; brute_force = true) == Inf
-    @test upper_hoffman_constant(tropical_zero) == Inf
-    @test lower_hoffman_constant(tropical_zero) == Inf
-    @test exact_er(tropical_zero) == Inf
-    @test upper_er(tropical_zero) == Inf
+    @test hoffman_constant(tropical_zero) == 0
+    @test hoffman_constant(tropical_zero; brute_force = true) == 0
+    @test upper_hoffman_constant(tropical_zero) == 0
+    @test lower_hoffman_constant(tropical_zero) == 0
+    @test exact_er(tropical_zero) == 0
+    @test upper_er(tropical_zero) == 0
 
     empty_signomial = Signomial(
         TropicalNN._TROPICAL_COEFF[],
         Vector{Vector{Rational{BigInt}}}();
         sorted = false
     )
-    @test hoffman_constant(empty_signomial) == Inf
-    @test hoffman_constant(empty_signomial; brute_force = true) == Inf
-    @test upper_hoffman_constant(empty_signomial) == Inf
-    @test lower_hoffman_constant(empty_signomial) == Inf
+    @test hoffman_constant(empty_signomial) == 0
+    @test hoffman_constant(empty_signomial; brute_force = true) == 0
+    @test upper_hoffman_constant(empty_signomial) == 0
+    @test lower_hoffman_constant(empty_signomial) == 0
+    @test exact_er(empty_signomial) == 0
+    @test upper_er(empty_signomial) == 0
+
+    zero_matrix = zeros(3, 2)
+    @test hoffman_constant(zero_matrix) == 0
+    @test hoffman_constant(zero_matrix; brute_force = true) == 0
+    @test upper_hoffman_constant(zero_matrix) == 0
+    @test lower_hoffman_constant(zero_matrix) == 0
 
     Random.seed!(42)
     mat = rand(3, 3)

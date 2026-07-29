@@ -101,13 +101,13 @@ end
 
 function _empty_hoff_return(return_matrices::Bool, A, b)
     if return_matrices
-        return Inf, A, b
+        return 0.0, A, b
     else
-        return Inf
+        return 0.0
     end
 end
 
-function _t_matrices_or_inf(A, b, return_matrices::Bool)
+function _t_matrices_or_zero(A, b, return_matrices::Bool)
     t_matrices = tilde_matrices(A)
     isempty(t_matrices) && return nothing, _empty_hoff_return(return_matrices, A, b)
     return t_matrices, nothing
@@ -170,23 +170,17 @@ arithmetic.
 """
 function _brute_force_hoff(A::Matrix; tol::Float64 = 1e-10)
     m = size(A, 1)
-    H = -Inf
-    found_surjective = false
+    H = 0.0
     for j in 1:m
         for subset in Combinatorics.combinations(1:m, j)
             AA = A[subset, :]
-            y, t = surjectivity_test(AA; tol = tol)
+            _, t = surjectivity_test(AA; tol = tol)
             if t > 0
                 H = max(H, 1 / t)
-                found_surjective = true
             end
         end
     end
-    if found_surjective
-        return H
-    else
-        return Inf
-    end
+    return H
 end
 
 @doc raw"""
@@ -198,8 +192,7 @@ and obstruction supports. GLPK uses floating-point arithmetic.
 """
 function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
     m = size(A, 1)
-    H = -Inf
-    found_surjective = false
+    H = 0.0
 
     # Start from the full row set and let the PVZ updates shrink the frontier.
     F = Vector{Vector{Int}}()
@@ -218,7 +211,6 @@ function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 
             # A surjective set certifies itself and every subset below it.
             push!(F, J)
             H = max(H, 1 / t)
-            found_surjective = true
 
             filter!(candidate -> !issubset(candidate, J), candidates)
         else
@@ -252,11 +244,10 @@ function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 
         end
     end
 
-    hoff_const = found_surjective ? H : Inf
     if return_certificates
-        return hoff_const, F, I
+        return H, F, I
     else
-        return hoff_const
+        return H
     end
 end
 
@@ -283,8 +274,7 @@ nonempty full-rank row subsets `J`.
 """
 function upper_hoffman_constant(A::Matrix)
     m, n = size(A)
-    HU = -Inf
-    found_surjective = false
+    HU = 0.0
     for j in 1:m
         for subset in Combinatorics.combinations(1:m, j)
             AJ = A[subset, :]
@@ -292,16 +282,11 @@ function upper_hoffman_constant(A::Matrix)
                 p_J = minimum(svdvals(AJ))
                 if p_J > 0
                     HU = max(HU, sqrt(length(subset)) / p_J)
-                    found_surjective = true
                 end
             end
         end
     end
-    if found_surjective
-        return HU
-    else
-        return Inf
-    end
+    return HU
 end
 
 @doc raw"""
@@ -349,9 +334,9 @@ function hoffman_constant(f::Union{Signomial, RationalSignomial};
         return_matrices::Bool = false,
         mode::LinearRegionsCalculationMode = OscarMode(),
         tol::Float64 = 1e-10)
-    hoff_const = 0
+    hoff_const = 0.0
     A, b = linearmap_matrices(f; mode = mode)
-    t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
+    t_matrices, empty_return = _t_matrices_or_zero(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     algorithm = brute_force ? _brute_force_hoff : _pvz_hoff
     for tilde_matrix in t_matrices
@@ -376,9 +361,9 @@ function upper_hoffman_constant(
         return_matrices::Bool = false,
         mode::LinearRegionsCalculationMode = OscarMode()
 )
-    hoff_upper = 0
+    hoff_upper = 0.0
     A, b = linearmap_matrices(f; mode = mode)
-    t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
+    t_matrices, empty_return = _t_matrices_or_zero(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     for tilde_matrix in t_matrices
         hoff_upper = max(hoff_upper, upper_hoffman_constant(tilde_matrix))
@@ -404,7 +389,7 @@ function lower_hoffman_constant(f::Union{Signomial, RationalSignomial},
         mode::LinearRegionsCalculationMode = OscarMode(),
         tol::Float64 = 1e-10)
     A, b = linearmap_matrices(f; mode = mode)
-    t_matrices, empty_return = _t_matrices_or_inf(A, b, return_matrices)
+    t_matrices, empty_return = _t_matrices_or_zero(A, b, return_matrices)
     empty_return !== nothing && return empty_return
     # The maximum of the per-matrix lower bounds is a lower bound for the
     # maximum of the per-matrix Hoffman constants.
@@ -438,7 +423,7 @@ function exact_er(f::Signomial;
         return_matrices = true,
         mode = mode
     )
-    isinf(hoff_const) && return Inf
+    iszero(hoff_const) && return 0.0
     tilde_bs = tilde_vectors(b)
     return hoff_const *
            maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
@@ -452,7 +437,7 @@ Return an infinity-norm effective-radius bound using
 """
 function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_upper, _, b = upper_hoffman_constant(f, return_matrices = true, mode = mode)
-    isinf(hoff_upper) && return Inf
+    iszero(hoff_upper) && return 0.0
     tilde_bs = tilde_vectors(b)
     return hoff_upper *
            maximum([norm(positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
@@ -472,7 +457,7 @@ function exact_er(f::RationalSignomial;
         return_matrices = true,
         mode = mode
     )
-    isinf(hoff_const) && return Inf
+    iszero(hoff_const) && return 0.0
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
@@ -484,6 +469,6 @@ Return an infinity-norm effective-radius bound using
 """
 function upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
     hoff_upper, _, b = upper_hoffman_constant(f, return_matrices = true, mode = mode)
-    isinf(hoff_upper) && return Inf
+    iszero(hoff_upper) && return 0.0
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
