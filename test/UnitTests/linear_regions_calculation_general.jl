@@ -98,8 +98,8 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             (
                 "lower-dimensional dominance region",
                 Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false),
-                [1, 2, 3],
-                [true, false, true]
+                [1, 3],
+                [true, true]
             ),
             (
                 "empty dominance region",

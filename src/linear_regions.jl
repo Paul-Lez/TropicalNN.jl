@@ -656,14 +656,14 @@ end
 """
     _linear_region_data((f, i, mode))
 
-Construct the constraint data and feasibility flag for the `i`th monomial of
-`f`. The input is a tuple so we can directly pass this to `pmap`.
+Construct the constraint data and check full-dimensionality for the `i`th
+monomial of `f`. The input is a tuple so we can directly pass this to `pmap`.
 """
 function _linear_region_data(args)
     f, i, mode = args
     A, b = _linear_region_constraint_data(f, i, mode)
     region = make_polyhedron(A, b; mode = mode)
-    return (A, b, is_feasible(region; mode = mode))
+    return (A, b, is_full_dimensional(region; mode = mode))
 end
 
 """
@@ -707,8 +707,7 @@ end
 """
     linear_regions(f::Signomial; mode, workers=nothing)
 
-Return the nonempty dominance polyhedra of `f` as `(index, region)` pairs.
-The results can include lower-dimensional regions.
+Return the linear regions of `f` as `(index, region)` pairs.
 """
 function linear_regions(
         f::Signomial;
@@ -720,9 +719,42 @@ function linear_regions(
 end
 
 """
+    _intersect_linear_region_partitions(partitions; mode)
+
+Intersect the region partitions one at a time. Discard a partial intersection
+that is not full dimensional before adding a region from the next partition.
+"""
+function _intersect_linear_region_partitions(
+        partitions;
+        mode::LinearRegionsCalculationMode
+)
+    regions = [((index,), region) for (index, region) in first(partitions)]
+
+    for partition in Iterators.drop(partitions, 1)
+        next_regions = []
+        for (index, candidate_region) in partition
+            for (indices, partial_region) in regions
+                intersection = region_intersection(
+                    partial_region,
+                    candidate_region;
+                    mode = mode
+                )
+                if is_full_dimensional(intersection; mode = mode)
+                    push!(next_regions, ((indices..., index), intersection))
+                end
+            end
+        end
+        regions = next_regions
+        isempty(regions) && break
+    end
+
+    return regions
+end
+
+"""
     linear_regions(f::AbstractVector{<:Signomial}; mode, workers=nothing)
 
-Return the common nonempty partition of `f` as `(indices, region)` pairs.
+Return the linear regions of `f` as `(indices, region)` pairs.
 """
 function linear_regions(
         f::AbstractVector{<:Signomial};
@@ -738,19 +770,7 @@ function linear_regions(
                 for (i, data) in pairs(region_data) if data[3]]
     end
 
-    for candidates in Iterators.product(linear_regions_vec...)
-        index = map(first, candidates)
-        candidate_regions = map(last, candidates)
-        region = Base.reduce(
-            (region_1, region_2) -> region_intersection(region_1, region_2; mode = mode),
-            candidate_regions
-        )
-        if length(candidate_regions) == 1 || is_feasible(region; mode = mode)
-            push!(regions, (index, region))
-        end
-    end
-
-    return regions
+    return _intersect_linear_region_partitions(linear_regions_vec; mode = mode)
 end
 
 """

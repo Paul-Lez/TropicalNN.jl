@@ -71,10 +71,14 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
         regions_highs = linear_regions(u; mode = highs_mode)
-        @test length(regions_highs) == 3
-
-        feasible_count = count(candidate_is_feasible, regions_highs)
-        @test feasible_count >= 2
+        @test first.(regions_highs) == [1, 3]
+        @test all(
+            region -> TropicalNN.is_full_dimensional(
+                candidate_region(region);
+                mode = highs_mode
+            ),
+            regions_highs
+        )
     end
 
     @testset verbose = true "HiGHS vs Oscar consistency" begin
