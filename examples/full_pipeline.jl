@@ -43,7 +43,7 @@ for i in 1:n_show
     region = regions[i]
     println("  Region $i: $(length(region)) convex piece(s)")
     for (piece_index, piece) in enumerate(region)
-        A = get_matrix(piece; mode = region_mode)
+        A = TropicalNN.get_matrix(piece; mode = region_mode)
         println("    Piece $piece_index: $(size(A, 1)) constraints")
     end
 end

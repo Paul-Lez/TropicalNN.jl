@@ -42,14 +42,9 @@ prune
 ## Linear regions
 
 ```@docs
-LinearRegionsCalculationMode
 OscarMode
 HiGHSMode
-polyhedron
-get_matrix
-get_vector
 linear_regions
-components
 ```
 
 ## Statistics
