@@ -30,12 +30,14 @@ using Test, TropicalNN, Oscar
         g2 = f ^ Int64(2)
         @test g2 isa Signomial
         @test length(g2) == 2
-        @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[2, 0]))) == 2.0  # 1*2 = 2
-        @test Float64(Rational(get_coeff_by_exp(g2, Rational{Int64}[0, 2]))) == 4.0  # 2*2 = 4
+        @test Float64(Rational(TropicalNN.get_coeff_by_exp(g2, Rational{Int64}[2, 0]))) ==
+              2.0  # 1*2 = 2
+        @test Float64(Rational(TropicalNN.get_coeff_by_exp(g2, Rational{Int64}[0, 2]))) ==
+              4.0  # 2*2 = 4
 
         g0 = f ^ Int64(0)
         @test length(g0) == 1
-        @test Float64(Rational(get_coeff(g0, 1))) == 0.0
+        @test Float64(Rational(TropicalNN.get_coeff(g0, 1))) == 0.0
 
         empty = (zero(R(0)) * f) + (zero(R(0)) * f)
         @test length(empty ^ Int64(0)) == 1
@@ -62,9 +64,9 @@ using Test, TropicalNN, Oscar
         @test any(e -> e == Rational{BigInt}[1, 0], TropicalNN.exponents(g))
         @test any(e -> e == Rational{BigInt}[0, 1], TropicalNN.exponents(g))
         exp1 = Rational{BigInt}[1, 0]
-        @test Float64(Rational(get_coeff_by_exp(g, exp1))) == 1.0
+        @test Float64(Rational(TropicalNN.get_coeff_by_exp(g, exp1))) == 1.0
         exp2 = Rational{BigInt}[0, 1]
-        @test Float64(Rational(get_coeff_by_exp(g, exp2))) == 2.0
+        @test Float64(Rational(TropicalNN.get_coeff_by_exp(g, exp2))) == 2.0
 
         g0 = f ^ (0//1)
         @test length(g0) == 1

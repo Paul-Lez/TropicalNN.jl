@@ -25,7 +25,7 @@ using Oscar: QQFieldElem, tropical_semiring
         Any[0 // 1, Rational{BigInt}[0]] => [1], Any[1 // 1, Rational{BigInt}[1]] => [1],
         Any[1 // 1, Rational{BigInt}[2]] => [1])
 
-    g = get_graph(f)
+    g = TropicalNN.get_graph(f)
     @test typeof(g) <: MetaGraph
 
     v_collection = vertex_collection(f)
@@ -110,7 +110,7 @@ using Oscar: QQFieldElem, tropical_semiring
                 8850358768454271 // 72057594037927936, 6433642560136419 // 9007199254740992]] =>
             Any[Inf]))))
 
-    g = get_graph(f)
+    g = TropicalNN.get_graph(f)
     @test typeof(g) <: MetaGraph
 
     e_count = edge_count(f)
@@ -175,7 +175,7 @@ using Oscar: QQFieldElem, tropical_semiring
 
     w, b, t = random_mlp([2, 4, 1])
     f = mlp_to_trop(w, b, t; strong_elim = true)[1]
-    g = get_graph(f)
+    g = TropicalNN.get_graph(f)
     @test typeof(g) <: MetaGraph
 
     # interior_points tests
@@ -258,10 +258,10 @@ using Oscar: QQFieldElem, tropical_semiring
         @test Oscar.codim(edge_touching) == 1
 
         linear_map = Any[0 // 1, Rational{BigInt}[0, 0]]
-        point_components = separate_components(
+        point_components = TropicalNN.separate_components(
             Dict(linear_map => Dict("polyhedra" => [p1, p2]))
         )
-        edge_components = separate_components(
+        edge_components = TropicalNN.separate_components(
             Dict(linear_map => Dict("polyhedra" => [p1, p3]))
         )
 

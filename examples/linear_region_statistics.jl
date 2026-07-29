@@ -20,7 +20,7 @@ display(volumes(f))
 println("\nConvex-piece counts:")
 display(polyhedron_counts(f))
 
-graph = get_graph(f)
+graph = TropicalNN.get_graph(f)
 println("\nRegion-adjacency graph:")
 println("  vertices: ", Graphs.nv(graph))
 println("  edges:    ", Graphs.ne(graph))

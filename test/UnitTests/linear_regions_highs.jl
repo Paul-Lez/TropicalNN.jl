@@ -298,7 +298,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
             sorted = false
         )
 
-        g_highs = get_graph(f; mode = mode)
+        g_highs = TropicalNN.get_graph(f; mode = mode)
         @test g_highs isa MetaGraphsNext.MetaGraph
         @test Graphs.ne(g_highs) == edge_count(f)
     end

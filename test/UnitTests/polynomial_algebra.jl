@@ -12,7 +12,7 @@ using Test, TropicalNN, Oscar
         g = Signomial([R(3), R(4)], [[1//1, 0//1], [2//1, 0//1]]; sorted = false)
         h = f + g
         @test length(h) == 3  # Should have 3 unique monomials
-        @test get_coeff_by_exp(h, Rational{Int64}[1, 0]) == R(3)  # max(1, 3) = 3
+        @test TropicalNN.get_coeff_by_exp(h, Rational{Int64}[1, 0]) == R(3)  # max(1, 3) = 3
 
         # Test 2: Addition with Float64 exponents (coeffs still Rational)
         f_flt = Signomial([R(1), R(2)], [[1.0, 0.0], [0.0, 1.0]]; sorted = false)
@@ -25,8 +25,8 @@ using Test, TropicalNN, Oscar
         g2 = Signomial([R(2), R(7)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         h2 = f2 + g2
         @test length(h2) == 2  # Same monomials, should merge
-        @test get_coeff_by_exp(h2, Rational{Int64}[1, 0]) == R(5)  # max(5, 2) = 5
-        @test get_coeff_by_exp(h2, Rational{Int64}[0, 1]) == R(7)  # max(3, 7) = 7
+        @test TropicalNN.get_coeff_by_exp(h2, Rational{Int64}[1, 0]) == R(5)  # max(5, 2) = 5
+        @test TropicalNN.get_coeff_by_exp(h2, Rational{Int64}[0, 1]) == R(7)  # max(3, 7) = 7
 
         # Test 4: Commutativity
         f4 = Signomial(
@@ -42,7 +42,8 @@ using Test, TropicalNN, Oscar
         right = f4 + (g4 + h_test)
         @test Set(TropicalNN.exponents(left)) == Set(TropicalNN.exponents(right))
         for exp_vec in TropicalNN.exponents(left)
-            @test get_coeff_by_exp(left, exp_vec) == get_coeff_by_exp(right, exp_vec)
+            @test TropicalNN.get_coeff_by_exp(left, exp_vec) ==
+                  TropicalNN.get_coeff_by_exp(right, exp_vec)
         end
 
         # Test 6: Constructor folds duplicate exponents with tropical addition
@@ -76,7 +77,7 @@ using Test, TropicalNN, Oscar
         h = f * g
         @test length(h) <= 4  # At most 2*2 = 4 monomials
         # Check one specific monomial: (1,0) * (1,0) = (2,0) with coeff max(1+3) = 4
-        @test get_coeff_by_exp(h, Rational{Int64}[2, 0]) == R(4)
+        @test TropicalNN.get_coeff_by_exp(h, Rational{Int64}[2, 0]) == R(4)
 
         # Test 2: Multiplication with Float64 exponents
         f_flt = Signomial([R(1), R(2)], [[1.0, 0.0], [0.0, 1.0]]; sorted = false)
@@ -93,7 +94,8 @@ using Test, TropicalNN, Oscar
         right = g3 * f3
         @test Set(TropicalNN.exponents(left)) == Set(TropicalNN.exponents(right))
         for exp_vec in TropicalNN.exponents(left)
-            @test get_coeff_by_exp(left, exp_vec) == get_coeff_by_exp(right, exp_vec)
+            @test TropicalNN.get_coeff_by_exp(left, exp_vec) ==
+                  TropicalNN.get_coeff_by_exp(right, exp_vec)
         end
     end
 
@@ -114,7 +116,8 @@ using Test, TropicalNN, Oscar
         result_seq = polys[1] + polys[2] + polys[3]
         @test Set(TropicalNN.exponents(result)) == Set(TropicalNN.exponents(result_seq))
         for exp_vec in TropicalNN.exponents(result)
-            @test get_coeff_by_exp(result, exp_vec) == get_coeff_by_exp(result_seq, exp_vec)
+            @test TropicalNN.get_coeff_by_exp(result, exp_vec) ==
+                  TropicalNN.get_coeff_by_exp(result_seq, exp_vec)
         end
 
         # Test 3: Quicksum with Float64 exponents
@@ -143,7 +146,7 @@ using Test, TropicalNN, Oscar
             Signomial([R(3)], [[1//1, 0//1]]; sorted = false)
         ])
         @test length(duplicate_sum) == 1
-        @test get_coeff_by_exp(duplicate_sum, [1//1, 0//1]) == R(3)
+        @test TropicalNN.get_coeff_by_exp(duplicate_sum, [1//1, 0//1]) == R(3)
     end
 
     #==========================================================================
@@ -221,7 +224,7 @@ using Test, TropicalNN, Oscar
                 [1//1, 0//1], [0//1, 1//1]]; sorted = false)
         g_with_zero_dedup = TropicalNN.dedup_monomials(g_with_zero)
         @test length(g_with_zero_dedup) == 1
-        @test get_coeff_by_exp(g_with_zero_dedup, [0//1, 1//1]) == R(2)
+        @test TropicalNN.get_coeff_by_exp(g_with_zero_dedup, [0//1, 1//1]) == R(2)
         @test monomial_count(g_with_zero) == 1
 
         # Test 2b: Dedup returns unchanged objects when no zero coefficient is present
@@ -243,35 +246,35 @@ using Test, TropicalNN, Oscar
         template = Signomial([R(1)], [[0//1, 0//1]]; sorted = false)
         const_poly = Signomial_const(2, R(5), template)
         @test length(const_poly) == 1
-        @test get_coeff_by_exp(const_poly, [0//1, 0//1]) == R(5)
+        @test TropicalNN.get_coeff_by_exp(const_poly, [0//1, 0//1]) == R(5)
 
         # Test 2: One polynomial (multiplicative identity in tropical arithmetic)
         one = Signomial_one(2, template)
         @test length(one) == 1
-        @test get_coeff_by_exp(one, [0//1, 0//1]) == R(0)  # Tropical one is 0
+        @test TropicalNN.get_coeff_by_exp(one, [0//1, 0//1]) == R(0)  # Tropical one is 0
 
         # Test 3: Single monomial
         mono = SignomialMonomial(R(3), [2//1, 1//1])
         @test length(mono) == 1
-        @test get_coeff_by_exp(mono, [2//1, 1//1]) == R(3)
+        @test TropicalNN.get_coeff_by_exp(mono, [2//1, 1//1]) == R(3)
 
         # Test 4: Large number of variables
         large_exp = [i//1 for i in 1:20]
         f_large = Signomial([R(1)], [large_exp]; sorted = false)
-        @test length(get_exp(f_large, 1)) == 20
+        @test length(TropicalNN.get_exp(f_large, 1)) == 20
 
         # Test 5: Accessor arrays do not alias matrix-backed polynomial internals
         accessor_poly = Signomial(
             [R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        original_coeff = get_coeff(accessor_poly, 1)
+        original_coeff = TropicalNN.get_coeff(accessor_poly, 1)
         coeffs = TropicalNN.coefficients(accessor_poly)
         coeffs[1] = R(99)
-        @test get_coeff(accessor_poly, 1) == original_coeff
+        @test TropicalNN.get_coeff(accessor_poly, 1) == original_coeff
 
-        original_exp = get_exp(accessor_poly, 1)
+        original_exp = TropicalNN.get_exp(accessor_poly, 1)
         exps = TropicalNN.exponents(accessor_poly)
         exps[1] = exps[2]
-        @test get_exp(accessor_poly, 1) == original_exp
+        @test TropicalNN.get_exp(accessor_poly, 1) == original_exp
     end
 
     #==========================================================================

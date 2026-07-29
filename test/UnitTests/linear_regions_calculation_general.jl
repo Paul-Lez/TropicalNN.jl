@@ -29,10 +29,10 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         b1 = TropicalNN.get_vector(highs_region_1; mode = highs_mode)
         A2 = TropicalNN.get_matrix(highs_region_2; mode = highs_mode)
         b2 = TropicalNN.get_vector(highs_region_2; mode = highs_mode)
-        expected_A1 = permutedims(Vector{Float64}(get_exp(f, 2)) -
-                                  Vector{Float64}(get_exp(f, 1)))
-        expected_A2 = permutedims(Vector{Float64}(get_exp(f, 1)) -
-                                  Vector{Float64}(get_exp(f, 2)))
+        expected_A1 = permutedims(Vector{Float64}(TropicalNN.get_exp(f, 2)) -
+                                  Vector{Float64}(TropicalNN.get_exp(f, 1)))
+        expected_A2 = permutedims(Vector{Float64}(TropicalNN.get_exp(f, 1)) -
+                                  Vector{Float64}(TropicalNN.get_exp(f, 2)))
 
         @test A1 == expected_A1
         @test b1 == [0.0]

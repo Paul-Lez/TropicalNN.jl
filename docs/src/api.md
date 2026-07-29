@@ -50,13 +50,10 @@ linear_regions
 ## Statistics
 
 ```@docs
-map_statistic
-separate_components
 interior_points
 bounds
 volumes
 polyhedron_counts
-get_graph
 edge_count
 edge_lengths
 edge_directions

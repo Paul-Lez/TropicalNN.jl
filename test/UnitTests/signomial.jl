@@ -48,7 +48,7 @@ using Test, TropicalNN, Oscar
         # x1 appears in both with coeffs 1 and 3, tropical sum = max(1,3) = 3
         @test h isa Signomial{Rational{Int64}}
         @test length(h) == 3
-        @test get_coeff_by_exp(h, unit_exp(1)) == R(3)
+        @test TropicalNN.get_coeff_by_exp(h, unit_exp(1)) == R(3)
 
         # Commutativity: f + g should equal g + f
         h2 = g + f
@@ -69,7 +69,7 @@ using Test, TropicalNN, Oscar
         h = f + g
 
         @test length(h) == 1
-        @test get_coeff(h, 1) == R(3)
+        @test TropicalNN.get_coeff(h, 1) == R(3)
     end
 
     #==========================================================================
@@ -92,8 +92,8 @@ using Test, TropicalNN, Oscar
         exp_13[3] = 1 // 1
         found = false
         for i in 1:length(h)
-            if get_exp(h, i) == exp_13
-                @test get_coeff(h, i) == R(4)
+            if TropicalNN.get_exp(h, i) == exp_13
+                @test TropicalNN.get_coeff(h, i) == R(4)
                 found = true
                 break
             end
@@ -116,7 +116,7 @@ using Test, TropicalNN, Oscar
 
         @test length(h) == 3
         exp_12 = unit_exp(1) + unit_exp(2)
-        @test get_coeff_by_exp(h, exp_12) == R(5)
+        @test TropicalNN.get_coeff_by_exp(h, exp_12) == R(5)
     end
 
     #==========================================================================
@@ -170,7 +170,7 @@ using Test, TropicalNN, Oscar
         ]
         result_overlap = TropicalNN.quicksum(polys_overlap)
         @test length(result_overlap) == 2
-        @test get_coeff_by_exp(result_overlap, unit_exp(1)) == R(3)
+        @test TropicalNN.get_coeff_by_exp(result_overlap, unit_exp(1)) == R(3)
     end
 
     #==========================================================================
@@ -183,7 +183,7 @@ using Test, TropicalNN, Oscar
         @test length(g) == 2
         # Tropical scalar multiplication: coeff * scalar (i.e. coeff + scalar in ordinary arithmetic)
         # Check that both coefficients were scaled
-        coeffs_g = Set([get_coeff(g, i) for i in 1:length(g)])
+        coeffs_g = Set([TropicalNN.get_coeff(g, i) for i in 1:length(g)])
         @test R(6) in coeffs_g   # R(1) * R(5) = R(6)
         @test R(7) in coeffs_g   # R(2) * R(5) = R(7)
     end
