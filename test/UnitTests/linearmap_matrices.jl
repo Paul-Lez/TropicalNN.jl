@@ -1,11 +1,11 @@
 using Test, TropicalNN, Oscar
 
-@testset verbose = true "linearmap_matrices" begin
+@testset verbose = true "_linearmap_matrices" begin
     R = tropical_semiring(max)
 
     @testset verbose = true "Signomial" begin
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        A, b = linearmap_matrices(f)
+        A, b = TropicalNN._linearmap_matrices(f)
 
         @test size(A, 2) == 2
         @test size(A, 1) == length(b)
@@ -20,7 +20,7 @@ using Test, TropicalNN, Oscar
 
     @testset verbose = true "Single-monomial Signomial" begin
         f_const = Signomial([R(5)], [[0//1, 0//1]]; sorted = false)
-        A, b = linearmap_matrices(f_const)
+        A, b = TropicalNN._linearmap_matrices(f_const)
         @test size(A, 1) == 1
         @test size(A, 2) == 2
         @test length(b) == 1
@@ -31,7 +31,7 @@ using Test, TropicalNN, Oscar
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
-        (Anum, Aden), (bnum, bden) = linearmap_matrices(q)
+        (Anum, Aden), (bnum, bden) = TropicalNN._linearmap_matrices(q)
 
         @test size(Anum, 2) == 2
         @test size(Anum, 1) == 2

@@ -65,14 +65,9 @@ vertex_count
 ## Hoffman constants
 
 ```@docs
-surjectivity_test
 hoffman_constant
 upper_hoffman_constant
 lower_hoffman_constant
 exact_er
 upper_er
-linearmap_matrices
-tilde_matrices
-tilde_vectors
-positive_component
 ```
