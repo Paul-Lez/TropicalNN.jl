@@ -223,7 +223,7 @@ julia> V = [1, 2, 3, 4];
 
 julia> D = Dict{Tuple{Int, Int}, Bool}((1, 2) => true, (3, 4) => true, (2, 3) => false);
 
-julia> components(V, D)
+julia> TropicalNN.components(V, D)
 2-element Vector{Vector{Int64}}:
  [1, 2]
  [3, 4]
