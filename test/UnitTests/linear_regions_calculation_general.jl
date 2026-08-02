@@ -23,6 +23,19 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test oscar_region isa Oscar.Polyhedron
         @test !(oscar_region isa Oscar.Polyhedron{Float64})
 
+        exact_region = TropicalNN.make_polyhedron(
+            reshape(Rational{BigInt}[1 // 1, -1 // 1], 2, 1),
+            Rational{BigInt}[1 // 10, 1 // 3];
+            mode = oscar_mode
+        )
+        exact_facets = Oscar.halfspace_matrix_pair(Oscar.facets(exact_region))
+        exact_A = TropicalNN.get_matrix(exact_region; mode = oscar_mode)
+        exact_b = TropicalNN.get_vector(exact_region; mode = oscar_mode)
+        @test exact_A == exact_facets.A
+        @test exact_b == exact_facets.b
+        @test !(eltype(exact_A) <: AbstractFloat)
+        @test !(eltype(exact_b) <: AbstractFloat)
+
         highs_region_1 = TropicalNN.polyhedron(f, 1, highs_mode)
         highs_region_2 = TropicalNN.polyhedron(f, 2, highs_mode)
         A1 = TropicalNN.get_matrix(highs_region_1; mode = highs_mode)

@@ -563,9 +563,10 @@ end
     get_matrix(region; mode)
 
 Return `A` from the halfspace form `{x : A * x ≤ b}`.
+Oscar regions keep exact coefficients. HiGHS regions use `Float64`.
 """
 function get_matrix(region::Oscar.Polyhedron; mode::_Oscar)
-    return Float64.(Oscar.halfspace_matrix_pair(Oscar.facets(region)).A)
+    return Oscar.halfspace_matrix_pair(Oscar.facets(region)).A
 end
 
 function get_matrix(region::_Polyhedra; mode::_HiGHS)
@@ -576,9 +577,10 @@ end
     get_vector(region; mode)
 
 Return `b` from the halfspace form `{x : A * x ≤ b}`.
+Oscar regions keep exact coefficients. HiGHS regions use `Float64`.
 """
 function get_vector(region::Oscar.Polyhedron; mode::_Oscar)
-    return Float64.(Oscar.halfspace_matrix_pair(Oscar.facets(region)).b)
+    return Oscar.halfspace_matrix_pair(Oscar.facets(region)).b
 end
 
 function get_vector(region::_Polyhedra; mode::_HiGHS)
