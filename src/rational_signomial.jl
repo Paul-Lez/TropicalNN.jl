@@ -49,19 +49,31 @@ end
 """
     RationalSignomial_identity(n, c)
 
-Return the coordinate projections `[x₁, x₂, …, xₙ]`. Use `c` to infer the
-coefficient type.
+Return the coordinate projections `[x₁, x₂, …, xₙ]`.
+
+The value of `c` does not change the projections. Pass a real number or a
+max-plus tropical number as `c`.
 """
 function RationalSignomial_identity(n, c)
+    coefficient = _identity_coefficient(c)
     output = Vector{RationalSignomial}()
     sizehint!(output, n)
     for i in 1:n
-        push!(
-            output,
-            signomial_to_rational(SignomialMonomial(one(c), [j == i ? 1 : 0 for j in 1:n]))
-        )
+        exponent = [j == i ? 1 : 0 for j in 1:n]
+        push!(output, signomial_to_rational(SignomialMonomial(coefficient, exponent)))
     end
     return output
+end
+
+"""
+    _identity_coefficient(c)
+
+Return tropical one for an identity-map coefficient template.
+"""
+_identity_coefficient(c::Oscar.TropicalSemiringElem) = one(c)
+
+function _identity_coefficient(::Real)
+    return one(Oscar.tropical_semiring(max)(0))
 end
 
 """

@@ -174,6 +174,14 @@ using Test, TropicalNN, Oscar
         # Test 4: Rational function division
         rat_div = rat / rat2
         @test rat_div isa RationalSignomial
+
+        identity_from_real = RationalSignomial_identity(2, 0)
+        @test TropicalNN.evaluate(identity_from_real, [R(4), R(-2)]) ==
+              [R(4), R(-2)]
+
+        identity_from_tropical = RationalSignomial_identity(2, R(9))
+        @test TropicalNN.evaluate(identity_from_tropical, [R(4), R(-2)]) ==
+              [R(4), R(-2)]
     end
 
     #==========================================================================
