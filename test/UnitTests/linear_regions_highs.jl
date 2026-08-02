@@ -189,6 +189,10 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         A = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
         b = [1.0; 1.0; 1.0; 1.0]
         @test TropicalNN.highs_is_full_dimensional(A, b) == true
+        @test TropicalNN.highs_is_full_dimensional(1e-8 .* A, 1e-8 .* b) == true
+
+        row_scales = [1e-8, 1e8, 1e-4, 1e4]
+        @test TropicalNN.highs_is_full_dimensional(row_scales .* A, row_scales .* b) == true
 
         A_line = [1.0 0.0; -1.0 0.0]
         b_line = [0.0; 0.0]

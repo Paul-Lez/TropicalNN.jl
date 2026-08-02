@@ -335,9 +335,12 @@ function highs_is_full_dimensional(
 
     @variable(model, x[1:n])
     @variable(model, ε)
+    row_norms = [LinearAlgebra.norm(@view A_filtered[i, :]) for i in axes(A_filtered, 1)]
     @constraints(model, begin
-        A_filtered * x .+ ε .<= b_filtered
-        # Bound the slack objective.
+        # Scale each slack by its constraint-normal norm. This makes the
+        # full-dimensionality test invariant under positive row scaling.
+        A_filtered * x .+ row_norms .* ε .<= b_filtered
+        # Bound the geometric-margin objective.
         ε <= 1
     end)
     @objective(model, Max, ε)
