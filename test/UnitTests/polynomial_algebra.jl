@@ -147,6 +147,13 @@ using Test, TropicalNN, Oscar
         ])
         @test length(duplicate_sum) == 1
         @test TropicalNN.get_coeff_by_exp(duplicate_sum, [1//1, 0//1]) == R(3)
+
+        two_variables = Signomial([R(0)], [[1//1, 0//1]]; sorted = false)
+        three_variables = Signomial([R(0)], [[1//1, 0//1, 0//1]]; sorted = false)
+        @test_throws DimensionMismatch TropicalNN.quicksum([
+            two_variables,
+            three_variables
+        ])
     end
 
     #==========================================================================
@@ -194,6 +201,8 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.evaluate(f, [R(0), R(10)]) == R(13)
         @test TropicalNN.evaluate(f, [2, 3]) == R(8)
         @test TropicalNN.evaluate(f, [2.0, 3.0]) == R(8)
+        @test_throws DimensionMismatch TropicalNN.evaluate(f, [R(2)])
+        @test_throws DimensionMismatch TropicalNN.evaluate(f, [R(2), R(3), R(4)])
 
         # RationalSignomial evaluation: f/g where f = max(x₁, x₂), g = constant 0
         # at [R(2), R(3)]: num = max(0+2, 0+3) = R(3), den = R(0) → R(3)/R(0) = R(3)
@@ -203,6 +212,12 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.evaluate(q, [R(2), R(3)]) == R(3)
         # at [R(5), R(2)]: max(5, 2) = 5
         @test TropicalNN.evaluate(q, [R(5), R(2)]) == R(5)
+
+        wrong_dimension = Signomial([R(0)], [[0//1]]; sorted = false)
+        @test_throws DimensionMismatch RationalSignomial(num, wrong_dimension)
+
+        constant = Signomial([R(7)], [Rational{Int}[]]; sorted = false)
+        @test TropicalNN.evaluate(constant, Oscar.TropicalSemiringElem[]) == R(7)
     end
 
     #==========================================================================

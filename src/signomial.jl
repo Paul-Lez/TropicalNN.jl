@@ -267,6 +267,9 @@ function quicksum(F::Vector{Signomial{T}}) where {T}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     dim = F[1].dim
+    all(f -> f.dim == dim, F) || throw(
+        DimensionMismatch("All signomials must have the same dimension.")
+    )
     total_terms = sum(length(f) for f in F)
 
     # Combine all exponents and coefficients
@@ -290,6 +293,10 @@ end
 
 function quicksum(F::Vector{<:Signomial})
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
+    dim = F[1].dim
+    all(f -> f.dim == dim, F) || throw(
+        DimensionMismatch("All signomials must have the same dimension.")
+    )
     result = F[1]
     for i in 2:length(F)
         result = result + F[i]
@@ -478,12 +485,16 @@ end
     evaluate(f::Signomial, a::Vector)
 
 Evaluate `f` at point `a`.
+The point must have one coordinate for each variable of `f`.
 """
 function evaluate(f::Signomial, a::Vector)
+    length(a) == f.dim || throw(
+        DimensionMismatch("The evaluation point must have $(f.dim) coordinates.")
+    )
     point = _coerce_evaluation_point(f, a)
-    result = zero(point[1])
+    result = _tropical_zero(f)
     for i in 1:length(f)
-        term = one(point[1])
+        term = _tropical_one(f)
         @inbounds for j in 1:f.dim
             term *= point[j]^f.exp[j, i]
         end

@@ -8,12 +8,16 @@
     RationalSignomial{T}
 
 Tropical rational function represented by a quotient of two signomials.
+The numerator and denominator must have the same number of variables.
 """
 struct RationalSignomial{T}
     num::Signomial{T}
     den::Signomial{T}
 
     function RationalSignomial(num::Signomial{T}, den::Signomial{T}) where {T}
+        nvars(num) == nvars(den) || throw(
+            DimensionMismatch("The numerator and denominator must have the same dimension.")
+        )
         new{T}(num, den)
     end
 end
