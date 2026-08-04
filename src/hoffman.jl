@@ -172,16 +172,19 @@ end
 @doc raw"""
     _brute_force_hoff(A::Matrix; tol=1e-10)
 
-Compute the infinity-norm Hoffman constant by testing every nonempty row
-subset. The enumeration is exhaustive, and GLPK uses floating-point
-arithmetic.
+Compute the infinity-norm Hoffman constant by testing every nonempty
+full-row-rank subset. The Hoffman maximum can be attained by a linearly
+independent row subset, so this is equivalent to unrestricted exhaustive
+enumeration while avoiding subsets with more rows than columns. GLPK uses
+floating-point arithmetic.
 """
 function _brute_force_hoff(A::Matrix; tol::Float64 = 1e-10)
     m = size(A, 1)
     H = 0.0
-    for j in 1:m
+    for j in 1:min(m, size(A, 2))
         for subset in Combinatorics.combinations(1:m, j)
             AA = A[subset, :]
+            rank(AA) == j || continue
             _, t = _surjectivity_test(AA; tol = tol)
             if t > 0
                 H = max(H, 1 / t)
