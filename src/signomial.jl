@@ -251,16 +251,23 @@ function Base.:^(f::Signomial{T}, r::Base.Rational) where {T}
             [_tropical_one(f)]
         )
     end
+    if r < 0
+        throw(DomainError(
+            r,
+            "A Signomial does not support negative powers. Convert it to a RationalSignomial first."
+        ))
+    end
 
     n = length(f)
-    new_exp = Matrix{T}(undef, f.dim, n)
+    S = promote_type(T, typeof(r))
+    new_exp = Matrix{S}(undef, f.dim, n)
     @inbounds for i in 1:n
         for d in 1:f.dim
-            new_exp[d, i] = T(r * f.exp[d, i])
+            new_exp[d, i] = r * f.exp[d, i]
         end
     end
     new_coeff = Oscar.TropicalSemiringElem{typeof(max)}[c^r for c in f.coeff]
-    return Signomial{T}(new_exp, new_coeff)
+    return Signomial{S}(new_exp, new_coeff)
 end
 
 function quicksum(F::Vector{Signomial{T}}) where {T}
@@ -297,8 +304,22 @@ function quicksum(F::Vector{<:Signomial})
     return result
 end
 
+"""
+    comp(f::Signomial, G::Vector{<:Signomial})
+
+Substitute `G[i]` for variable `i` in `f`.
+
+Throw `ArgumentError` if `f` has a negative exponent. Convert `G` to rational
+signomials explicitly to compose such an `f`.
+"""
 function comp(f::Signomial{T}, G::Vector{<:Signomial}) where {T}
     @assert length(G) == f.dim "Number of polynomials must match variables"
+    if any(e -> e < 0, f.exp)
+        throw(ArgumentError(
+            "Cannot compose a signomial with negative exponents and signomial inputs. " *
+            "Convert the inputs to RationalSignomial values first."
+        ))
+    end
 
     # Get a zero polynomial in the output space
     zero_poly = Signomial(

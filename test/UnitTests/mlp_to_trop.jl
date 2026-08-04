@@ -190,6 +190,15 @@ using Test, TropicalNN, Oscar
         @test TropicalNN.evaluate(composed_qs_known, [R_comp(-1), R_comp(5)]) == R_comp(7)
         @test TropicalNN.evaluate(composed_qs_known, [R_comp(100), R_comp(100)]) ==
               R_comp(102)
+
+        # Test 5: Negative exponents require an explicit rational conversion.
+        negative_outer = Signomial([R_comp(0)], [Rational{BigInt}[-1]]; sorted = false)
+        signomial_input = SignomialMonomial(R_comp(0), Rational{BigInt}[1])
+        @test_throws ArgumentError comp(negative_outer, [signomial_input])
+
+        rational_input = signomial_to_rational(signomial_input)
+        explicit_composition = comp(negative_outer, [rational_input])
+        @test TropicalNN.evaluate(explicit_composition, [R_comp(3)]) == R_comp(-3)
     end
 
     #==========================================================================
