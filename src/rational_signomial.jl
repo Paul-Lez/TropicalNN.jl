@@ -155,25 +155,18 @@ end
 #                    EXPONENTIATION EXTENSIONS                                  #
 #==============================================================================#
 
-function Base.:^(f::RationalSignomial, rat::Float64)
-    if rat == 0
-        return RationalSignomial_one(nvars(f), f)
-    else
-        return RationalSignomial(f.num^rat, f.den^rat)
-    end
-end
+Base.inv(f::RationalSignomial) = RationalSignomial(f.den, f.num)
 
-function Base.:^(f::RationalSignomial, int::Int)
-    if int == 0
-        return RationalSignomial_one(nvars(f), f)
-    else
-        return RationalSignomial(f.num^int, f.den^int)
-    end
-end
+Base.:^(f::RationalSignomial, r::Float64) = f^rationalize(r)
+
+Base.:^(f::RationalSignomial, n::Int) = f^Base.Rational(n)
 
 function Base.:^(f::RationalSignomial, r::Rational{T}) where {T <: Integer}
     if r == 0
         return RationalSignomial_one(nvars(f), f)
+    elseif r < 0
+        magnitude = -r
+        return RationalSignomial(f.den^magnitude, f.num^magnitude)
     else
         return RationalSignomial(f.num^r, f.den^r)
     end

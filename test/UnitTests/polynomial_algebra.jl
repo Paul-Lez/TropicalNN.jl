@@ -51,12 +51,12 @@ using Test, TropicalNN, Oscar
         @test length(duplicate) == 1
         @test TropicalNN.evaluate(duplicate, [R(0), R(0)]) == R(3)
 
-        # Test 7: Negative powers preserve sorted exponent order for later addition
-        neg_power = Signomial([R(1), R(2)], [[1//1, 0//1], [2//1, 0//1]]; sorted = false)^(-1//1)
-        shifted = Signomial([R(5), R(6)], [[-2//1, 0//1], [-1//1, 0//1]]; sorted = false)
-        sum_after_power = neg_power + shifted
-        @test length(sum_after_power) == 2
-        @test TropicalNN.evaluate(sum_after_power, [R(-10), R(0)]) == R(25)
+        # Test 7: A negative signomial power fails explicitly.
+        @test_throws DomainError Signomial(
+            [R(1), R(2)],
+            [[1//1, 0//1], [2//1, 0//1]];
+            sorted = false
+        )^(-1//1)
 
         # Test 8: Addition handles empty matrix-backed polynomials produced by zero-term pruning
         empty = (zero(R(0)) * f) + (zero(R(0)) * f)

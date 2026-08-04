@@ -70,6 +70,18 @@ using Test, TropicalNN, Oscar
 
         g0 = f ^ (0//1)
         @test length(g0) == 1
+
+        f_max = Signomial([R(0), R(0)], [[0//1], [1//1]]; sorted = false)
+        @test_throws DomainError f_max ^ (-1//1)
+        negative_integer = -1
+        @test_throws DomainError f_max ^ negative_integer
+        @test_throws MethodError f_max ^ (-1)
+        @test_throws DomainError f_max ^ (-1.0)
+        @test_throws MethodError inv(f_max)
+
+        integer_exponents = Signomial([R(0)], [[1]]; sorted = false)
+        half_power = integer_exponents ^ (1//2)
+        @test TropicalNN.exponents(half_power) == [[1//2]]
     end
 
     @testset verbose = true "RationalSignomial ^ Int64" begin
@@ -84,6 +96,10 @@ using Test, TropicalNN, Oscar
         q0 = q ^ Int64(0)
         @test q0 isa RationalSignomial
         @test length(q0.num) == 1
+
+        qinv = q ^ Int64(-1)
+        @test qinv.num == den
+        @test qinv.den == num
     end
 
     @testset verbose = true "RationalSignomial ^ Float64" begin
@@ -98,6 +114,10 @@ using Test, TropicalNN, Oscar
         q0 = q ^ 0.0
         @test q0 isa RationalSignomial
         @test length(q0.num) == 1
+
+        qinv = q ^ (-1.0)
+        @test qinv.num == den
+        @test qinv.den == num
     end
 
     @testset verbose = true "RationalSignomial ^ Rational" begin
@@ -112,5 +132,10 @@ using Test, TropicalNN, Oscar
         q0 = q ^ (0//1)
         @test q0 isa RationalSignomial
         @test length(q0.num) == 1
+
+        qinv = q ^ (-1//1)
+        q_value = TropicalNN.evaluate(q, [R(2), R(1)])
+        @test TropicalNN.evaluate(qinv, [R(2), R(1)]) == one(q_value) / q_value
+        @test TropicalNN.evaluate(inv(q), [R(2), R(1)]) == one(q_value) / q_value
     end
 end
