@@ -61,6 +61,17 @@ using Test, TropicalNN, Random, Oscar
     @test upper_hoffman_constant(zero_matrix) == 0
     @test lower_hoffman_constant(zero_matrix) == 0
 
+    redundant = Signomial(
+        [R(0), R(-1), R(0)],
+        [[0//1], [1//1], [2//1]];
+        sorted = false
+    )
+    redundant_pruned = prune(redundant; parallel = false)
+    @test hoffman_constant(redundant) ≈ 1.0
+    @test hoffman_constant(redundant_pruned) ≈ 0.5
+    @test exact_er(redundant) ≈ 1.0
+    @test exact_er(redundant_pruned) == 0.0
+
     Random.seed!(42)
     mat = rand(3, 3)
     h_exact = hoffman_constant(mat; brute_force = true)

@@ -26,6 +26,31 @@ using Test, TropicalNN, Oscar
         @test length(b) == 1
     end
 
+    @testset verbose = true "Redundant monomials are retained" begin
+        f = Signomial(
+            [R(0), R(-1), R(0)],
+            [[0//1], [1//1], [2//1]];
+            sorted = false
+        )
+        A, b = TropicalNN._linearmap_matrices(f)
+
+        @test vec(A) == [0.0, 1.0, 2.0]
+        @test length(b) == 3
+
+        f_pruned = prune(f; parallel = false)
+        A_pruned, b_pruned = TropicalNN._linearmap_matrices(f_pruned)
+        @test vec(A_pruned) == [0.0, 2.0]
+        @test length(b_pruned) == 2
+
+        den = Signomial([R(0)], [[0//1]]; sorted = false)
+        q = RationalSignomial(f, den)
+        (Anum, Aden), (bnum, bden) = TropicalNN._linearmap_matrices(q)
+        @test vec(Anum) == [0.0, 1.0, 2.0]
+        @test vec(Aden) == [0.0]
+        @test length(bnum) == 3
+        @test length(bden) == 1
+    end
+
     @testset verbose = true "RationalSignomial" begin
         num = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)

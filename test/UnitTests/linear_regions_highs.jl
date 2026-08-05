@@ -279,7 +279,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
               collect(monomial_pairs(oscar_output[1].den))
     end
 
-    @testset verbose = true "Effective radius with threaded HiGHS" begin
+    @testset verbose = true "Deprecated Hoffman mode keyword" begin
         mode = HiGHSMode(threads = 1)
         f = Signomial(
             [R(0), R(1), R(-1)],
@@ -287,7 +287,8 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
             sorted = false
         )
 
-        @test exact_er(f; mode = mode) ≈ exact_er(f)
+        er = @test_deprecated exact_er(f; mode = mode)
+        @test er ≈ exact_er(f)
     end
 
     @testset verbose = true "Graph construction with threaded HiGHS" begin

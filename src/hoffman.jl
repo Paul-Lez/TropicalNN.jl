@@ -1,55 +1,31 @@
 # Matrix construction.
 
 @doc raw"""
-    _linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
+    _linearmap_matrices(f::Signomial)
 
-Return exponent matrix `A` and coefficient vector `b` for the non-redundant monomials of `f`.
+Return exponent matrix `A` and coefficient vector `b` for all nonzero
+monomials stored in `f`.
 """
-function _linearmap_matrices(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
+function _linearmap_matrices(f::Signomial)
     f = dedup_monomials(f)
     if length(f) == 0
         return zeros(Float64, 0, nvars(f)), Any[]
     end
 
-    linear_maps_acc = Vector{Vector{Any}}()
-    exponents_acc = Vector{Vector{Float64}}()
-    coefficients_acc = Vector{Any}()
-    competitors = collect(Base.eachindex(f))
-    for i in Base.eachindex(f)
-        exp_i = get_exp(f, i)
-        coeff_i = get_coeff(f, i)
-        poly = polyhedron(f, i, mode; competitors = competitors)
-        if is_full_dimensional(poly; mode = mode)
-            linear_map = [Rational(coeff_i), collect(exp_i)]
-            if !(linear_map in linear_maps_acc)
-                push!(exponents_acc, linear_map[2])
-                push!(coefficients_acc, linear_map[1])
-                push!(linear_maps_acc, linear_map)
-            end
-        else
-            deleteat!(competitors, searchsortedfirst(competitors, i))
-        end
-    end
-    if isempty(exponents_acc)
-        return zeros(Float64, 0, nvars(f)), Any[]
-    end
-    A = mapreduce(permutedims, vcat, [Float64.(row) for row in exponents_acc])
-    b = vec(coefficients_acc)
+    A = Float64.(permutedims(f.exp))
+    b = Rational.(f.coeff)
     return A, b
 end
 
 @doc raw"""
-    _linearmap_matrices(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
+    _linearmap_matrices(f::RationalSignomial)
 
 Return the exponent matrices and coefficient vectors for the numerator and
 denominator of `f`.
 """
-function _linearmap_matrices(
-        f::RationalSignomial;
-        mode::LinearRegionsCalculationMode = OscarMode()
-)
-    Anum, bnum = _linearmap_matrices(f.num; mode = mode)
-    Aden, bden = _linearmap_matrices(f.den; mode = mode)
+function _linearmap_matrices(f::RationalSignomial)
+    Anum, bnum = _linearmap_matrices(f.num)
+    Aden, bden = _linearmap_matrices(f.den)
     return (Anum, Aden), (bnum, bden)
 end
 
@@ -100,17 +76,16 @@ function _positive_component(b::Vector)
 end
 
 """
-    _hoff_with_matrices(matrix_hoff, f; mode)
+    _hoff_with_matrices(matrix_hoff, f)
 
 Apply `matrix_hoff` to each transformed matrix for `f`. Return the result and
 the exponent and coefficient data used in the calculation.
 """
 function _hoff_with_matrices(
         matrix_hoff::Function,
-        f::Union{Signomial, RationalSignomial};
-        mode::LinearRegionsCalculationMode
+        f::Union{Signomial, RationalSignomial}
 )
-    A, b = _linearmap_matrices(f; mode = mode)
+    A, b = _linearmap_matrices(f)
     t_matrices = _tilde_matrices(A)
     isempty(t_matrices) && return 0.0, A, b
 
@@ -119,6 +94,24 @@ function _hoff_with_matrices(
         hoff_value = max(hoff_value, matrix_hoff(tilde_matrix))
     end
     return hoff_value, A, b
+end
+
+"""
+    _warn_ignored_hoffman_mode(mode, function_name)
+
+Warn that `mode` no longer controls a Hoffman calculation. Do nothing if
+`mode` is `nothing`.
+"""
+function _warn_ignored_hoffman_mode(
+        mode::Union{Nothing, LinearRegionsCalculationMode},
+        function_name::Symbol
+)
+    isnothing(mode) && return nothing
+    Base.depwarn(
+        "`mode` is deprecated and does not affect this calculation. Call `prune(f; mode = mode)` first to remove redundant monomials.",
+        function_name
+    )
+    return nothing
 end
 
 # Hoffman calculations.
@@ -332,53 +325,62 @@ end
 
 @doc raw"""
     hoffman_constant(f::Union{Signomial,RationalSignomial};
-                     brute_force=false, mode=OscarMode(), tol=1e-10)
+                     brute_force=false, tol=1e-10)
 
 Compute the Hoffman constant for the stored expression of `f`. By default, use
 the Peña--Vera--Zuluaga algorithm on every transformed matrix. Set
-`brute_force=true` to use exhaustive subset enumeration.
+`brute_force=true` to use exhaustive subset enumeration. This function uses
+all stored nonzero monomials. Call [`prune`](@ref) before this function to
+remove redundant monomials. The `mode` keyword is deprecated and has no
+effect. Pass it to `prune` instead.
 """
 function hoffman_constant(f::Union{Signomial, RationalSignomial};
         brute_force::Bool = false,
-        mode::LinearRegionsCalculationMode = OscarMode(),
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing,
         tol::Float64 = 1e-10)
+    _warn_ignored_hoffman_mode(mode, :hoffman_constant)
     algorithm = brute_force ? _brute_force_hoff : _pvz_hoff
     hoff_const, _, _ = _hoff_with_matrices(
         matrix -> algorithm(matrix; tol = tol),
-        f;
-        mode = mode
+        f
     )
     return hoff_const
 end
 
 @doc raw"""
-    upper_hoffman_constant(f::Union{Signomial,RationalSignomial}; mode=OscarMode())
+    upper_hoffman_constant(f::Union{Signomial,RationalSignomial})
 
-Return a Hoffman-constant upper bound for the stored expression of `f`.
+Return a Hoffman-constant upper bound for the stored expression of `f`. This
+function uses all stored nonzero monomials. Call [`prune`](@ref) before this
+function to remove redundant monomials. The `mode` keyword is deprecated and
+has no effect. Pass it to `prune` instead.
 """
 function upper_hoffman_constant(
         f::Union{Signomial, RationalSignomial};
-        mode::LinearRegionsCalculationMode = OscarMode()
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing
 )
-    hoff_upper, _, _ = _hoff_with_matrices(upper_hoffman_constant, f; mode = mode)
+    _warn_ignored_hoffman_mode(mode, :upper_hoffman_constant)
+    hoff_upper, _, _ = _hoff_with_matrices(upper_hoffman_constant, f)
     return hoff_upper
 end
 
 @doc raw"""
     lower_hoffman_constant(f::Union{Signomial,RationalSignomial},
-                           num_samples::Int=10; mode=OscarMode(), tol=1e-10)
+                           num_samples::Int=10; tol=1e-10)
 
 Return a sampled Hoffman-constant lower bound for the stored expression of
-`f`.
+`f`. This function uses all stored nonzero monomials. Call [`prune`](@ref)
+before this function to remove redundant monomials. The `mode` keyword is
+deprecated and has no effect. Pass it to `prune` instead.
 """
 function lower_hoffman_constant(f::Union{Signomial, RationalSignomial},
         num_samples::Int = 10;
-        mode::LinearRegionsCalculationMode = OscarMode(),
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing,
         tol::Float64 = 1e-10)
+    _warn_ignored_hoffman_mode(mode, :lower_hoffman_constant)
     hoff_lower, _, _ = _hoff_with_matrices(
         matrix -> lower_hoffman_constant(matrix, num_samples; tol = tol),
-        f;
-        mode = mode
+        f
     )
     return hoff_lower
 end
@@ -386,17 +388,20 @@ end
 # Effective-radius bounds.
 
 @doc raw"""
-    exact_er(f::Signomial; brute_force=false, mode=OscarMode())
+    exact_er(f::Signomial; brute_force=false)
 
 Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
+This function uses all stored nonzero monomials. Call [`prune`](@ref) before
+this function to remove redundant monomials. The `mode` keyword is deprecated
+and has no effect. Pass it to `prune` instead.
 """
 function exact_er(f::Signomial;
         brute_force::Bool = false,
-        mode::LinearRegionsCalculationMode = OscarMode())
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)
+    _warn_ignored_hoffman_mode(mode, :exact_er)
     hoff_const, _, b = _hoff_with_matrices(
         matrix -> hoffman_constant(matrix; brute_force = brute_force),
-        f;
-        mode = mode
+        f
     )
     iszero(hoff_const) && return 0.0
     tilde_bs = _tilde_vectors(b)
@@ -405,13 +410,18 @@ function exact_er(f::Signomial;
 end
 
 @doc raw"""
-    upper_er(f::Signomial; mode::LinearRegionsCalculationMode=OscarMode())
+    upper_er(f::Signomial)
 
 Return an infinity-norm effective-radius bound using
-[`upper_hoffman_constant`](@ref).
+[`upper_hoffman_constant`](@ref). This function uses all stored nonzero
+monomials. Call [`prune`](@ref) before this function to remove redundant
+monomials. The `mode` keyword is deprecated and has no effect. Pass it to
+`prune` instead.
 """
-function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_upper, _, b = _hoff_with_matrices(upper_hoffman_constant, f; mode = mode)
+function upper_er(f::Signomial;
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)
+    _warn_ignored_hoffman_mode(mode, :upper_er)
+    hoff_upper, _, b = _hoff_with_matrices(upper_hoffman_constant, f)
     iszero(hoff_upper) && return 0.0
     tilde_bs = _tilde_vectors(b)
     return hoff_upper *
@@ -419,30 +429,38 @@ function upper_er(f::Signomial; mode::LinearRegionsCalculationMode = OscarMode()
 end
 
 @doc raw"""
-    exact_er(f::RationalSignomial; brute_force=false, mode=OscarMode())
+    exact_er(f::RationalSignomial; brute_force=false)
 
 Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
+This function uses all stored nonzero monomials. Call [`prune`](@ref) before
+this function to remove redundant monomials. The `mode` keyword is deprecated
+and has no effect. Pass it to `prune` instead.
 """
 function exact_er(f::RationalSignomial;
         brute_force::Bool = false,
-        mode::LinearRegionsCalculationMode = OscarMode())
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)
+    _warn_ignored_hoffman_mode(mode, :exact_er)
     hoff_const, _, b = _hoff_with_matrices(
         matrix -> hoffman_constant(matrix; brute_force = brute_force),
-        f;
-        mode = mode
+        f
     )
     iszero(hoff_const) && return 0.0
     return hoff_const * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
 
 @doc raw"""
-    upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode())
+    upper_er(f::RationalSignomial)
 
 Return an infinity-norm effective-radius bound using
-[`upper_hoffman_constant`](@ref).
+[`upper_hoffman_constant`](@ref). This function uses all stored nonzero
+monomials. Call [`prune`](@ref) before this function to remove redundant
+monomials. The `mode` keyword is deprecated and has no effect. Pass it to
+`prune` instead.
 """
-function upper_er(f::RationalSignomial; mode::LinearRegionsCalculationMode = OscarMode())
-    hoff_upper, _, b = _hoff_with_matrices(upper_hoffman_constant, f; mode = mode)
+function upper_er(f::RationalSignomial;
+        mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)
+    _warn_ignored_hoffman_mode(mode, :upper_er)
+    hoff_upper, _, b = _hoff_with_matrices(upper_hoffman_constant, f)
     iszero(hoff_upper) && return 0.0
     return hoff_upper * max(maximum(b[1]) - minimum(b[1]), maximum(b[2]) - minimum(b[2]))
 end
