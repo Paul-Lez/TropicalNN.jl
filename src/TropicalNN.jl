@@ -72,6 +72,7 @@ include("signomial.jl")
 include("rational_signomial.jl")
 include("linear_regions.jl")
 include("mlp_to_trop.jl")
+include("linear_regions_layerwise.jl")
 include("util.jl")
 include("monomial.jl")
 
