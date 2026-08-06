@@ -74,6 +74,67 @@ function affine_to_trop(A::Matrix{T},
 end
 
 """
+    _mlp_to_tropical_layers(linear_maps, biases, thresholds=nothing)
+
+Convert each MLP layer to a vector of rational signomials without composing
+the layers. Hidden layers apply `max.(A * x + b, threshold)`. The final layer
+is affine.
+"""
+function _mlp_to_tropical_layers(
+        linear_maps::AbstractVector{<:AbstractMatrix},
+        biases::AbstractVector{<:AbstractVector},
+        thresholds::Union{Nothing, AbstractVector{<:AbstractVector}} = nothing
+)
+    isempty(linear_maps) && throw(ArgumentError(
+        "MLP conversion requires at least one layer"
+    ))
+    length(biases) == length(linear_maps) || throw(DimensionMismatch(
+        "Got $(length(linear_maps)) weight matrices and $(length(biases)) bias vectors"
+    ))
+    hidden_layer_count = length(linear_maps) - 1
+    actual_thresholds = if thresholds === nothing
+        [zeros(eltype(linear_maps[k]), size(linear_maps[k], 1))
+         for k in 1:hidden_layer_count]
+    else
+        length(thresholds) == hidden_layer_count || throw(DimensionMismatch(
+            "Got $(length(linear_maps)) weight matrices and $(length(thresholds)) " *
+            "threshold vectors; expected $hidden_layer_count threshold vectors"
+        ))
+        thresholds
+    end
+
+    layers = Vector{Vector{RationalSignomial}}(undef, length(linear_maps))
+    for k in Base.eachindex(linear_maps)
+        A = linear_maps[k]
+        b = biases[k]
+        size(A, 1) == length(b) || throw(DimensionMismatch(
+            "Layer $k has $(size(A, 1)) outputs but bias length $(length(b))"
+        ))
+        if k > firstindex(linear_maps)
+            expected_input_dim = size(linear_maps[k - 1], 1)
+            size(A, 2) == expected_input_dim || throw(DimensionMismatch(
+                "Layer $k has input dimension $(size(A, 2)), but layer $(k - 1) " *
+                "has output dimension $expected_input_dim"
+            ))
+        end
+
+        if k == lastindex(linear_maps)
+            layers[k] = RationalSignomial[affine_to_trop(Matrix(A), b)...]
+        else
+            threshold = actual_thresholds[k]
+            size(A, 1) == length(threshold) || throw(DimensionMismatch(
+                "Layer $k has $(size(A, 1)) outputs but threshold length " *
+                "$(length(threshold))"
+            ))
+            layers[k] = RationalSignomial[
+                single_to_trop(Matrix(A), b, threshold)...
+            ]
+        end
+    end
+    return layers
+end
+
+"""
     mlp_to_trop(linear_maps, bias, thresholds;
                 quicksum=false, strong_elim=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
@@ -89,55 +150,11 @@ function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 ) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
-    if isempty(linear_maps)
-        throw(ArgumentError("mlp_to_trop requires at least one layer"))
-    end
-    if length(bias) != length(linear_maps)
-        throw(DimensionMismatch(
-            "Dimension mismatch: got $(length(linear_maps)) weight matrices and $(length(bias)) bias vectors. These lengths must match."
-        ))
-    end
-    expected_thresholds = length(linear_maps) - 1
-    # Use zero thresholds when the caller omits them.
-    if thresholds === nothing
-        thresholds = [zeros(T, size(linear_maps[i], 1)) for i in 1:expected_thresholds]
-    elseif length(thresholds) != expected_thresholds
-        throw(DimensionMismatch(
-            "Dimension mismatch: got $(length(linear_maps)) weight matrices and $(length(thresholds)) threshold vectors."
-        ))
-    end
-
+    layers = _mlp_to_tropical_layers(linear_maps, bias, thresholds)
     output = RationalSignomial[]
 
     # Compose the layers in network order.
-    for i in Base.eachindex(linear_maps)
-        A = linear_maps[i]
-        b = bias[i]
-
-        # Check the output dimension.
-        if size(A, 1) != length(b)
-            throw(
-                DimensionMismatch(
-                "Layer $i: dimension mismatch. A has $(size(A,1)) rows, b has length $(length(b)). They must match.",
-            ),
-            )
-        end
-
-        # Hidden layers apply apply `max(threshold, . )`. The final layer is affine.
-        if i == lastindex(linear_maps)
-            ith_tropical = affine_to_trop(A, b)
-        else
-            t = thresholds[i]
-            if size(A, 1) != length(t)
-                throw(
-                    DimensionMismatch(
-                    "Layer $i: dimension mismatch. A has $(size(A,1)) rows, t has length $(length(t)). They must match.",
-                ),
-                )
-            end
-            ith_tropical = single_to_trop(A, b, t)
-        end
-
+    for (i, ith_tropical) in pairs(layers)
         if i == 1
             output = ith_tropical
         else
