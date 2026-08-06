@@ -6,6 +6,7 @@ const FORMAT_PATHS = [
     "src",
     "ext",
     "test",
+    "benchmark",
     "examples",
     joinpath("docs", "make.jl"),
     joinpath("docs", "src")

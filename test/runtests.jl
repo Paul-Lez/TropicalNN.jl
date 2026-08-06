@@ -20,6 +20,7 @@ else
         "statistics.jl",
         "linear_regions_calculation_general.jl",
         "linear_regions_highs.jl",
+        "linear_regions_layerwise.jl",
         "exponentiation.jl",
         "printing.jl",
         "linearmap_matrices.jl"

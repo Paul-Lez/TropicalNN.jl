@@ -65,11 +65,14 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test TropicalNN.is_full_dimensional(whole_space; mode = highs_mode)
     end
 
-    @testset verbose = true "Unsupported and empty inputs fail explicitly" begin
+    @testset verbose = true "Unsupported and empty inputs" begin
         @test_throws ArgumentError TropicalNN.make_polyhedron(
             zeros(Float64, 1, 1), Float64[0.0]; mode = UnsupportedLinearRegionsMode())
 
         empty = Signomial(Rational{BigInt}[], Vector{Vector{Rational{BigInt}}}(); sorted = false)
+        for mode in (oscar_mode, highs_mode)
+            @test isempty(TropicalNN.linear_regions(empty; mode = mode))
+        end
         @test_throws ArgumentError TropicalNN.linear_regions(
             RationalSignomial(empty, empty); mode = highs_mode)
     end

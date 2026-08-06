@@ -1,4 +1,5 @@
 using Distributed
+using Oscar
 using Test
 using TropicalNN
 
@@ -32,13 +33,32 @@ try
         local_regions = linear_regions(q; mode = HiGHSMode())
         distributed_regions = linear_regions(q; mode = HiGHSMode(), workers = pool)
         region_signature(regions) = (
-            length(regions), sort(length(region) for region in regions))
+            length(regions), sort([length(region) for region in regions]))
         @test region_signature(distributed_regions) == (4, [1, 1, 1, 1])
         @test region_signature(distributed_regions) == region_signature(local_regions)
 
         scalar_local = linear_regions(max_x / constant; mode = HiGHSMode())
         scalar_distributed = linear_regions(max_x / constant; mode = HiGHSMode(), workers = pool)
         @test region_signature(scalar_distributed) == region_signature(scalar_local)
+
+        Q = Rational{BigInt}
+        W = [Q.([1 0; 0 1]), Q.([1 -1; 1 1]), Q.([1 -2])]
+        b = [Q.([0, 0]), Q.([0, 1]), Q.([0])]
+        thresholds = [Q.([0, 0]), Q.([-1, 0])]
+        layerwise_local = linear_regions(
+            W,
+            b,
+            thresholds;
+            mode = HiGHSMode()
+        )
+        layerwise_distributed = linear_regions(
+            W,
+            b,
+            thresholds;
+            mode = HiGHSMode(),
+            workers = pool
+        )
+        @test region_signature(layerwise_distributed) == region_signature(layerwise_local)
     end
 finally
     isempty(worker_ids) || rmprocs(worker_ids)
