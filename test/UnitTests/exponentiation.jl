@@ -3,25 +3,12 @@ using Test, TropicalNN, Oscar
 @testset verbose = true "Exponentiation methods" begin
     R = tropical_semiring(max)
 
-    @testset verbose = true "TropicalSemiringElem ^ TropicalSemiringElem" begin
-        a = R(3)
-        b = R(2)
-        @test Float64(Rational(a ^ b)) == 6.0   # 3*2 = 6
-        @test Float64(Rational(R(0) ^ R(4))) == 0.0
-        @test Float64(Rational(R(5) ^ R(1))) == 5.0
-    end
-
-    @testset verbose = true "TropicalSemiringElem ^ Rational" begin
+    @testset verbose = true "Oscar TropicalSemiringElem ^ Rational" begin
         @test Float64(Rational(R(4) ^ (1//2))) == 2.0   # 4 * 1/2 = 2
         @test Float64(Rational(R(6) ^ (2//3))) == 4.0   # 6 * 2/3 = 4
         @test Float64(Rational(R(0) ^ (3//2))) == 0.0
         @test Float64(Rational(R(10) ^ (1//5))) == 2.0   # 10 * 1/5 = 2
-    end
-
-    @testset verbose = true "TropicalSemiringElem ^ Float64" begin
-        @test Float64(Rational(R(4) ^ 2.0)) ≈ 8.0    # 4*2 = 8
-        @test Float64(Rational(R(3) ^ 0.5)) ≈ 1.5    # 3*0.5 = 1.5
-        @test Float64(Rational(R(0) ^ 3.0)) ≈ 0.0
+        @test iszero(zero(R) ^ (3//2))
     end
 
     @testset verbose = true "Signomial ^ Int64" begin
@@ -53,6 +40,9 @@ using Test, TropicalNN, Oscar
 
         g0 = f ^ 0.0
         @test length(g0) == 1
+
+        float_exponent = Signomial([R(0)], [[0.5]]; sorted = true)
+        @test evaluate(float_exponent, [R(4)]) == R(2)
     end
 
     @testset verbose = true "Signomial ^ Rational" begin

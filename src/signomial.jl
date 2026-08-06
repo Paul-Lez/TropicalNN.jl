@@ -506,12 +506,15 @@ function evaluate(f::Signomial, a::Vector)
     for i in 1:length(f)
         term = one(point[1])
         @inbounds for j in 1:f.dim
-            term *= point[j]^f.exp[j, i]
+            term *= _tropical_power(point[j], f.exp[j, i])
         end
         result += f.coeff[i] * term
     end
     return result
 end
+
+_tropical_power(a::Oscar.TropicalSemiringElem, r::AbstractFloat) = a^rationalize(r)
+_tropical_power(a::Oscar.TropicalSemiringElem, r) = a^r
 
 _lift_evaluation_scalar(_, x::Oscar.TropicalSemiringElem) = x
 
@@ -575,32 +578,6 @@ function monomial_count(f::Signomial)
         end
     end
     return n
-end
-
-#==============================================================================#
-#                    EXPONENTIATION EXTENSIONS                                  #
-#==============================================================================#
-
-# TropicalSemiringElem ^ TropicalSemiringElem
-function Base.:^(
-        a::Oscar.TropicalSemiringElem{typeof(max)},
-        b::Oscar.TropicalSemiringElem{typeof(max)}
-)
-    R = tropical_semiring(max)
-    return R(Rational(a) * Rational(b))
-end
-
-# TropicalSemiringElem ^ Rational
-function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Rational{T}) where {
-        T <: Integer}
-    R = tropical_semiring(max)
-    return R(Rational(a) * b)
-end
-
-# TropicalSemiringElem ^ Float64
-function Base.:^(a::Oscar.TropicalSemiringElem{typeof(max)}, b::Float64)
-    R = tropical_semiring(max)
-    return R(rationalize(Float64(Rational(a)) * b))
 end
 
 #==============================================================================#
