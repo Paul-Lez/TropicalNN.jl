@@ -4,7 +4,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
     R = tropical_semiring(max)
     highs_mode = HiGHSMode()
     oscar_mode = OscarMode()
-    candidate_region(candidate) = candidate[2]
+    candidate_region(region) = only(region)
     candidate_is_feasible(candidate) = TropicalNN.is_feasible(candidate_region(candidate); mode = highs_mode)
 
     @testset verbose = true "HiGHS thread count" begin
@@ -24,8 +24,11 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         u = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         regions_highs = TropicalNN.linear_regions(u; mode = highs_mode)
+        @test regions_highs isa LinearRegions
         @test length(regions_highs) == 2
         @test all(candidate_is_feasible, regions_highs)
+        @test all(region -> candidate_region(region) isa Cell, regions_highs)
+        @test all(region -> !(candidate_region(region) isa TropicalNN._Polyhedra), regions_highs)
         @test all(
             region -> TropicalNN.get_matrix(candidate_region(region); mode = highs_mode) isa
                       Matrix{Float64},
@@ -49,10 +52,10 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
 
         for lr in regions_rat_highs
             @test lr isa LinearRegion
-            @test length(lr.regions) >= 1
-            @test TropicalNN.get_matrix(lr.regions[1]; mode = highs_mode) isa
+            @test length(lr.cells) >= 1
+            @test TropicalNN.get_matrix(lr.cells[1]; mode = highs_mode) isa
                   Matrix{Float64}
-            @test TropicalNN.get_vector(lr.regions[1]; mode = highs_mode) isa
+            @test TropicalNN.get_vector(lr.cells[1]; mode = highs_mode) isa
                   Vector{Float64}
         end
     end
@@ -71,7 +74,8 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
         regions_highs = linear_regions(u; mode = highs_mode)
-        @test first.(regions_highs) == [1, 3]
+        @test [only(region).matrix for region in regions_highs] ==
+              [reshape(Rational{BigInt}[0], 1, 1), reshape(Rational{BigInt}[2], 1, 1)]
         @test all(
             region -> TropicalNN.is_full_dimensional(
                 candidate_region(region);
@@ -132,7 +136,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         lr = linear_regions(f / f; mode = highs_mode)
         @test lr isa LinearRegions
         @test length(lr) == 1
-        @test length(lr[1].regions) == 2
+        @test length(lr[1].cells) == 2
     end
 
     @testset verbose = true "Repeated linear map (f/f) - 1D, 6 monomials" begin
@@ -144,8 +148,8 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         lr6 = linear_regions(f6 / f6; mode = highs_mode)
         @test lr6 isa LinearRegions
         @test length(lr6) == 1
-        @test length(lr6[1].regions) == 6
-        for piece in lr6[1].regions
+        @test length(lr6[1].cells) == 6
+        for piece in lr6[1].cells
             @test TropicalNN.is_full_dimensional(piece; mode = highs_mode)
         end
     end
@@ -160,8 +164,8 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         lr6_2d = linear_regions(f6_2d / f6_2d; mode = highs_mode)
         @test lr6_2d isa LinearRegions
         @test length(lr6_2d) == 1
-        @test length(lr6_2d[1].regions) == 6
-        for piece in lr6_2d[1].regions
+        @test length(lr6_2d[1].cells) == 6
+        for piece in lr6_2d[1].cells
             @test TropicalNN.is_full_dimensional(piece; mode = highs_mode)
         end
     end

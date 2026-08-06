@@ -10,7 +10,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
     rational_region_signature(regions) = (
         length(regions), sort([length(region) for region in regions]))
     rational_piece_count(regions) = sum([length(region) for region in regions])
-    candidate_region(candidate) = candidate[2]
+    candidate_region(region) = only(region)
     candidate_is_feasible(candidate, mode) = TropicalNN.is_feasible(candidate_region(candidate); mode = mode)
     general_full_dimensional_flags(regions,
         mode) = [TropicalNN.is_full_dimensional(candidate_region(region); mode = mode)
@@ -79,9 +79,10 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
 
+        @test oscar_regions isa LinearRegions
         @test length(oscar_regions) == 2
         @test all(region -> candidate_is_feasible(region, oscar_mode), oscar_regions)
-        @test all(region -> candidate_region(region) isa Oscar.Polyhedron, oscar_regions)
+        @test all(region -> candidate_region(region) isa Cell, oscar_regions)
 
         highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
@@ -90,6 +91,9 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
               count(region -> candidate_is_feasible(region, highs_mode), highs_regions)
         @test [candidate_is_feasible(region, highs_mode) for region in highs_regions] ==
               [true, true]
+        @test highs_regions isa LinearRegions
+        @test all(region -> candidate_region(region) isa Cell, highs_regions)
+        @test all(region -> !(candidate_region(region) isa TropicalNN._Polyhedra), highs_regions)
         @test all(
             region -> TropicalNN.get_matrix(candidate_region(region); mode = highs_mode) isa
                       Matrix{Float64},
@@ -98,6 +102,12 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             region -> TropicalNN.get_vector(candidate_region(region); mode = highs_mode) isa
                       Vector{Float64},
             highs_regions)
+
+        for mode in (oscar_mode, highs_mode)
+            partition = TropicalNN._signomial_region_partition([f]; mode = mode)
+            @test all(cell -> cell isa TropicalNN._Cell{Tuple{Int}}, partition)
+            @test sort([only(cell.data) for cell in partition]) == [1, 2]
+        end
     end
 
     @testset verbose = true "Polynomial mode enumeration on edge cases" begin
@@ -127,8 +137,12 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 general_oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
                 general_highs_regions = TropicalNN.linear_regions(f; mode = highs_mode)
 
-                @test first.(general_oscar_regions) == expected_indices
-                @test first.(general_highs_regions) == expected_indices
+                expected_matrices = [permutedims(collect(TropicalNN.get_exp(f, i)))
+                                     for i in expected_indices]
+                @test [only(region).matrix for region in general_oscar_regions] ==
+                      expected_matrices
+                @test [only(region).matrix for region in general_highs_regions] ==
+                      expected_matrices
                 @test all(
                     region -> candidate_is_feasible(region, oscar_mode),
                     general_oscar_regions
@@ -159,7 +173,11 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 [has_empty_region, constant];
                 mode = mode
             )
-            @test first.(regions) == [(1, 1), (3, 1)]
+            expected_matrices = [
+                reshape(Rational{BigInt}[0, 0], 2, 1),
+                reshape(Rational{BigInt}[2, 0], 2, 1)
+            ]
+            @test [only(region).matrix for region in regions] == expected_matrices
             @test all(region -> candidate_is_feasible(region, mode), regions)
         end
     end
@@ -216,6 +234,22 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 region in general_highs_regions for piece in region
                 )
             end
+        end
+
+        @testset "Cells store constraints and affine maps" begin
+            regions = linear_regions(max_xy / constant_2d; mode = oscar_mode)
+            cells = [cell for region in regions for cell in region]
+
+            @test all(cell -> cell isa Cell, cells)
+            @test first(regions).cells == collect(first(regions))
+            @test all(cell -> size(cell.A, 1) == length(cell.b), cells)
+            @test all(cell -> size(cell.matrix, 1) == length(cell.offset), cells)
+            @test Set((Tuple(vec(cell.matrix)), Tuple(cell.offset)) for cell in cells) ==
+                  Set([
+                ((0 // 1, 1 // 1), (0 // 1,)),
+                ((1 // 1, 0 // 1), (0 // 1,))
+            ])
+            @test fieldnames(typeof(first(cells))) == (:A, :b, :matrix, :offset)
         end
     end
 

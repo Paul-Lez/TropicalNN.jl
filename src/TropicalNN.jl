@@ -51,6 +51,7 @@ export
        OscarMode,
        HiGHSMode,
        linear_regions,
+       Cell,
        LinearRegion,
        LinearRegions,
        hoffman_constant,

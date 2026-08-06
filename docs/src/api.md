@@ -5,6 +5,7 @@
 ```@docs
 Signomial
 RationalSignomial
+Cell
 LinearRegion
 LinearRegions
 ```

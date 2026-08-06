@@ -22,7 +22,8 @@ try
 
         regions = linear_regions(f; mode = HiGHSMode(), workers = pool)
         @test length(regions) == 3
-        @test all(region -> TropicalNN.is_feasible(region[2]; mode = HiGHSMode()), regions)
+        @test all(region -> TropicalNN.is_feasible(only(region); mode = HiGHSMode()), regions)
+        @test all(region -> only(region) isa Cell, regions)
 
         constant = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         max_x = Signomial([R(0), R(0)], [[0//1, 0//1], [1//1, 0//1]]; sorted = false)

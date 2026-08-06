@@ -76,8 +76,8 @@ end
     lr = TropicalNN.linear_regions(f_const / g_const; mode = oscar_mode)
 
     @test length(lr) == 1
-    @test length(lr[1].regions) == 1
-    @test Oscar.is_feasible(lr[1].regions[1])
+    @test length(lr[1].cells) == 1
+    @test TropicalNN.is_feasible(lr[1].cells[1]; mode = OscarMode())
 
     f2 = Signomial([R(7)], [[0//1, 0//1]]; sorted = false)
     g2 = Signomial([R(2)], [[0//1, 0//1]]; sorted = false)

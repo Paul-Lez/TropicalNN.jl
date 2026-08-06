@@ -241,26 +241,27 @@ Return the public cell data and omit internal computation data.
 Cell(cell::_Cell) = Cell(cell.A, cell.b, cell.matrix, cell.offset)
 
 @doc raw"""
-    LinearRegion{T}
+    LinearRegion{C}
 
-One linear region of a tropical signomial or rational signomial.
+One linear region of a tropical signomial or rational signomial. A linear
+region can contain more than one affine cell.
 """
-struct LinearRegion{T}
-    regions::Vector{T}
+struct LinearRegion{C <: Cell}
+    cells::Vector{C}
 end
 
-Base.length(lr::LinearRegion) = length(lr.regions)
-Base.iterate(lr::LinearRegion) = iterate(lr.regions)
-Base.iterate(lr::LinearRegion, state) = iterate(lr.regions, state)
-Base.getindex(lr::LinearRegion, i::Int) = lr.regions[i]
+Base.length(lr::LinearRegion) = length(lr.cells)
+Base.iterate(lr::LinearRegion) = iterate(lr.cells)
+Base.iterate(lr::LinearRegion, state) = iterate(lr.cells, state)
+Base.getindex(lr::LinearRegion, i::Int) = lr.cells[i]
 
 @doc raw"""
-    LinearRegions{T}
+    LinearRegions{C}
 
 Result of `linear_regions`. Each element is a `LinearRegion`.
 """
-struct LinearRegions{T}
-    regions::Vector{LinearRegion{T}}
+struct LinearRegions{C <: Cell}
+    regions::Vector{LinearRegion{C}}
 end
 
 Base.length(lrs::LinearRegions) = length(lrs.regions)
@@ -829,15 +830,14 @@ end
 """
     linear_regions(f::Signomial; mode, workers=nothing)
 
-Return the linear regions of `f` as `(index, region)` pairs.
+Return the linear regions of `f`.
 """
 function linear_regions(
         f::Signomial;
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    vector_regions = linear_regions([f]; mode = mode, workers = workers)
-    return [(only(index), region) for (index, region) in vector_regions]
+    return linear_regions([f]; mode = mode, workers = workers)
 end
 
 """
@@ -874,17 +874,17 @@ function _intersect_linear_region_partitions(
 end
 
 """
-    linear_regions(f::AbstractVector{<:Signomial}; mode, workers=nothing)
+    _signomial_region_partition(f; mode, workers=nothing)
 
-Return the linear regions of `f` as `(indices, region)` pairs.
+Return the common dominance-cell partition of the signomial vector `f`.
+Each cell stores its active monomial indices as internal data.
 """
-function linear_regions(
+function _signomial_region_partition(
         f::AbstractVector{<:Signomial};
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    regions = []
-    isempty(f) && return regions
+    isempty(f) && return _Cell[]
 
     linear_regions_vec = map(f) do signomial
         region_data = _linear_region_data_parallel(signomial, mode, workers)
@@ -892,7 +892,33 @@ function linear_regions(
                 for (i, data) in pairs(region_data) if data[3]]
     end
 
-    return _intersect_linear_region_partitions(linear_regions_vec; mode = mode)
+    partition = _intersect_linear_region_partitions(linear_regions_vec; mode = mode)
+    return map(partition) do (indices, region)
+        A, b = _region_constraint_data(region; mode = mode)
+        affine_key = [(Rational(get_coeff(signomial, index)),
+                          collect(get_exp(signomial, index)))
+                      for (signomial, index) in zip(f, indices)]
+        matrix, offset = _affine_formula_from_linear_map_key(affine_key)
+        return _Cell(A, b, matrix, offset, indices)
+    end
+end
+
+"""
+    linear_regions(f::AbstractVector{<:Signomial}; mode, workers=nothing)
+
+Return the linear regions of `f`.
+"""
+function linear_regions(
+        f::AbstractVector{<:Signomial};
+        mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+)
+    partition = _signomial_region_partition(f; mode = mode, workers = workers)
+    regions = LinearRegion{Cell}[]
+    for cell in partition
+        push!(regions, LinearRegion(Cell[Cell(cell)]))
+    end
+    return LinearRegions(regions)
 end
 
 """
@@ -958,39 +984,33 @@ function _region_constraint_data(region::_Polyhedra; mode::_HiGHS)
 end
 
 """
-    _partition_constraint_data(regions; mode)
-
-Convert `(index, region)` partition entries to `(index, A, b)` entries for
-intersection checks and distributed transport.
-"""
-function _partition_constraint_data(regions; mode::LinearRegionsCalculationMode)
-    return map(regions) do entry
-        index, region = entry
-        A, b = _region_constraint_data(region; mode = mode)
-        return (index, A, b)
-    end
-end
-
-"""
-    _rational_region_intersections_chunk((f, g, numerator, denominator, pairs, mode))
+    _rational_region_intersections_chunk((numerator, denominator, pairs, mode))
 
 Test the requested numerator/denominator partition pairs for full-dimensional
-intersection. Return the affine-map key and constraint data for each accepted
-intersection.
+intersection. Return an internal cell for each accepted intersection.
 The input is a tuple so we can directly pass this to `pmap`.
 """
 function _rational_region_intersections_chunk(args)
-    f, g, lin_f, lin_g, pairs, mode = args
-    intersections = Vector{Tuple{Any, Any, Any}}()
+    numerator, denominator, pairs, mode = args
+    intersections = _Cell[]
 
     for (i, j) in pairs
-        idx_f, A_f, b_f = lin_f[i]
-        idx_g, A_g, b_g = lin_g[j]
-        A = vcat(A_f, A_g)
-        b = vcat(b_f, b_g)
+        numerator_cell = numerator[i]
+        denominator_cell = denominator[j]
+        A = vcat(numerator_cell.A, denominator_cell.A)
+        b = vcat(numerator_cell.b, denominator_cell.b)
         intersection = make_polyhedron(A, b; mode = mode)
         if is_full_dimensional(intersection; mode = mode)
-            push!(intersections, (_linear_map_key(f, g, idx_f, idx_g), A, b))
+            push!(
+                intersections,
+                _Cell(
+                    A,
+                    b,
+                    numerator_cell.matrix - denominator_cell.matrix,
+                    numerator_cell.offset - denominator_cell.offset,
+                    _boundary_sides_from_constraints(A, b)
+                )
+            )
         end
     end
 
@@ -998,29 +1018,27 @@ function _rational_region_intersections_chunk(args)
 end
 
 """
-    _rational_region_intersections_parallel(f, g, numerator, denominator, mode, workers)
+    _rational_region_intersections_parallel(numerator, denominator, mode, workers)
 
 Test every numerator/denominator partition pair for full-dimensional
 intersection. Use `workers` to evaluate pair chunks in parallel when supplied.
 """
 function _rational_region_intersections_parallel(
-        f,
-        g,
-        lin_f,
-        lin_g,
+        numerator::AbstractVector{<:_Cell},
+        denominator::AbstractVector{<:_Cell},
         mode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
     pairs = Tuple{Int, Int}[]
-    for i in Base.eachindex(lin_f)
-        for j in Base.eachindex(lin_g)
+    for i in Base.eachindex(numerator)
+        for j in Base.eachindex(denominator)
             push!(pairs, (i, j))
         end
     end
 
-    isempty(pairs) && return Tuple{Any, Any, Any}[]
+    isempty(pairs) && return _Cell[]
     if workers === nothing || length(pairs) <= 1
-        return _rational_region_intersections_chunk((f, g, lin_f, lin_g, pairs, mode))
+        return _rational_region_intersections_chunk((numerator, denominator, pairs, mode))
     end
 
     _assert_tropicalnn_loaded(workers)
@@ -1029,45 +1047,71 @@ function _rational_region_intersections_parallel(
     chunk_results = Distributed.pmap(
         _rational_region_intersections_chunk,
         workers,
-        [(f, g, lin_f, lin_g, pair_chunk, mode) for pair_chunk in pair_chunks]
+        [(numerator, denominator, pair_chunk, mode) for pair_chunk in pair_chunks]
     )
     return Base.reduce(vcat, chunk_results)
 end
 
 """
-    _linear_regions_from_region_map(map_to_regions, mode)
+    _cell_components(cells; mode)
 
-Group full-dimensional polyhedra with the same affine map into
-`LinearRegion` objects. This joins pieces only when they meet with codimension
-at most one.
+Return index sets for components formed by codimension-at-most-one adjacency.
 """
-function _linear_regions_from_region_map(
-        map_to_regions::Dict{Any, Vector{T}},
+function _cell_components(
+        cells::AbstractVector{<:_Cell};
         mode::LinearRegionsCalculationMode
-) where {T}
-    linear_regions = LinearRegion{T}[]
-    for regions in values(map_to_regions)
-        region_components = if length(regions) == 1
-            (regions,)
-        else
-            has_intersection = Dict()
-            for (region_1, region_2) in Combinatorics.combinations(regions, 2)
-                has_intersection[(
-                    region_1, region_2)] = regions_intersect_codimension_le_one(
-                    region_1, region_2; mode = mode)
-            end
+)
+    length(cells) <= 1 && return [collect(Base.eachindex(cells))]
 
-            components(regions, has_intersection)
+    graph = Graphs.SimpleGraph(length(cells))
+    for (i, j) in Combinatorics.combinations(collect(Base.eachindex(cells)), 2)
+        if regions_intersect_codimension_le_one(cells[i], cells[j]; mode = mode)
+            Graphs.add_edge!(graph, i, j)
         end
+    end
+    return Graphs.connected_components(graph)
+end
 
-        for component in region_components
-            push!(linear_regions, LinearRegion(convert(Vector{T}, component)))
+"""
+    _group_cells(cells; mode)
+
+Group cells by affine-map equality and split each group into connected linear
+regions. Return the constituent cells, the linear regions, the number of
+affine-map groups, and the number of connected components.
+"""
+function _group_cells(
+        cells::AbstractVector{C};
+        mode::LinearRegionsCalculationMode
+) where {C <: _Cell}
+    isempty(cells) && throw(ArgumentError(
+        "No full-dimensional linear regions were found for the rational signomial"
+    ))
+
+    map_to_indices = Dict{Any, Vector{Int}}()
+    for (index, cell) in pairs(cells)
+        key = _affine_map_key(cell.matrix, cell.offset)
+        push!(get!(map_to_indices, key, Int[]), index)
+    end
+
+    grouped_cells = C[]
+    linear_regions = LinearRegion{Cell}[]
+    component_count = 0
+    for indices in values(map_to_indices)
+        affine_cells = cells[indices]
+        for component_indices in _cell_components(affine_cells; mode = mode)
+            component_count += 1
+            component = affine_cells[component_indices]
+            append!(grouped_cells, component)
+            push!(linear_regions, LinearRegion(Cell[Cell(cell) for cell in component]))
         end
     end
 
-    isempty(linear_regions) &&
-        throw(ArgumentError("No full-dimensional linear regions were found for the rational signomial"))
-    return LinearRegions(linear_regions)
+    return (
+        grouped_cells,
+        LinearRegions(linear_regions),
+        length(map_to_indices),
+        component_count
+    )
 end
 
 """
@@ -1090,37 +1134,16 @@ function linear_regions(
     any(Q -> length(Q.den) == 0, q) &&
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    lin_f = TropicalNN.linear_regions(f; mode = mode, workers = workers)
-    lin_g = TropicalNN.linear_regions(g; mode = mode, workers = workers)
-    region_type = typeof(lin_f[begin][2])
-    if region_type != typeof(lin_g[begin][2])
-        throw(ArgumentError(
-            "Numerator and denominator regions use incompatible representations: " *
-            "$region_type and $(typeof(lin_g[begin][2]))",
-        ))
-    end
-    map_to_regions = Dict{Any, Vector{region_type}}()
-
-    partition_f = _partition_constraint_data(lin_f; mode = mode)
-    partition_g = _partition_constraint_data(lin_g; mode = mode)
-    intersections = _rational_region_intersections_parallel(
-        f,
-        g,
-        partition_f,
-        partition_g,
+    numerator = _signomial_region_partition(f; mode = mode, workers = workers)
+    denominator = _signomial_region_partition(g; mode = mode, workers = workers)
+    cells = _rational_region_intersections_parallel(
+        numerator,
+        denominator,
         mode,
         workers
     )
-    for (key, A, b) in intersections
-        intersection = make_polyhedron(A, b; mode = mode)
-        if haskey(map_to_regions, key)
-            push!(map_to_regions[key], intersection)
-        else
-            map_to_regions[key] = region_type[intersection]
-        end
-    end
-
-    return _linear_regions_from_region_map(map_to_regions, mode)
+    _, regions, _, _ = _group_cells(cells; mode = mode)
+    return regions
 end
 
 """

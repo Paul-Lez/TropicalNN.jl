@@ -201,8 +201,10 @@ using Oscar: QQFieldElem, tropical_semiring
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
         mode = OscarMode()
         regions = TropicalNN.linear_regions(f_1d; mode = mode)
-        polys = [region
-                 for (_, region) in regions if TropicalNN.is_feasible(region; mode = mode)]
+        polys = [TropicalNN.make_polyhedron(cell; mode = mode)
+                 for region in regions
+                 for cell in region
+                 if TropicalNN.is_feasible(cell; mode = mode)]
         pts = TropicalNN.interior_points(polys)
         # one interior point per polyhedron
         @test length(pts) == length(polys)

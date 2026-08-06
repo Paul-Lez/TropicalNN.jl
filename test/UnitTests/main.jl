@@ -51,9 +51,10 @@ using Test, TropicalNN, Oscar
         # One distinct linear map → one LinearRegion
         @test length(lr) == 1
         # That LinearRegion contains both half-planes
-        @test length(lr[1].regions) == 2
+        @test length(lr[1].cells) == 2
         # Every convex piece is full-dimensional
-        @test all(Oscar.is_fulldimensional(p) for p in lr[1].regions)
+        @test all(TropicalNN.is_full_dimensional(cell; mode = oscar_mode)
+        for cell in lr[1])
     end
 
     # linear_regions repeated-map path — 6 monomials, 1 variable
@@ -71,8 +72,9 @@ using Test, TropicalNN, Oscar
         lr6 = TropicalNN.linear_regions(f6 / f6; mode = oscar_mode)
         @test lr6 isa LinearRegions
         @test length(lr6) == 1
-        @test length(lr6[1].regions) == 6
-        @test all(Oscar.is_fulldimensional(p) for p in lr6[1].regions)
+        @test length(lr6[1].cells) == 6
+        @test all(TropicalNN.is_full_dimensional(cell; mode = oscar_mode)
+        for cell in lr6[1])
     end
 
     # linear_regions repeated-map path — 6 monomials, 2 variables
@@ -93,8 +95,9 @@ using Test, TropicalNN, Oscar
         lr6_2d = linear_regions(f6_2d / f6_2d; mode = oscar_mode)
         @test lr6_2d isa LinearRegions
         @test length(lr6_2d) == 1
-        @test length(lr6_2d[1].regions) == 6
-        @test all(Oscar.is_fulldimensional(p) for p in lr6_2d[1].regions)
+        @test length(lr6_2d[1].cells) == 6
+        @test all(TropicalNN.is_full_dimensional(cell; mode = oscar_mode)
+        for cell in lr6_2d[1])
     end
 
     # Monomial elimination
