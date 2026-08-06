@@ -10,7 +10,7 @@ b1 = Rational{BigInt}[1, 1]
 W2 = Rational{BigInt}[1 -1]
 b2 = Rational{BigInt}[0]
 
-f = only(mlp_to_trop([W1, W2], [b1, b2]))
+f = only(tropicalize([W1, W2], [b1, b2]))
 
 println("Tropical rational function for the network output:")
 println("  Numerator monomials:   ", monomial_count(f.num))

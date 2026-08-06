@@ -135,15 +135,17 @@ function _mlp_to_tropical_layers(
 end
 
 """
-    mlp_to_trop(linear_maps, bias, thresholds;
+    tropicalize(linear_maps, bias, thresholds;
                 quicksum=false, strong_elim=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
 
 Convert an MLP with an affine output layer to tropical rational functions.
 Each hidden layer applies `max.(z, thresholds[i])`. Omit `thresholds` to use
 ReLU. The options control batched sums, pruning, and deduplication.
+
+`mlp_to_trop` is a deprecated alias for this function.
 """
-function mlp_to_trop(linear_maps::Vector{Matrix{T}}, bias,
+function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
         quicksum::Bool = false, strong_elim::Bool = false,
         dedup::Bool = false,

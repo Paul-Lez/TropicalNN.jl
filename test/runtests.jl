@@ -15,7 +15,7 @@ else
         "main.jl",
         "polynomial_algebra.jl",
         "signomial.jl",
-        "mlp_to_trop.jl",
+        "tropicalize.jl",
         "hoffman.jl",
         "statistics.jl",
         "linear_regions_calculation_general.jl",

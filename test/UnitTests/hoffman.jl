@@ -94,7 +94,7 @@ using Test, TropicalNN, Random, Oscar
 
     Random.seed!(42)
     w, b, t = random_mlp([2, 2, 1])
-    rmap = mlp_to_trop(w, b, t)[1]
+    rmap = tropicalize(w, b, t)[1]
     h_exact = hoffman_constant(rmap; brute_force = true)
     h_pvz = hoffman_constant(rmap)
     h_upper = upper_hoffman_constant(rmap)
@@ -114,7 +114,7 @@ using Test, TropicalNN, Random, Oscar
 
     Random.seed!(42)
     w, b, t = random_mlp([2, 2, 1])
-    rmap = mlp_to_trop(w, b, t)[1]
+    rmap = tropicalize(w, b, t)[1]
     er_exact = exact_er(rmap)
     er_upper = upper_er(rmap)
     @test isapprox(er_exact, exact_er(rmap; brute_force = true); rtol = 1e-10)

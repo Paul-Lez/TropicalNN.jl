@@ -3,7 +3,7 @@ using Test, TropicalNN, Oscar
 @testset verbose = true "Main" begin
     oscar_mode = OscarMode()
     w, b, t = TropicalNN.random_mlp([3, 2, 1])
-    trop = mlp_to_trop(w, b, t)[1]
+    trop = tropicalize(w, b, t)[1]
     @test length(TropicalNN.linear_regions(trop; mode = oscar_mode)) > 0
     R = tropical_semiring(max)
     f = Signomial([R(1), R(2), R(3)], [[1//1, 0//1], [0//1, 1//1], [1//1, 1//1]]; sorted = false)
@@ -104,6 +104,6 @@ using Test, TropicalNN, Oscar
     expected_pruned = Signomial([R(0), R(0)], [[0//1], [2//1]]; sorted = false)
     @test TropicalNN.prune(u) == expected_pruned
 
-    # TODO: add tests for mlp_to_trop functions and the rest of the tropical algebra functions
+    # TODO: add tests for tropicalize functions and the rest of the tropical algebra functions
 
 end

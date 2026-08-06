@@ -174,7 +174,7 @@ using Oscar: QQFieldElem, tropical_semiring
     # two-dimensional tropical rational map
 
     w, b, t = random_mlp([2, 4, 1])
-    f = mlp_to_trop(w, b, t; strong_elim = true)[1]
+    f = tropicalize(w, b, t; strong_elim = true)[1]
     g = TropicalNN.get_graph(f)
     @test typeof(g) <: MetaGraph
 
@@ -237,7 +237,7 @@ using Oscar: QQFieldElem, tropical_semiring
     @testset verbose = true "interior_points(RationalSignomial) — end-to-end" begin
         # Verify the function runs without error on a rational function
         W, b, t = random_mlp([1, 2, 1])
-        trop = mlp_to_trop(W, b, t)[1]
+        trop = tropicalize(W, b, t)[1]
         result = interior_points(trop)
         @test result isa Dict
         @test length(result) > 0

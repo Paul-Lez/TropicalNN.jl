@@ -115,13 +115,13 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         W_fixed = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b_fixed = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t_fixed = [Rational{BigInt}.([0, 0])]
-        trop_fixed = mlp_to_trop(W_fixed, b_fixed, t_fixed)[1]
+        trop_fixed = tropicalize(W_fixed, b_fixed, t_fixed)[1]
         regions_highs_fixed = linear_regions(trop_fixed; mode = highs_mode)
         regions_oscar_fixed = linear_regions(trop_fixed; mode = oscar_mode)
         @test length(regions_highs_fixed) == length(regions_oscar_fixed)
 
         w, b, t = TropicalNN.random_mlp([2, 2, 1])
-        trop = mlp_to_trop(w, b, t)[1]
+        trop = tropicalize(w, b, t)[1]
         regions_highs = linear_regions(trop; mode = highs_mode)
         @test regions_highs isa LinearRegions
         @test length(regions_highs) > 0
@@ -264,7 +264,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
         W = [Rational{BigInt}.([1 0; 0 1]), Rational{BigInt}.([1 1])]
         b = [Rational{BigInt}.([0, 0]), Rational{BigInt}.([0])]
         t = [Rational{BigInt}.([0, 0])]
-        highs_output = mlp_to_trop(
+        highs_output = tropicalize(
             W,
             b,
             t;
@@ -272,7 +272,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs, MetaGraphsNext
             strong_elim = true,
             elim_mode = mode
         )
-        oscar_output = mlp_to_trop(W, b, t; quicksum = true, strong_elim = true)
+        oscar_output = tropicalize(W, b, t; quicksum = true, strong_elim = true)
         @test collect(monomial_pairs(highs_output[1].num)) ==
               collect(monomial_pairs(oscar_output[1].num))
         @test collect(monomial_pairs(highs_output[1].den)) ==

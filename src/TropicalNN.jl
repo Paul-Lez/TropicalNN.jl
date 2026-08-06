@@ -43,6 +43,7 @@ export
        dedup_monomials,
        monomial_count,
        single_to_trop,
+       tropicalize,
        mlp_to_trop,
        random_mlp,
        random_signomial,
@@ -71,12 +72,13 @@ export
 include("signomial.jl")
 include("rational_signomial.jl")
 include("linear_regions.jl")
-include("mlp_to_trop.jl")
+include("tropicalize.jl")
 include("util.jl")
 include("monomial.jl")
 
 include("hoffman.jl")
 
 include("statistics.jl")
+include("deprecated.jl")
 
 end

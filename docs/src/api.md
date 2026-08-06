@@ -33,7 +33,7 @@ quicksum
 
 ```@docs
 single_to_trop
-mlp_to_trop
+tropicalize
 random_mlp
 random_signomial
 prune

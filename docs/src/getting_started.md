@@ -8,7 +8,7 @@ This example converts an MLP to a tropical rational function, computes its linea
 using TropicalNN
 
 W, b, thresholds = random_mlp([2, 4, 2, 1])
-q = mlp_to_trop(W, b, thresholds)
+q = tropicalize(W, b, thresholds)
 regions = linear_regions(q[1]; mode = HiGHSMode())
 
 println("Linear regions: ", length(regions))
@@ -31,7 +31,7 @@ You can use `quicksum` and `strong_elim` to accelerate computation and reduce in
 
 ```julia
 mode = HiGHSMode(threads = 4)
-q_reduced = mlp_to_trop(
+q_reduced = tropicalize(
     W,
     b,
     thresholds;

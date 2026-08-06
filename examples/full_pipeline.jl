@@ -14,7 +14,7 @@ println("  Layer 1 weight matrix size: ", size(weights[1]))
 println("  Layer 2 weight matrix size: ", size(weights[2]))
 println()
 
-f = only(mlp_to_trop(weights, biases, thresholds;
+f = only(tropicalize(weights, biases, thresholds;
     quicksum = true, strong_elim = true))
 
 println("Tropical rational function:")
