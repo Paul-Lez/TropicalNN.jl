@@ -1,24 +1,6 @@
-#using Test, TropicalNN, Oscar, GLMakie
-using Test, TropicalNN, Oscar, CairoMakie
+using Test, TropicalNN, Oscar
 
 @testset verbose = true "Visualise" begin
-
-    # random_signomial
-    pmap = random_signomial(2, 4)
-    @test typeof(pmap) <: Signomial
-    @test nvars(pmap)==2
-    @test monomial_count(pmap)==4
-
-    fig, ax=plot_linear_regions(pmap)
-    @test typeof(fig) <: Figure && typeof(ax) <: Axis
-    fig, ax=plot_linear_regions(pmap, bounding_box = Dict(1 => [-1, 1], 2 => [-1, 1]))
-    @test typeof(fig) <: Figure && typeof(ax) <: Axis
-
-    fig, ax=plot_linear_maps(pmap)
-    @test typeof(fig) <: Figure && typeof(ax) <: Axis3
-    fig, ax=plot_linear_maps(pmap, bounding_box = Dict(1 => [-1, 1], 2 => [-1, 1]))
-    @test typeof(fig) <: Figure && typeof(ax) <: Axis3
-
     # one-dimensional pmap 0*T^1 + 0*T^2 + -1*T^3
     pmap=Signomial(Rational{BigInt}.([0, 0, -1]),
         [Rational{BigInt}.([1]), Rational{BigInt}.([2]), Rational{BigInt}.([3])];

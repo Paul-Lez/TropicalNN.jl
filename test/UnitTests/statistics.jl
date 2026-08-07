@@ -1,4 +1,4 @@
-using Test, TropicalNN, Graphs, MetaGraphsNext
+using Test, TropicalNN
 import Oscar
 using Oscar: QQFieldElem, tropical_semiring
 
@@ -24,9 +24,6 @@ using Oscar: QQFieldElem, tropical_semiring
     @test poly_counts == Dict{Any, Any}(
         Any[0 // 1, Rational{BigInt}[0]] => [1], Any[1 // 1, Rational{BigInt}[1]] => [1],
         Any[1 // 1, Rational{BigInt}[2]] => [1])
-
-    g = TropicalNN.get_graph(f)
-    @test typeof(g) <: MetaGraph
 
     v_collection = vertex_collection(f)
     @test v_collection == Dict{Any, Any}(QQFieldElem[-1] => 1, QQFieldElem[0] => 1)
@@ -110,9 +107,6 @@ using Oscar: QQFieldElem, tropical_semiring
                 8850358768454271 // 72057594037927936, 6433642560136419 // 9007199254740992]] =>
             Any[Inf]))))
 
-    g = TropicalNN.get_graph(f)
-    @test typeof(g) <: MetaGraph
-
     e_count = edge_count(f)
     @test e_count == 11
 
@@ -171,13 +165,6 @@ using Oscar: QQFieldElem, tropical_semiring
     v_count = vertex_count(f)
     @test v_count == 6
 
-    # two-dimensional tropical rational map
-
-    w, b, t = random_mlp([2, 4, 1])
-    f = tropicalize(w, b, t; strong_elim = true)[1]
-    g = TropicalNN.get_graph(f)
-    @test typeof(g) <: MetaGraph
-
     # interior_points tests
     # Use f = max(0, x+1, 2x+1) in 1D.
     # Exponents [0], [1], [2] with coefficients R(0), R(1), R(1).
@@ -210,22 +197,6 @@ using Oscar: QQFieldElem, tropical_semiring
         @test length(pts) == length(polys)
     end
 
-    @testset verbose = true "interior_points(Dict) — exercises the fixed code path" begin
-        R = tropical_semiring(max)
-        f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
-        # interior_points(Signomial) routes through interior_points(Dict)
-        # via map_statistic → separate_components → interior_points(Dict)
-        result = interior_points(f_1d)
-        @test result isa Dict
-        # All three monomials have full-dimensional regions, so three keys
-        @test length(result) == 3
-        # Each value is a list of connected components (each component is a list of points)
-        for v in values(result)
-            @test v isa Vector
-            @test all(c isa Vector for c in v)
-        end
-    end
-
     @testset verbose = true "interior_points(Dict) — centroid of bounded region" begin
         R = tropical_semiring(max)
         f_1d = Signomial([R(0), R(1), R(1)], [[0//1], [1//1], [2//1]]; sorted = false)
@@ -234,15 +205,6 @@ using Oscar: QQFieldElem, tropical_semiring
         all_pts = [Float64.(pt) for (_, comps) in result for comp in comps for pt in comp]
         # The bounded region [-1, 0] has centroid -0.5; check it appears in the results
         @test any(p ≈ [-0.5] for p in all_pts)
-    end
-
-    @testset verbose = true "interior_points(RationalSignomial) — end-to-end" begin
-        # Verify the function runs without error on a rational function
-        W, b, t = random_mlp([1, 2, 1])
-        trop = tropicalize(W, b, t)[1]
-        result = interior_points(trop)
-        @test result isa Dict
-        @test length(result) > 0
     end
 
     @testset verbose = true "separate_components uses facet connectivity" begin

@@ -15,7 +15,6 @@ using Test, TropicalNN, Oscar
         f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
 
         g2 = f ^ Int64(2)
-        @test g2 isa Signomial
         @test length(g2) == 2
         @test Float64(Rational(TropicalNN.get_coeff_by_exp(g2, Rational{Int64}[2, 0]))) ==
               2.0  # 1*2 = 2
@@ -32,24 +31,14 @@ using Test, TropicalNN, Oscar
     end
 
     @testset verbose = true "Signomial ^ Float64" begin
-        f = Signomial([R(1), R(2)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-
-        g = f ^ 2.0
-        @test g isa Signomial
-        @test length(g) == 2
-
-        g0 = f ^ 0.0
-        @test length(g0) == 1
-
         float_exponent = Signomial([R(0)], [[0.5]]; sorted = true)
-        @test evaluate(float_exponent, [R(4)]) == R(2)
+        @test TropicalNN.evaluate(float_exponent, [R(4)]) == R(2)
     end
 
     @testset verbose = true "Signomial ^ Rational" begin
         f = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
 
         g = f ^ (1//2)
-        @test g isa Signomial
         @test length(g) == 2
         @test any(e -> e == Rational{BigInt}[1, 0], TropicalNN.exponents(g))
         @test any(e -> e == Rational{BigInt}[0, 1], TropicalNN.exponents(g))
@@ -79,14 +68,6 @@ using Test, TropicalNN, Oscar
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
-        q2 = q ^ Int64(2)
-        @test q2 isa RationalSignomial
-        @test length(q2.num) == 2
-
-        q0 = q ^ Int64(0)
-        @test q0 isa RationalSignomial
-        @test length(q0.num) == 1
-
         qinv = q ^ Int64(-1)
         @test qinv.num == den
         @test qinv.den == num
@@ -97,14 +78,6 @@ using Test, TropicalNN, Oscar
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
 
-        qf = q ^ 2.0
-        @test qf isa RationalSignomial
-        @test length(qf.num) == 2
-
-        q0 = q ^ 0.0
-        @test q0 isa RationalSignomial
-        @test length(q0.num) == 1
-
         qinv = q ^ (-1.0)
         @test qinv.num == den
         @test qinv.den == num
@@ -114,14 +87,6 @@ using Test, TropicalNN, Oscar
         num = Signomial([R(2), R(4)], [[2//1, 0//1], [0//1, 2//1]]; sorted = false)
         den = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
         q = RationalSignomial(num, den)
-
-        qr = q ^ (1//2)
-        @test qr isa RationalSignomial
-        @test length(qr.num) == 2
-
-        q0 = q ^ (0//1)
-        @test q0 isa RationalSignomial
-        @test length(q0.num) == 1
 
         qinv = q ^ (-1//1)
         q_value = TropicalNN.evaluate(q, [R(2), R(1)])

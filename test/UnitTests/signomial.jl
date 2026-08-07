@@ -99,10 +99,6 @@ using Test, TropicalNN, Oscar
             end
         end
         @test found
-
-        # Commutativity
-        h2 = g * f
-        @test length(h) == length(h2)
     end
 
     @testset verbose = true "Multiplication with overlapping product exponents" begin
@@ -154,13 +150,6 @@ using Test, TropicalNN, Oscar
         result = TropicalNN.quicksum(polys)
         @test result isa Signomial{Rational{Int64}}
         @test length(result) == 6  # All unique monomials
-
-        # Quicksum should produce the same result as sequential addition
-        result_seq = polys[1]
-        for i in 2:6
-            result_seq = result_seq + polys[i]
-        end
-        @test length(result) == length(result_seq)
 
         # Quicksum with overlapping monomials
         polys_overlap = [

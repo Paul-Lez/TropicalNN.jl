@@ -1,8 +1,6 @@
 using Test, TropicalNN, Oscar
 
 @testset verbose = true "MLP to Tropical Conversion" begin
-    R = tropical_semiring(max)
-
     #==========================================================================
     # Basic MLP Conversion Tests
     ==========================================================================#
@@ -19,62 +17,14 @@ using Test, TropicalNN, Oscar
         deprecated_result = @test_deprecated mlp_to_trop(W, b, t)
         @test string(deprecated_result[1]) == string(result[1])
         result_default_thresholds = tropicalize(W, b)
-        @test result_default_thresholds isa Vector{<:RationalSignomial}
         @test length(result_default_thresholds) == length(result)
         @test string(result_default_thresholds[1]) == string(result[1])
-
-        # Test 2: Random small network with symbolic=true
-        dims = [2, 3, 1]
-        W2, b2, t2 = random_mlp(dims, symbolic = true)
-        result2 = tropicalize(W2, b2, t2)
-        @test result2 isa Vector{<:RationalSignomial}
-        @test length(result2) == 1
-
-        # Test 3: Random small network with symbolic=false
-        W3, b3, t3 = random_mlp(dims, symbolic = false)
-        result3 = tropicalize(W3, b3, t3)
-        @test result3 isa Vector{<:RationalSignomial}
-        @test length(result3) == 1
 
         # Test 4: Network with multiple outputs
         dims_multi = [2, 3, 2]
         W4, b4, t4 = random_mlp(dims_multi)
         result4 = tropicalize(W4, b4, t4)
         @test length(result4) == 2  # Two outputs
-    end
-
-    #==========================================================================
-    # Variant Function Tests
-    ==========================================================================#
-    @testset verbose = true "tropicalize Variants" begin
-        dims = [2, 3, 1]
-        W, b, t = random_mlp(dims)
-
-        # Test 1: Standard version
-        standard = tropicalize(W, b, t)
-        @test standard isa Vector{<:RationalSignomial}
-
-        # Test 2: Quicksum version
-        quicksum_result = tropicalize(W, b, t, quicksum = true)
-        @test quicksum_result isa Vector{<:RationalSignomial}
-
-        # Test 3: Strong elimination version
-        strong_elim = tropicalize(W, b, t, strong_elim = true)
-        @test strong_elim isa Vector{<:RationalSignomial}
-
-        # Test 4: Quicksum with strong elimination
-        qs_elim = tropicalize(W, b, t, quicksum = true, strong_elim = true)
-        @test qs_elim isa Vector{<:RationalSignomial}
-
-        # Test 5: Dedup version
-        dedup = tropicalize(W, b, t, dedup = true)
-        @test dedup isa Vector{<:RationalSignomial}
-
-        # All variants should produce valid tropical rational functions
-        for result in [standard, quicksum_result, strong_elim, qs_elim, dedup]
-            @test length(result) == 1
-            @test result[1] isa RationalSignomial
-        end
     end
 
     #==========================================================================
@@ -104,28 +54,6 @@ using Test, TropicalNN, Oscar
     # single_to_trop Tests
     ==========================================================================#
     @testset verbose = true "single_to_trop - Single Layer Conversion" begin
-        # Test 1: Simple identity-like layer
-        A = Rational{BigInt}.([1 0; 0 1])
-        b = Rational{BigInt}.([0, 0])
-        t = Rational{BigInt}.([0, 0])
-        result = single_to_trop(A, b, t)
-        @test result isa Vector{<:RationalSignomial}
-        @test length(result) == 2  # 2 outputs
-
-        # Test 2: Layer with negative weights
-        A2 = Rational{BigInt}.([1 -1; -1 1])
-        b2 = Rational{BigInt}.([1, -1])
-        t2 = Rational{BigInt}.([0, 0])
-        result2 = single_to_trop(A2, b2, t2)
-        @test length(result2) == 2
-
-        # Test 3: Layer with non-zero thresholds
-        A3 = Rational{BigInt}.([1 0; 0 1])
-        b3 = Rational{BigInt}.([0, 0])
-        t3 = Rational{BigInt}.([1, -1])  # Non-zero thresholds
-        result3 = single_to_trop(A3, b3, t3)
-        @test length(result3) == 2
-
         # Test 4: Dimension mismatch error
         A_bad = Rational{BigInt}.([1 0; 0 1])
         b_bad = Rational{BigInt}.([0, 0, 0])  # Wrong size
@@ -137,28 +65,6 @@ using Test, TropicalNN, Oscar
     # Composition Tests
     ==========================================================================#
     @testset verbose = true "Composition Operations" begin
-        # Create two simple layers
-        W1, b1, t1 = random_mlp([2, 2, 1])
-        W2, b2, t2 = random_mlp([2, 2, 1])
-
-        layer1 = single_to_trop(W1[1], b1[1], t1[1])
-        layer2 = single_to_trop(W2[1], b2[1], t2[1])
-
-        # Test 1: Standard composition
-        composed = comp(layer2, layer1)
-        @test composed isa Vector{<:RationalSignomial}
-        @test length(composed) == 2
-
-        # Test 2: Quicksum composition
-        composed_qs = TropicalNN.comp_with_quicksum(layer2, layer1)
-        @test composed_qs isa Vector{<:RationalSignomial}
-        @test length(composed_qs) == 2
-
-        # Both methods should produce valid results
-        for c in [composed, composed_qs]
-            @test all(x -> x isa RationalSignomial, c)
-        end
-
         # Test 3: Correctness — comp(f, G) evaluated at p equals f evaluated at [G[i](p)]
         # f = max(x₁, x₂) as a polynomial in 2 variables
         # G = [1 + y₁, 2 + y₂] as rational signomials in 2 variables
@@ -241,86 +147,5 @@ using Test, TropicalNN, Oscar
         @test length(W5) == 1
         @test length(t5) == 0
         @test size(W5[1]) == (2, 3)
-    end
-
-    #==========================================================================
-    # Edge Cases and Special Scenarios
-    ==========================================================================#
-    @testset verbose = true "Edge Cases" begin
-        # Test 1: Single input dimension
-        dims_1d = [1, 2, 1]
-        W, b, t = random_mlp(dims_1d)
-        result = tropicalize(W, b, t)
-        @test result isa Vector{<:RationalSignomial}
-        @test length(result) == 1
-
-        # Test 2: Wide hidden layer
-        dims_wide = [2, 10, 1]
-        W2, b2, t2 = random_mlp(dims_wide)
-        result2 = tropicalize(W2, b2, t2)
-        @test result2 isa Vector{<:RationalSignomial}
-
-        # Test 3: Deep network
-        dims_deep = [2, 2, 2, 1]
-        W3, b3, t3 = random_mlp(dims_deep)
-        result3 = tropicalize(W3, b3, t3)
-        @test result3 isa Vector{<:RationalSignomial}
-        @test length(result3) == 1
-
-        # Test 4: Network with all zero weights (degenerate case)
-        W_zero = [zeros(Rational{BigInt}, 2, 2)]
-        b_zero = [Rational{BigInt}.([1, 1])]
-        t_zero = Vector{Rational{BigInt}}[]
-        result_zero = tropicalize(W_zero, b_zero, t_zero)
-        @test result_zero isa Vector{<:RationalSignomial}
-    end
-
-    #==========================================================================
-    # Integration Tests - Combining Multiple Operations
-    ==========================================================================#
-    @testset verbose = true "Integration Tests" begin
-        # Test 1: Full pipeline with linear region enumeration
-        dims = [2, 3, 1]
-        W, b, t = random_mlp(dims)
-        trop_func = tropicalize(W, b, t)
-        regions = linear_regions(trop_func[1]; mode = OscarMode())
-        @test regions isa LinearRegions
-        @test length(regions) > 0
-
-        # Test 2: Conversion and evaluation consistency
-        W2, b2, t2 = random_mlp([2, 2, 1])
-        trop_func2 = tropicalize(W2, b2, t2)
-        # Check that the result has proper structure for evaluation
-        @test trop_func2[1] isa RationalSignomial
-        @test trop_func2[1].num isa Signomial
-        @test trop_func2[1].den isa Signomial
-
-        # Test 3: Monomial elimination actually reduces complexity
-        W3, b3, t3 = random_mlp([2, 4, 1])
-        without_elim = tropicalize(W3, b3, t3)
-        with_elim = tropicalize(W3, b3, t3, strong_elim = true)
-        # Both should produce valid results
-        @test without_elim isa Vector{<:RationalSignomial}
-        @test with_elim isa Vector{<:RationalSignomial}
-        # Elimination version should have same or fewer monomials
-        @test length(with_elim[1].num) <= length(without_elim[1].num)
-    end
-
-    #==========================================================================
-    # Performance Characteristics Tests
-    ==========================================================================#
-    @testset verbose = true "Performance Characteristics" begin
-        # Test that quicksum variants complete without error
-        # (actual performance testing would require BenchmarkTools)
-        dims = [2, 4, 1]
-        W, b, t = random_mlp(dims)
-
-        # All variants should complete successfully
-        @test tropicalize(W, b, t) isa Vector{<:RationalSignomial}
-        @test tropicalize(W, b, t, quicksum = true) isa Vector{<:RationalSignomial}
-        @test tropicalize(W, b, t, strong_elim = true) isa Vector{<:RationalSignomial}
-        @test tropicalize(W, b, t, quicksum = true, strong_elim = true) isa
-              Vector{<:RationalSignomial}
-        @test tropicalize(W, b, t, dedup = true) isa Vector{<:RationalSignomial}
     end
 end

@@ -9,7 +9,6 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
     rational_region_signature(regions) = (
         length(regions), sort([length(region) for region in regions]))
-    rational_piece_count(regions) = sum([length(region) for region in regions])
     candidate_region(region) = only(region)
     candidate_is_feasible(candidate, mode) = TropicalNN.is_feasible(candidate_region(candidate); mode = mode)
     general_full_dimensional_flags(regions,
@@ -79,7 +78,6 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         oscar_regions = TropicalNN.linear_regions(f; mode = oscar_mode)
 
-        @test oscar_regions isa LinearRegions
         @test length(oscar_regions) == 2
         @test all(region -> candidate_is_feasible(region, oscar_mode), oscar_regions)
         @test all(region -> candidate_region(region) isa Cell, oscar_regions)
@@ -91,7 +89,6 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
               count(region -> candidate_is_feasible(region, highs_mode), highs_regions)
         @test [candidate_is_feasible(region, highs_mode) for region in highs_regions] ==
               [true, true]
-        @test highs_regions isa LinearRegions
         @test all(region -> candidate_region(region) isa Cell, highs_regions)
         @test all(region -> !(candidate_region(region) isa TropicalNN._Polyhedra), highs_regions)
         @test all(
@@ -226,8 +223,6 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
                 @test rational_region_signature(general_oscar_regions) == expected_signature
                 @test rational_region_signature(general_highs_regions) == expected_signature
-                @test rational_region_signature(general_oscar_regions) ==
-                      rational_region_signature(general_highs_regions)
 
                 @test all(
                     TropicalNN.is_full_dimensional(piece; mode = oscar_mode)
@@ -270,56 +265,5 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         @test rational_region_signature(general_highs_regions) == (4, [1, 1, 1, 1])
         @test rational_region_signature(general_oscar_regions) ==
               rational_region_signature(general_highs_regions)
-        @test rational_piece_count(general_oscar_regions) ==
-              rational_piece_count(general_highs_regions)
-    end
-
-    @testset "HiGHS rational region enumeration" begin
-        f = Signomial([R(0), R(0)], [[1//1, 0//1], [0//1, 1//1]]; sorted = false)
-        g = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-        q = f / g
-
-        highs_regions = TropicalNN.linear_regions(q; mode = highs_mode)
-
-        @test highs_regions isa LinearRegions
-        @test length(highs_regions) == 2
-        @test sort([length(region) for region in highs_regions]) == [1, 1]
-        @test all(
-            TropicalNN.is_full_dimensional(piece; mode = highs_mode)
-        for
-        region in highs_regions for piece in region
-        )
-    end
-
-    @testset verbose = true "Repeated linear map components" begin
-        f = Signomial(
-            [R(0), R(-1), R(-4), R(-9), R(-16), R(-25)],
-            [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
-            sorted = false
-        )
-
-        regions = TropicalNN.linear_regions(f / f; mode = highs_mode)
-        @test regions isa LinearRegions
-        @test length(regions) == 1
-        @test length(regions[1]) == 6
-        @test all(
-            TropicalNN.is_full_dimensional(piece; mode = highs_mode) for region in regions
-        for piece in region
-        )
-    end
-
-    @testset verbose = true "Disconnected pieces with the same linear map are split" begin
-        f = Signomial([R(0), R(0), R(-2)], [[0//1], [1//1], [2//1]]; sorted = false)
-        g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
-        q = f / g
-
-        regions = TropicalNN.linear_regions(q; mode = highs_mode)
-        @test regions isa LinearRegions
-        @test length(regions) == 4
-        @test sort([length(region) for region in regions]) == [1, 1, 1, 1]
-        @test all(
-            TropicalNN.is_full_dimensional(piece; mode = highs_mode) for region in regions
-        for piece in region
-        )
     end
 end

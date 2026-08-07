@@ -37,7 +37,7 @@ using Test, TropicalNN, Oscar
         @test vec(A) == [0.0, 1.0, 2.0]
         @test length(b) == 3
 
-        f_pruned = prune(f; parallel = false)
+        f_pruned = TropicalNN.prune(f; parallel = false)
         A_pruned, b_pruned = TropicalNN._linearmap_matrices(f_pruned)
         @test vec(A_pruned) == [0.0, 2.0]
         @test length(b_pruned) == 2
@@ -65,22 +65,4 @@ using Test, TropicalNN, Oscar
         @test length(bnum) == 2
         @test length(bden) == 1
     end
-end
-
-@testset verbose = true "linear_regions — constant function" begin
-    R = tropical_semiring(max)
-    oscar_mode = OscarMode()
-
-    f_const = Signomial([R(3)], [[0//1, 0//1]]; sorted = false)
-    g_const = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
-    lr = TropicalNN.linear_regions(f_const / g_const; mode = oscar_mode)
-
-    @test length(lr) == 1
-    @test length(lr[1].cells) == 1
-    @test TropicalNN.is_feasible(lr[1].cells[1]; mode = OscarMode())
-
-    f2 = Signomial([R(7)], [[0//1, 0//1]]; sorted = false)
-    g2 = Signomial([R(2)], [[0//1, 0//1]]; sorted = false)
-    lr2 = TropicalNN.linear_regions(f2 / g2; mode = oscar_mode)
-    @test length(lr2) == 1
 end

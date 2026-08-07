@@ -66,7 +66,7 @@ using Test, TropicalNN, Random, Oscar
         [[0//1], [1//1], [2//1]];
         sorted = false
     )
-    redundant_pruned = prune(redundant; parallel = false)
+    redundant_pruned = TropicalNN.prune(redundant; parallel = false)
     @test hoffman_constant(redundant) ≈ 1.0
     @test hoffman_constant(redundant_pruned) ≈ 0.5
     @test exact_er(redundant) ≈ 1.0

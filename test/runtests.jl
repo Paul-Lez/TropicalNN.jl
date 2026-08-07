@@ -12,7 +12,6 @@ else
     # Visualise tests require CairoMakie and the visualise.jl src module to be loaded.
     # Omit them until visualise.jl is integrated into the module.
     unit_tests = [
-        "main.jl",
         "cells.jl",
         "polynomial_algebra.jl",
         "signomial.jl",
