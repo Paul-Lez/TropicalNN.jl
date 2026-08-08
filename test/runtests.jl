@@ -15,6 +15,7 @@ else
         "cells.jl",
         "polynomial_algebra.jl",
         "signomial.jl",
+        "neural_network.jl",
         "tropicalize.jl",
         "hoffman.jl",
         "statistics.jl",

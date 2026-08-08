@@ -99,5 +99,14 @@ using Test, TropicalNN, Oscar
         g_flt = Signomial([R(3)], [[1.0, 1.0]]; sorted = false)
         h_flt = f_flt + g_flt
         @test eltype(TropicalNN.exponents(h_flt)[1]) == Float64
+
+        converted = convert(Signomial{Float64}, f_r64)
+        @test TropicalNN.coefficients(converted) == TropicalNN.coefficients(f_r64)
+        @test TropicalNN.exponents(converted) ==
+              map(e -> Float64.(e), TropicalNN.exponents(f_r64))
+
+        rational = signomial_to_rational(f_r64)
+        converted_rational = convert(RationalSignomial{Float64}, rational)
+        @test converted_rational.num == converted
     end
 end
