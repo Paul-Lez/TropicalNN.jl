@@ -1,8 +1,8 @@
 """
     TropicalNN
 
-Tools for tropical polynomials, tropical rational functions, and MLP
-conversion.
+Tools for tropical polynomials, tropical rational functions, neural networks,
+and linear-region analysis.
 """
 module TropicalNN
 
@@ -26,6 +26,16 @@ import Distributed
 export
        Signomial,
        RationalSignomial,
+       AbstractNeuralNetworkLayer,
+       AffineLayer,
+       ActivationLayer,
+       NeuralNetwork,
+       input_dimension,
+       output_dimension,
+       relu,
+       leaky_relu,
+       maxout,
+       identity_activation,
        Signomial_const,
        Signomial_zero,
        Signomial_one,
@@ -72,6 +82,7 @@ export
 
 include("signomial.jl")
 include("rational_signomial.jl")
+include("neural_network.jl")
 include("linear_regions.jl")
 include("tropicalize.jl")
 include("util.jl")
