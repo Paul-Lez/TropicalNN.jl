@@ -72,6 +72,16 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
         @test TropicalNN.highs_is_full_dimensional(A_tiny_line, b_tiny_line) == false
     end
 
+    @testset verbose = true "Tolerance validation" begin
+        f1 = Signomial([R(0), R(0)], [[0//1], [1//1]]; sorted = false)
+        f2 = Signomial([R(0), R(0)], [[0//1], [-1//1]]; sorted = false)
+
+        for tol in (-1.0, NaN)
+            @test_throws ArgumentError linear_regions(
+                [f1, f2]; mode = HiGHSMode(tol = tol))
+        end
+    end
+
     @testset verbose = true "Codimension one check" begin
         oscar_mode = OscarMode()
         highs_mode = HiGHSMode()

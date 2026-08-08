@@ -6,6 +6,16 @@ const HIGHS_DEFAULT_TOL = 1e-6
 const HIGHS_DEFAULT_SOLVER = "choose"
 
 """
+    _validate_highs_tolerance(tol)
+
+Check that `tol` is greater than zero.
+"""
+function _validate_highs_tolerance(tol)
+    tol > 0 || throw(ArgumentError("tol must be positive, got $tol"))
+    return nothing
+end
+
+"""
     _assert_tropicalnn_loaded(pool)
 
 Check that the TropicalNN module is loaded on all workers in `pool`.
@@ -812,6 +822,16 @@ function _linear_region_data_chunk(args)
 end
 
 """
+    _signomial_region_data_job((signomial, mode))
+
+Compute the dominance regions of one signomial on a worker process.
+"""
+function _signomial_region_data_job(args)
+    signomial, mode = args
+    return _linear_region_data_parallel(signomial, mode, nothing)
+end
+
+"""
     _linear_region_data_parallel(signomial, mode, workers)
 
 Return dominance-region constraint data for every monomial of `signomial`. When
@@ -822,12 +842,17 @@ function _linear_region_data_parallel(
         mode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
+    mode isa _HiGHS && _validate_highs_tolerance(mode.tol)
     monomial_count = length(signomial)
+
+    # Use current process if there is no work to distribute
+    # i.e. we have no workers or only one monomial to process.
     if workers === nothing || monomial_count <= 1
         return [_linear_region_data((signomial, index, mode))
                 for index in Base.eachindex(signomial)]
     end
 
+    # Divide the dominance region computations among the available workers.
     _assert_tropicalnn_loaded(workers)
     chunks = _index_chunks(monomial_count, length(Distributed.workers(workers)))
     chunk_results = Distributed.pmap(
@@ -852,18 +877,34 @@ function linear_regions(
 end
 
 """
-    _intersect_linear_region_partitions(partitions; mode)
+    _intersect_linear_region_partitions(partitions; mode, base_region=nothing)
 
-Intersect the region partitions one at a time. Discard a partial intersection
-that is not full dimensional before adding a region from the next partition.
+Intersect the region partitions in order. Discard an intersection as soon as
+it has no interior. If `base_region` is provided, start with that region. The
+result then contains only cells inside `base_region`.
 """
 function _intersect_linear_region_partitions(
         partitions;
-        mode::LinearRegionsCalculationMode
+        mode::LinearRegionsCalculationMode,
+        base_region = nothing
 )
-    regions = [((index,), region) for (index, region) in first(partitions)]
+    # Select the initial regions to partition by and the partitions that remain.
+    first_partition = first(partitions)
 
-    for partition in Iterators.drop(partitions, 1)
+    if base_region === nothing
+        # if there's no base region, then we start with the first partition as the
+        # set of "candidate regions" that will be refined by the later partitions
+        regions = [((index,), region) for (index, region) in first_partition]
+        remaining_partitions = Iterators.drop(partitions, 1)
+    else
+        # if we've been given a base region then we start with that
+        # and will refine it incrementally with _all_ the partitions, including the first one
+        regions = [((), base_region)]
+        remaining_partitions = partitions
+    end
+
+    # Refine each candidate region with the next partition.
+    for partition in remaining_partitions
         next_regions = []
         for (index, candidate_region) in partition
             for (indices, partial_region) in regions
@@ -885,25 +926,48 @@ function _intersect_linear_region_partitions(
 end
 
 """
-    _signomial_region_partition(signomials; mode, workers=nothing)
+    _signomial_region_partition(signomials; mode, workers=nothing,
+                                base_region=nothing)
 
-Return the common dominance-cell partition of the signomial vector `signomials`.
-Each cell stores its active monomial indices as internal data.
+Return the common subdivision of `signomials` into dominance regions. Each cell
+records the dominant monomial in every signomial. If `base_region` is provided,
+subdivide only that region.
 """
 function _signomial_region_partition(
         signomials::AbstractVector{<:Signomial};
         mode::LinearRegionsCalculationMode,
-        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
+        base_region = nothing
 )
     isempty(signomials) && return _Cell[]
 
-    dominance_partitions = map(signomials) do signomial
-        region_data = _linear_region_data_parallel(signomial, mode, workers)
+    # Compute the dominance regions of each component signomial.
+    if workers !== nothing && length(signomials) > 1
+        _assert_tropicalnn_loaded(workers)
+        region_data_by_signomial = Distributed.pmap(
+            _signomial_region_data_job,
+            workers,
+            [(signomial, mode) for signomial in signomials]
+        )
+    else
+        region_data_by_signomial = [_linear_region_data_parallel(signomial, mode, workers)
+                                    for signomial in signomials]
+    end
+
+    # Construct the polyhedral dominance partition of each signomial.
+    dominance_partitions = map(region_data_by_signomial) do region_data
         return [(monomial_index, make_polyhedron(data[1], data[2]; mode = mode))
                 for (monomial_index, data) in pairs(region_data) if data[3]]
     end
 
-    partition = _intersect_linear_region_partitions(dominance_partitions; mode = mode)
+    # Intersect the partitions to obtain a common subdivision.
+    partition = _intersect_linear_region_partitions(
+        dominance_partitions;
+        mode = mode,
+        base_region = base_region
+    )
+
+    # Store the constraints and affine map of each cell.
     return map(partition) do (dominance_indices, region)
         A, b = _region_constraint_data(region; mode = mode)
         affine_key = [(Rational(get_coeff(signomial, index)),
@@ -950,12 +1014,6 @@ function _linear_map_key(
     exp = collect(get_exp(numerator, numerator_index)) -
           collect(get_exp(denominator, denominator_index))
     return (coeff, exp)
-end
-
-function _linear_map_key(f::Vector{<:Signomial}, g::Vector{<:Signomial}, idxf, idxg)
-    # Each vector has one entry for each output coordinate.
-    @assert length(f) == length(g) == length(idxf) == length(idxg)
-    return map(i -> _linear_map_key(f[i], g[i], idxf[i], idxg[i]), Base.eachindex(idxf))
 end
 
 """
@@ -1042,7 +1100,8 @@ function _rational_region_intersections_chunk(args)
                     intersection_vector,
                     numerator_cell.matrix - denominator_cell.matrix,
                     numerator_cell.offset - denominator_cell.offset,
-                    _boundary_sides_from_constraints(intersection_matrix, intersection_vector)
+                    _boundary_sides_from_constraints(
+                        intersection_matrix, intersection_vector)
                 )
             )
         end
@@ -1071,7 +1130,6 @@ function _rational_region_intersections_parallel(
         end
     end
 
-    isempty(candidate_pairs) && return _Cell[]
     if workers === nothing || length(candidate_pairs) <= 1
         return _rational_region_intersections_chunk(
             (numerator_data, denominator_data, candidate_pairs, mode)
@@ -1089,6 +1147,52 @@ function _rational_region_intersections_parallel(
          for pair_chunk in pair_chunks]
     )
     return Base.reduce(vcat, chunk_results)
+end
+
+"""
+    _rational_atomic_subdivision(rational_signomials; mode, workers=nothing,
+                                 base_region=nothing)
+
+Subdivide the domain of `rational_signomials` according to the dominant terms
+of their numerators and denominators. If `base_region` is provided, subdivide
+only that region.
+"""
+function _rational_atomic_subdivision(
+        rational_signomials::AbstractVector{<:RationalSignomial};
+        mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
+        base_region = nothing
+)
+    # Separate the numerator and denominator signomials.
+    numerators = [rational_signomial.num
+                  for rational_signomial in rational_signomials]
+    denominators = [rational_signomial.den
+                    for rational_signomial in rational_signomials]
+
+    # Compute their common dominance subdivisions.
+    numerator_cells = _signomial_region_partition(
+        numerators;
+        mode = mode,
+        workers = workers,
+        base_region = base_region
+    )
+    denominator_cells = _signomial_region_partition(
+        denominators;
+        mode = mode,
+        workers = workers,
+        base_region = base_region
+    )
+    if isempty(numerator_cells) || isempty(denominator_cells)
+        return _Cell[]
+    end
+
+    # Intersect the numerator and denominator subdivisions.
+    return _rational_region_intersections_parallel(
+        numerator_cells,
+        denominator_cells,
+        mode,
+        workers
+    )
 end
 
 """
@@ -1115,9 +1219,8 @@ end
 """
     _group_cells(cells; mode)
 
-Group cells by affine-map equality and split each group into connected linear
-regions. Return the constituent cells, the linear regions, the number of
-affine-map groups, and the number of connected components.
+Group cells by affine-map equality and split each group into full-dimensional
+regions. Return the constituent cells and linear regions.
 """
 function _group_cells(
         cells::AbstractVector{C};
@@ -1127,6 +1230,7 @@ function _group_cells(
         "No full-dimensional linear regions were found for the rational signomial"
     ))
 
+    # Group cells that define the same affine map.
     map_to_indices = Dict{Any, Vector{Int}}()
     for (index, cell) in pairs(cells)
         key = _affine_map_key(cell.matrix, cell.offset)
@@ -1135,23 +1239,18 @@ function _group_cells(
 
     grouped_cells = C[]
     linear_regions = LinearRegion{Cell}[]
-    component_count = 0
+
+    # Split the cells for each affine map into full-dim components.
     for indices in values(map_to_indices)
         affine_cells = cells[indices]
         for component_indices in _cell_components(affine_cells; mode = mode)
-            component_count += 1
             component = affine_cells[component_indices]
             append!(grouped_cells, component)
             push!(linear_regions, LinearRegion(Cell[Cell(cell) for cell in component]))
         end
     end
 
-    return (
-        grouped_cells,
-        LinearRegions(linear_regions),
-        length(map_to_indices),
-        component_count
-    )
+    return grouped_cells, LinearRegions(linear_regions)
 end
 
 """
@@ -1164,25 +1263,19 @@ function linear_regions(
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    f = [Q.num for Q in q]
-    g = [Q.den for Q in q]
-    @assert length(f) == length(g)
-    length(f) > 0 ||
+    isempty(q) &&
         throw(ArgumentError("RationalSignomial vector must have at least one component"))
-    any(Q -> length(Q.num) == 0, q) &&
+    any(rational_signomial -> length(rational_signomial.num) == 0, q) &&
         throw(ArgumentError("RationalSignomial numerator must have at least one monomial"))
-    any(Q -> length(Q.den) == 0, q) &&
+    any(rational_signomial -> length(rational_signomial.den) == 0, q) &&
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    numerator = _signomial_region_partition(f; mode = mode, workers = workers)
-    denominator = _signomial_region_partition(g; mode = mode, workers = workers)
-    cells = _rational_region_intersections_parallel(
-        numerator,
-        denominator,
-        mode,
-        workers
+    cells = _rational_atomic_subdivision(
+        q;
+        mode = mode,
+        workers = workers
     )
-    _, regions, _, _ = _group_cells(cells; mode = mode)
+    _, regions = _group_cells(cells; mode = mode)
     return regions
 end
 
@@ -1196,10 +1289,5 @@ function linear_regions(
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    length(q.num) > 0 ||
-        throw(ArgumentError("RationalSignomial numerator must have at least one monomial"))
-    length(q.den) > 0 ||
-        throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
-
     return linear_regions([q]; mode = mode, workers = workers)
 end
