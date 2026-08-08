@@ -157,7 +157,7 @@ end
 
 Base.inv(f::RationalSignomial) = RationalSignomial(f.den, f.num)
 
-Base.:^(f::RationalSignomial, r::Float64) = f^rationalize(r)
+Base.:^(f::RationalSignomial, r::AbstractFloat) = f^rationalize(r)
 
 Base.:^(f::RationalSignomial, n::Int) = f^Base.Rational(n)
 

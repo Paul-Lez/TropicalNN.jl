@@ -389,8 +389,8 @@ end
 
 Base.eachindex(f::Signomial) = Base.OneTo(length(f))
 
-# Exponentiation by Float64
-Base.:^(f::Signomial, r::Float64) = f^rationalize(r)
+# Exponentiation by floating-point values
+Base.:^(f::Signomial, r::AbstractFloat) = f^rationalize(r)
 
 # Exponentiation by Int
 Base.:^(f::Signomial, n::Int) = f^Base.Rational(n)
