@@ -5,6 +5,10 @@
 ```@docs
 Signomial
 RationalSignomial
+AbstractNeuralNetworkLayer
+AffineLayer
+ActivationLayer
+NeuralNetwork
 Cell
 LinearRegion
 LinearRegions
@@ -31,14 +35,26 @@ quicksum
 comp
 ```
 
-## MLP conversion
+## Network conversion
 
 ```@docs
 single_to_trop
 tropicalize
+tropicalize_layers
 random_mlp
 random_signomial
 prune
+```
+
+## Neural networks
+
+```@docs
+relu
+leaky_relu
+maxout
+identity_activation
+input_dimension
+output_dimension
 ```
 
 ## Linear regions

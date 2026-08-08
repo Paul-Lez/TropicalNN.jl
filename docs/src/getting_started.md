@@ -41,3 +41,35 @@ q_reduced = tropicalize(
 )
 pruned = prune(q_reduced[1]; mode = mode)
 ```
+
+## Create a neural network
+
+Create one layer for each affine map and each activation. `NeuralNetwork`
+applies the layers in the given order.
+
+```julia
+network = NeuralNetwork(
+    AffineLayer([1 0; 0 1], [0, 0]),
+    ActivationLayer(relu(Int), 2),
+    AffineLayer([1 1], [0])
+)
+q = tropicalize(network)
+layer_maps = tropicalize_layers(network)
+
+input_dimension(network)  # 2
+output_dimension(network) # 1
+```
+
+`tropicalize_layers` converts each layer separately. The result contains one
+vector of rational signomials for each layer. `tropicalize` composes the layer
+maps. It returns one vector for the complete network.
+
+All layers in a network must use the same scalar type. The default type for an
+activation is `Rational{BigInt}`. If an affine layer uses a different type,
+give that type to the activation. For example, `relu(Int)` matches the integer
+affine layers above. `maxout(Float32, 2)` creates a `Float32` activation that
+takes the maximum of two inputs.
+
+`ActivationLayer(relu(Int), 2)` creates two ReLU units. Each unit receives one
+input. `ActivationLayer(maxout(Int, 2), 3)` creates three maxout units. Each
+unit receives a separate block of two inputs.
