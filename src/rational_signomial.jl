@@ -8,6 +8,9 @@
     RationalSignomial{T}
 
 Tropical rational function represented by a quotient of two signomials.
+
+Use `convert(RationalSignomial{S}, f)` to convert the exponent type of `f` to
+`S`.
 """
 struct RationalSignomial{T}
     num::Signomial{T}
@@ -16,6 +19,28 @@ struct RationalSignomial{T}
     function RationalSignomial(num::Signomial{T}, den::Signomial{T}) where {T}
         new{T}(num, den)
     end
+end
+
+Base.convert(::Type{RationalSignomial{T}}, f::RationalSignomial{T}) where {T} = f
+
+function Base.convert(::Type{RationalSignomial{T}}, f::RationalSignomial) where {T}
+    return RationalSignomial(convert(Signomial{T}, f.num), convert(Signomial{T}, f.den))
+end
+
+"""
+    _embed_variables(f::RationalSignomial, block, input_dimension)
+
+Embed the variables of the numerator and denominator of `f` in `block`.
+"""
+function _embed_variables(
+        f::RationalSignomial,
+        block::UnitRange{Int},
+        input_dimension::Integer
+)
+    return RationalSignomial(
+        _embed_variables(f.num, block, input_dimension),
+        _embed_variables(f.den, block, input_dimension)
+    )
 end
 
 # Arithmetic
@@ -151,7 +176,16 @@ Base.inv(f::RationalSignomial) = RationalSignomial(f.den, f.num)
 
 Base.:^(f::RationalSignomial, r::AbstractFloat) = f^rationalize(r)
 
-Base.:^(f::RationalSignomial, n::Int) = f^Base.Rational(n)
+function Base.:^(f::RationalSignomial, n::Integer)
+    if iszero(n)
+        return rational_signomial_one(nvars(f), f)
+    elseif n < 0
+        magnitude = -n
+        return RationalSignomial(f.den^magnitude, f.num^magnitude)
+    else
+        return RationalSignomial(f.num^n, f.den^n)
+    end
+end
 
 function Base.:^(f::RationalSignomial, r::Rational{T}) where {T <: Integer}
     if r == 0

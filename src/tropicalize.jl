@@ -46,8 +46,7 @@ Convert `x -> A * x + b` to tropical rational functions.
 
 The length of `b` must equal `size(A, 1)`.
 """
-function affine_to_trop(A::Matrix{T},
-        b::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
     G = RationalSignomial[]
 
     if size(A, 1) != length(b)
@@ -59,12 +58,14 @@ function affine_to_trop(A::Matrix{T},
     R = tropical_semiring(max)
     b = [R(Rational{BigInt}(i)) for i in b]
     sizehint!(G, size(A, 1))
+    # Split each row into numerator and denominator exponents.
     for i in axes(A, 1)
         pos = Vector{T}()
         neg = Vector{T}()
         for j in axes(A, 2)
-            push!(pos, max(A[i, j], 0))
-            push!(neg, max(-A[i, j], 0))
+            positive_entry = max(A[i, j], zero(T))
+            push!(pos, positive_entry)
+            push!(neg, positive_entry - A[i, j])
         end
         num = signomial_monomial(b[i], pos)
         den = signomial_monomial(one(b[i]), neg)
@@ -92,6 +93,7 @@ function _mlp_to_tropical_layers(
         "Got $(length(linear_maps)) weight matrices and $(length(biases)) bias vectors"
     ))
     hidden_layer_count = length(linear_maps) - 1
+    # Use zero thresholds for ReLU when the caller omits them.
     actual_thresholds = if thresholds === nothing
         [zeros(eltype(linear_maps[k]), size(linear_maps[k], 1))
          for k in 1:hidden_layer_count]
@@ -104,6 +106,7 @@ function _mlp_to_tropical_layers(
     end
 
     layers = Vector{Vector{RationalSignomial}}(undef, length(linear_maps))
+    # Convert each layer before composition changes its input variables.
     for k in Base.eachindex(linear_maps)
         A = linear_maps[k]
         b = biases[k]
@@ -118,6 +121,7 @@ function _mlp_to_tropical_layers(
             ))
         end
 
+        # Keep the output affine and apply thresholds only to hidden layers.
         if k == lastindex(linear_maps)
             layers[k] = RationalSignomial[affine_to_trop(Matrix(A), b)...]
         else
@@ -135,13 +139,86 @@ function _mlp_to_tropical_layers(
 end
 
 """
+    tropicalize_layers(layer::AbstractNeuralNetworkLayer)
+
+Return the uncomposed tropical rational map for each atomic layer in `layer`.
+Each element is a vector-valued map. Nested networks are flattened.
+"""
+function tropicalize_layers(layer::AffineLayer)
+    return [affine_to_trop(layer.weight, layer.bias)]
+end
+
+function tropicalize_layers(layer::ActivationLayer)
+    total_input_dimension = input_dimension(layer)
+    outputs = RationalSignomial[]
+    sizehint!(outputs, output_dimension(layer))
+    first_input = 1
+    # Embed each activation block in the full layer input space.
+    for activation in layer.activations
+        activation_dimension = nvars(activation)
+        last_input = first_input + activation_dimension - 1
+        push!(outputs, _embed_variables(
+            activation,
+            first_input:last_input,
+            total_input_dimension
+        ))
+        first_input = last_input + 1
+    end
+    return [outputs]
+end
+
+function tropicalize_layers(network::NeuralNetwork)
+    layers = Vector{Vector{RationalSignomial}}()
+    # Flatten nested networks and preserve the layer order.
+    for layer in network
+        append!(layers, tropicalize_layers(layer))
+    end
+    return layers
+end
+
+function _compose_tropical_layers(
+        layers::AbstractVector{<:AbstractVector{<:RationalSignomial}};
+        quicksum::Bool = false,
+        strong_elim::Bool = false,
+        dedup::Bool = false,
+        elim_mode::LinearRegionsCalculationMode = OscarMode(),
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+)
+    output = RationalSignomial[]
+
+    for (layer_index, tropical_layer) in pairs(layers)
+        # The first layer already uses the network input variables.
+        if layer_index == firstindex(layers)
+            output = RationalSignomial[tropical_layer...]
+        else
+            output = comp(tropical_layer, output; quicksum = quicksum)
+
+            # Prune only after the layer composition is complete.
+            if strong_elim
+                output = prune(output; mode = elim_mode, workers = workers)
+            end
+        end
+        # Remove tropical-zero terms before the next composition.
+        if dedup
+            output = [RationalSignomial(
+                          _remove_zero_matrix_terms(f.num),
+                          _remove_zero_matrix_terms(f.den)
+                      ) for f in output]
+        end
+    end
+
+    return output
+end
+
+"""
     tropicalize(linear_maps, bias, thresholds;
                 quicksum=false, strong_elim=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
 
 Convert an MLP with an affine output layer to tropical rational functions.
 Each hidden layer applies `max.(z, thresholds[i])`. Omit `thresholds` to use
-ReLU. The options control batched sums, pruning, and deduplication.
+ReLU. The keywords control batched sums and pruning. Set `dedup=true` to remove
+terms whose coefficient is tropical zero.
 
 `mlp_to_trop` is a deprecated alias for this function.
 """
@@ -153,26 +230,39 @@ function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 ) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     layers = _mlp_to_tropical_layers(linear_maps, bias, thresholds)
-    output = RationalSignomial[]
+    return _compose_tropical_layers(
+        layers;
+        quicksum = quicksum,
+        strong_elim = strong_elim,
+        dedup = dedup,
+        elim_mode = elim_mode,
+        workers = workers
+    )
+end
 
-    # Compose the layers in network order.
-    for (i, ith_tropical) in pairs(layers)
-        if i == 1
-            output = ith_tropical
-        else
-            output = comp(ith_tropical, output; quicksum = quicksum)
+"""
+    tropicalize(layer::AbstractNeuralNetworkLayer;
+                quicksum=false, strong_elim=false, dedup=false,
+                elim_mode=OscarMode(), workers=nothing)
 
-            if strong_elim
-                output = prune(output; mode = elim_mode, workers = workers)
-            end
-        end
-        if dedup
-            output = [RationalSignomial(
-                          _remove_zero_matrix_terms(f.num),
-                          _remove_zero_matrix_terms(f.den)
-                      ) for f in output]
-        end
-    end
-
-    return output
+Convert a neural-network layer or network to tropical rational functions. The
+keywords control batched sums and pruning. Set `dedup=true` to remove terms
+whose coefficient is tropical zero.
+"""
+function tropicalize(
+        layer::AbstractNeuralNetworkLayer{T};
+        quicksum::Bool = false,
+        strong_elim::Bool = false,
+        dedup::Bool = false,
+        elim_mode::LinearRegionsCalculationMode = OscarMode(),
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+) where {T}
+    return _compose_tropical_layers(
+        tropicalize_layers(layer);
+        quicksum = quicksum,
+        strong_elim = strong_elim,
+        dedup = dedup,
+        elim_mode = elim_mode,
+        workers = workers
+    )
 end

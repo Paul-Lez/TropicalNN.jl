@@ -60,6 +60,7 @@ export
        monomial_count,
        single_to_trop,
        tropicalize,
+       tropicalize_layers,
        mlp_to_trop,
        random_mlp,
        random_signomial,

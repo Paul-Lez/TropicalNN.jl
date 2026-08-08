@@ -78,6 +78,8 @@ end
 
 Max-plus tropical signomial.
 
+Use `convert(Signomial{S}, f)` to convert the exponent type of `f` to `S`.
+
 # Fields
 - `exp`: Exponent matrix with one exponent vector per column.
 - `coeff`: Coefficients in the same order as the exponent columns.
@@ -270,6 +272,24 @@ function Base.:^(f::Signomial{T}, r::Base.Rational) where {T}
     return Signomial{S}(new_exp, new_coeff)
 end
 
+function Base.:^(f::Signomial{T}, n::Integer) where {T}
+    if iszero(n)
+        return Signomial{T}(
+            zeros(T, f.dim, 1),
+            [_tropical_one(f)]
+        )
+    elseif n < 0
+        throw(DomainError(
+            n,
+            "A Signomial does not support negative powers. Convert it to a RationalSignomial first."
+        ))
+    end
+
+    new_exp = n .* f.exp
+    new_coeff = Oscar.TropicalSemiringElem{typeof(max)}[c^n for c in f.coeff]
+    return Signomial{eltype(new_exp)}(new_exp, new_coeff)
+end
+
 function quicksum(F::Vector{Signomial{T}}) where {T}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
@@ -392,11 +412,30 @@ end
 
 Base.eachindex(f::Signomial) = Base.OneTo(length(f))
 
+Base.convert(::Type{Signomial{T}}, f::Signomial{T}) where {T} = f
+
+function Base.convert(::Type{Signomial{T}}, f::Signomial) where {T}
+    return Signomial{T}(Matrix{T}(f.exp), copy(f.coeff))
+end
+
+"""
+    _embed_variables(f::Signomial, block, input_dimension)
+
+Place the exponent rows of `f` in `block`. Pad the other rows with zeros so
+that the result has `input_dimension` variables.
+"""
+function _embed_variables(
+        f::Signomial{T},
+        block::UnitRange{Int},
+        input_dimension::Integer
+) where {T}
+    exponents = zeros(T, input_dimension, length(f))
+    exponents[block, :] .= f.exp
+    return Signomial{T}(exponents, copy(f.coeff), true)
+end
+
 # Exponentiation by floating-point values
 Base.:^(f::Signomial, r::AbstractFloat) = f^rationalize(r)
-
-# Exponentiation by Int
-Base.:^(f::Signomial, n::Int) = f^Base.Rational(n)
 
 #==============================================================================#
 #                    STRING REPRESENTATION                                      #
