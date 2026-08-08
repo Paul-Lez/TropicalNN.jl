@@ -1,6 +1,78 @@
 # Data structures for neural networks with tropical rational activations.
 
 """
+    _max_activation(exponents)
+
+Return the maximum of the linear forms with coefficient vectors in `exponents`
+as a `RationalSignomial`.
+"""
+function _max_activation(exponents::AbstractVector{<:AbstractVector{T}}) where {T}
+    # Use one tropical monomial for each linear form in the maximum.
+    return signomial_to_rational(
+        Signomial(zeros(Int, length(exponents)), exponents; sorted = false)
+    )
+end
+
+"""
+    relu()
+    relu(T)
+
+Return `x -> max(0, x)` as a `RationalSignomial`. Use exponent type `T`. The
+default type is `Rational{BigInt}`.
+"""
+relu() = relu(Rational{BigInt})
+relu(::Type{T}) where {T} = _max_activation([T[zero(T)], T[one(T)]])
+
+"""
+    leaky_relu([slope=1 // 100])
+
+Return `x -> max(slope * x, x)` as a `RationalSignomial`. The exponent type is
+`typeof(slope)`. The slope must be in the closed interval `[0, 1]`.
+"""
+leaky_relu() = leaky_relu(Rational{BigInt}(1, 100))
+
+function leaky_relu(slope::T) where {T <: Real}
+    zero(slope) <= slope <= one(slope) || throw(DomainError(
+        slope,
+        "The leaky ReLU slope must be between zero and one"
+    ))
+    return _max_activation([[slope], [one(slope)]])
+end
+
+"""
+    maxout(input_dimension)
+    maxout(T, input_dimension)
+
+Return `(x₁, ..., xₙ) -> max(x₁, ..., xₙ)` as a `RationalSignomial`, where
+`n` is `input_dimension`. Use exponent type `T`. The default type is
+`Rational{BigInt}`. The input dimension must be positive.
+"""
+maxout(input_dimension::Integer) = maxout(Rational{BigInt}, input_dimension)
+
+function maxout(::Type{T}, input_dimension::Integer) where {T}
+    input_dimension > 0 || throw(ArgumentError(
+        "A maxout activation requires a positive input dimension"
+    ))
+
+    # Use each coordinate projection as one term in the tropical maximum.
+    exponents = [zeros(T, input_dimension) for _ in 1:input_dimension]
+    for coordinate in 1:input_dimension
+        exponents[coordinate][coordinate] = one(T)
+    end
+    return _max_activation(exponents)
+end
+
+"""
+    identity_activation()
+    identity_activation(T)
+
+Return `x -> x` as a `RationalSignomial`. Use exponent type `T`. The default
+type is `Rational{BigInt}`.
+"""
+identity_activation() = maxout(1)
+identity_activation(::Type{T}) where {T} = maxout(T, 1)
+
+"""
     AbstractNeuralNetworkLayer{T}
 
 Abstract type for neural-network layers with scalar type `T`.
@@ -35,18 +107,44 @@ struct AffineLayer{
 end
 
 """
+    ActivationLayer(activations...)
     ActivationLayer(activations)
+    ActivationLayer(activation, repeats)
 
-A neural-network layer of tropical rational activations.
-
-Each activation receives one consecutive block of the input and returns one
-scalar. The size of a block is the number of variables in its activation.
+Store a layer of tropical rational activations. Split the layer input into
+consecutive segments, one segment for each activation. The length of a segment
+is the number of variables in its activation. Each activation returns one
+scalar. All activations must use scalar type `T`. Use `repeats` to apply one
+activation to multiple consecutive segments.
 """
 struct ActivationLayer{
     T,
     A <: Tuple{RationalSignomial{T}, Vararg{RationalSignomial{T}}}
 } <: AbstractNeuralNetworkLayer{T}
     activations::A
+end
+
+ActivationLayer(activation::RationalSignomial{T}) where {T} = ActivationLayer((activation,))
+
+function ActivationLayer(
+        first_activation::RationalSignomial{T},
+        second_activation::RationalSignomial{T},
+        remaining_activations::RationalSignomial{T}...
+) where {T}
+    return ActivationLayer((first_activation, second_activation, remaining_activations...))
+end
+
+function ActivationLayer(
+        activations::AbstractVector{<:RationalSignomial{T}}
+) where {T}
+    return ActivationLayer(tuple(activations...))
+end
+
+function ActivationLayer(activation::RationalSignomial{T}, repeats::Integer) where {T}
+    repeats > 0 || throw(ArgumentError(
+        "The activation repeat count must be positive"
+    ))
+    return ActivationLayer(ntuple(_ -> activation, repeats))
 end
 
 """
@@ -73,14 +171,13 @@ output_dimension(layer::AffineLayer) = size(layer.weight, 1)
 output_dimension(layer::ActivationLayer) = length(layer.activations)
 
 """
-    NeuralNetwork(layers::Tuple)
+    NeuralNetwork(layers...)
+    NeuralNetwork(layers)
 
-An ordered, tuple-backed sequence of compatible neural-network layers.
-
-All layers must have the same scalar type. The network must contain at least
-one layer. The output dimension of each layer must equal the input dimension
-of the next layer. A `NeuralNetwork` is also a layer, so a network can contain
-another network.
+Store an ordered tuple of compatible neural-network layers. All layers must
+use scalar type `T`. The network must contain at least one layer. The output
+dimension of each layer must equal the input dimension of the next layer. A
+network is also a layer and can contain another network.
 """
 struct NeuralNetwork{
     T,
@@ -106,5 +203,24 @@ struct NeuralNetwork{
     end
 end
 
+function NeuralNetwork(
+        layer::AbstractNeuralNetworkLayer{T},
+        layers::AbstractNeuralNetworkLayer{T}...
+) where {T}
+    return NeuralNetwork((layer, layers...))
+end
+
+function NeuralNetwork(
+        layers::AbstractVector{<:AbstractNeuralNetworkLayer{T}}
+) where {T}
+    return NeuralNetwork(tuple(layers...))
+end
+
 input_dimension(network::NeuralNetwork) = input_dimension(first(network.layers))
 output_dimension(network::NeuralNetwork) = output_dimension(last(network.layers))
+
+Base.length(network::NeuralNetwork) = length(network.layers)
+Base.getindex(network::NeuralNetwork, index::Integer) = network.layers[index]
+Base.firstindex(network::NeuralNetwork) = firstindex(network.layers)
+Base.lastindex(network::NeuralNetwork) = lastindex(network.layers)
+Base.iterate(network::NeuralNetwork, state...) = iterate(network.layers, state...)
