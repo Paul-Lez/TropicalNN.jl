@@ -160,8 +160,7 @@ function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
         if i == 1
             output = ith_tropical
         else
-            output = quicksum ? comp_with_quicksum(ith_tropical, output) :
-                     comp(ith_tropical, output)
+            output = comp(ith_tropical, output; quicksum = quicksum)
 
             if strong_elim
                 output = prune(output; mode = elim_mode, workers = workers)

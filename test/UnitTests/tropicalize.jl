@@ -77,27 +77,49 @@ using Test, TropicalNN, Oscar
         g1 = signomial_to_rational(SignomialMonomial(R_comp(1), Rational{BigInt}[1, 0]))
         g2 = signomial_to_rational(SignomialMonomial(R_comp(2), Rational{BigInt}[0, 1]))
         composed_known = comp(f_comp, [g1, g2])
-        @test TropicalNN.evaluate(composed_known, [R_comp(3), R_comp(5)]) == R_comp(7)
-        # At [y₁ = R(10), y₂ = R(0)]: max(1+10, 2+0) = max(11, 2) = R(11)
-        @test TropicalNN.evaluate(composed_known, [R_comp(10), R_comp(0)]) == R_comp(11)
-        # Additional evaluation points for broader coverage
-        @test TropicalNN.evaluate(composed_known, [R_comp(0), R_comp(0)]) == R_comp(2)
-        @test TropicalNN.evaluate(composed_known, [R_comp(5), R_comp(2)]) == R_comp(6)
-        @test TropicalNN.evaluate(composed_known, [R_comp(1), R_comp(1)]) == R_comp(3)
-        @test TropicalNN.evaluate(composed_known, [R_comp(-1), R_comp(5)]) == R_comp(7)
-        @test TropicalNN.evaluate(composed_known, [R_comp(100), R_comp(100)]) == R_comp(102)
+        composed_batched = comp(f_comp, [g1, g2]; quicksum = true)
+        points_and_values = [
+            ([R_comp(3), R_comp(5)], R_comp(7)),
+            ([R_comp(10), R_comp(0)], R_comp(11)),
+            ([R_comp(0), R_comp(0)], R_comp(2)),
+            ([R_comp(5), R_comp(2)], R_comp(6)),
+            ([R_comp(1), R_comp(1)], R_comp(3)),
+            ([R_comp(-1), R_comp(5)], R_comp(7)),
+            ([R_comp(100), R_comp(100)], R_comp(102))
+        ]
+        for (point, expected) in points_and_values
+            @test TropicalNN.evaluate(composed_known, point) == expected
+            @test TropicalNN.evaluate(composed_batched, point) == expected
+        end
 
-        # Test 4: comp_with_quicksum gives same result as comp on the same inputs
-        composed_qs_known = TropicalNN.comp_with_quicksum(f_comp, [g1, g2])
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(3), R_comp(5)]) == R_comp(7)
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(10), R_comp(0)]) == R_comp(11)
-        # Additional evaluation points for broader coverage
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(0), R_comp(0)]) == R_comp(2)
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(5), R_comp(2)]) == R_comp(6)
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(1), R_comp(1)]) == R_comp(3)
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(-1), R_comp(5)]) == R_comp(7)
-        @test TropicalNN.evaluate(composed_qs_known, [R_comp(100), R_comp(100)]) ==
-              R_comp(102)
+        composed_signomial = comp(f_comp, [g1.num, g2.num])
+        composed_signomial_batched = comp(f_comp, [g1.num, g2.num]; quicksum = true)
+        @test composed_signomial_batched == composed_signomial
+
+        rational_outer = signomial_to_rational(f_comp)
+        composed_rational = comp(rational_outer, [g1, g2]; quicksum = true)
+        composed_vector = comp([rational_outer], [g1, g2]; quicksum = true)
+        @test TropicalNN.evaluate(composed_rational, first(points_and_values)[1]) ==
+              R_comp(7)
+        @test TropicalNN.evaluate(only(composed_vector), first(points_and_values)[1]) ==
+              R_comp(7)
+
+        deprecated_composition = @test_deprecated TropicalNN.comp_with_quicksum(
+            f_comp,
+            [g1, g2]
+        )
+        @test TropicalNN.evaluate(deprecated_composition, first(points_and_values)[1]) ==
+              R_comp(7)
+
+        empty_outer = Signomial{Rational{BigInt}}(
+            zeros(Rational{BigInt}, 2, 0),
+            TropicalNN._TROPICAL_COEFF[],
+            true
+        )
+        empty_sequential = comp(empty_outer, [g1, g2])
+        empty_batched = comp(empty_outer, [g1, g2]; quicksum = true)
+        @test empty_batched.num == empty_sequential.num
+        @test empty_batched.den == empty_sequential.den
 
         # Test 5: Negative exponents require an explicit rational conversion.
         negative_outer = Signomial([R_comp(0)], [Rational{BigInt}[-1]]; sorted = false)

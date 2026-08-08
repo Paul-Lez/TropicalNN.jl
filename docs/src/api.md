@@ -28,6 +28,7 @@ RationalSignomial_one
 ```@docs
 evaluate
 quicksum
+comp
 ```
 
 ## MLP conversion

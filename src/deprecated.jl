@@ -18,4 +18,17 @@ function _warn_ignored_hoffman_mode(
     return nothing
 end
 
+"""
+    comp_with_quicksum(f, G)
+
+Deprecated. Use `comp(f, G; quicksum=true)`.
+"""
+function comp_with_quicksum(f, G)
+    Base.depwarn(
+        "`comp_with_quicksum(f, G)` is deprecated. Use `comp(f, G; quicksum = true)`.",
+        :comp_with_quicksum
+    )
+    return comp(f, G; quicksum = true)
+end
+
 Base.@deprecate mlp_to_trop tropicalize

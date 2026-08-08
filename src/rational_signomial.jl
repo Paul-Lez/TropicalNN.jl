@@ -197,80 +197,68 @@ end
 #                    COMPOSITION EXTENSIONS                                     #
 #==============================================================================#
 
-"""
-    comp(f::Signomial, G::Vector{<:RationalSignomial})
-
-Substitute `G[i]` for variable `i` in `f`.
-"""
-function comp(f::Signomial, G::Vector{<:RationalSignomial})
-    @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
-    result = RationalSignomial_zero(nvars(G[1]), G[1])
-    for (e, c) in monomial_pairs(f)
-        term = RationalSignomial_one(nvars(G[1]), G[1])
-        for i in Base.eachindex(G)
-            term *= G[i]^e[i]
-        end
-        result += c * term
+function _composition_term(e, c, G, one_value)
+    term = one_value
+    for i in Base.eachindex(G)
+        term *= G[i]^e[i]
     end
-    return result
+    return c * term
 end
 
 """
-    comp(f::RationalSignomial, G::Vector{<:RationalSignomial})
+    comp(f::Signomial, G::Vector{<:RationalSignomial}; quicksum=false)
 
 Substitute `G[i]` for variable `i` in `f`.
+Set `quicksum=true` to batch the intermediate tropical sums.
 """
-function comp(f::RationalSignomial, G::Vector{<:RationalSignomial})
-    num = comp(f.num, G)
-    den = comp(f.den, G)
+function comp(
+        f::Signomial,
+        G::Vector{<:RationalSignomial};
+        quicksum::Bool = false
+)
+    @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
+    zero_value = RationalSignomial_zero(nvars(G[1]), G[1])
+    one_value = RationalSignomial_one(nvars(G[1]), G[1])
+    terms = (
+        _composition_term(e, c, G, one_value)
+    for (e, c) in monomial_pairs(f)
+    )
+    if quicksum
+        collected_terms = collect(terms)
+        isempty(collected_terms) && return zero_value
+        return TropicalNN.quicksum(collected_terms)
+    end
+    return foldl(+, terms; init = zero_value)
+end
+
+"""
+    comp(f::RationalSignomial, G::Vector{<:RationalSignomial}; quicksum=false)
+
+Substitute `G[i]` for variable `i` in `f`.
+Set `quicksum=true` to batch the intermediate tropical sums.
+"""
+function comp(
+        f::RationalSignomial,
+        G::Vector{<:RationalSignomial};
+        quicksum::Bool = false
+)
+    num = comp(f.num, G; quicksum = quicksum)
+    den = comp(f.den, G; quicksum = quicksum)
     return num / den
 end
 
 """
-    comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
+    comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial}; quicksum=false)
 
 Substitute `G` into each element of `F`.
+Set `quicksum=true` to batch the intermediate tropical sums.
 """
-function comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
-    return [comp(f, G) for f in F]
-end
-
-"""
-    comp_with_quicksum(f::Signomial, G::Vector{<:RationalSignomial})
-
-Substitute `G` into `f` and batch intermediate tropical sums.
-"""
-function comp_with_quicksum(f::Signomial, G::Vector{<:RationalSignomial})
-    @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
-    summands = RationalSignomial[]
-    for (e, c) in monomial_pairs(f)
-        term = RationalSignomial_one(nvars(G[1]), G[1])
-        for i in Base.eachindex(G)
-            term *= G[i]^e[i]
-        end
-        push!(summands, c * term)
-    end
-    return quicksum(summands)
-end
-
-"""
-    comp_with_quicksum(f::RationalSignomial, G::Vector{<:RationalSignomial})
-
-Substitute `G` into `f` and batch intermediate tropical sums.
-"""
-function comp_with_quicksum(f::RationalSignomial, G::Vector{<:RationalSignomial})
-    num = comp_with_quicksum(f.num, G)
-    den = comp_with_quicksum(f.den, G)
-    return num / den
-end
-
-"""
-    comp_with_quicksum(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
-
-Substitute `G` into each element of `F`. Batch intermediate tropical sums.
-"""
-function comp_with_quicksum(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial})
-    return [comp_with_quicksum(f, G) for f in F]
+function comp(
+        F::Vector{<:RationalSignomial},
+        G::Vector{<:RationalSignomial};
+        quicksum::Bool = false
+)
+    return [comp(f, G; quicksum = quicksum) for f in F]
 end
 
 #==============================================================================#

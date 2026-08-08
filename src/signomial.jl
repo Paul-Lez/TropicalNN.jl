@@ -305,14 +305,19 @@ function quicksum(F::Vector{<:Signomial})
 end
 
 """
-    comp(f::Signomial, G::Vector{<:Signomial})
+    comp(f::Signomial, G::Vector{<:Signomial}; quicksum=false)
 
 Substitute `G[i]` for variable `i` in `f`.
+Set `quicksum=true` to batch the intermediate tropical sums.
 
 Throw `ArgumentError` if `f` has a negative exponent. Convert `G` to rational
 signomials explicitly to compose such an `f`.
 """
-function comp(f::Signomial{T}, G::Vector{<:Signomial}) where {T}
+function comp(
+        f::Signomial{T},
+        G::Vector{<:Signomial};
+        quicksum::Bool = false
+) where {T}
     @assert length(G) == f.dim "Number of polynomials must match variables"
     if any(e -> e < 0, f.exp)
         throw(ArgumentError(
@@ -328,23 +333,21 @@ function comp(f::Signomial{T}, G::Vector{<:Signomial}) where {T}
         sorted = true
     )
 
-    result = zero_poly
-
-    # Evaluate monomial-wise
-    for i in 1:length(f)
-        term_poly = Signomial(
-            [one(f.coeff[i])],
-            [zeros(T, nvars(G[1]))];
-            sorted = true
-        )
-
-        for d in 1:f.dim
-            term_poly = term_poly * (G[d]^f.exp[d, i])
-        end
-        result = result + (f.coeff[i] * term_poly)
+    one_poly = Signomial(
+        [_tropical_one(f)],
+        [zeros(T, nvars(G[1]))];
+        sorted = true
+    )
+    terms = (
+        _composition_term(get_exp(f, i), get_coeff(f, i), G, one_poly)
+    for i in Base.eachindex(f)
+    )
+    if quicksum
+        collected_terms = collect(terms)
+        isempty(collected_terms) && return zero_poly
+        return TropicalNN.quicksum(collected_terms)
     end
-
-    return result
+    return foldl(+, terms; init = zero_poly)
 end
 
 function Base.:(==)(f::Signomial{T}, g::Signomial{T}) where {T}
