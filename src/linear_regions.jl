@@ -414,19 +414,19 @@ function highs_is_full_dimensional(
     model = create_highs_model(; solver = solver, threads = threads)
 
     @variable(model, x[1:n])
-    @variable(model, ε)
+    @variable(model, epsilon)
     @constraints(model, begin
-        A_filtered * x .+ ε .<= b_filtered
+        A_filtered * x .+ epsilon .<= b_filtered
         # Bound the slack objective.
-        ε <= 1
+        epsilon <= 1
     end)
-    @objective(model, Max, ε)
+    @objective(model, Max, epsilon)
 
     optimize!(model)
 
     status = termination_status(model)
     if status == MOI.OPTIMAL
-        epsilon_value = value(ε)
+        epsilon_value = value(epsilon)
         isfinite(epsilon_value) ||
             throw(ErrorException("HiGHS returned non-finite inflation value $epsilon_value"))
         return epsilon_value > tol
@@ -777,52 +777,55 @@ function region_intersection(
 end
 
 """
-    _linear_region_data((f, i, mode))
+    _linear_region_data((signomial, monomial_index, mode))
 
-Construct the constraint data and check full-dimensionality for the `i`th
-monomial of `f`. The input is a tuple so we can directly pass this to `pmap`.
+Construct the constraint data and check full-dimensionality for monomial
+`monomial_index` of `signomial`. The input is a tuple so we can directly pass
+this to `pmap`.
 """
 function _linear_region_data(args)
-    f, i, mode = args
-    A, b = _linear_region_constraint_data(f, i, mode)
+    signomial, monomial_index, mode = args
+    A, b = _linear_region_constraint_data(signomial, monomial_index, mode)
     region = make_polyhedron(A, b; mode = mode)
     return (A, b, is_full_dimensional(region; mode = mode))
 end
 
 """
-    _linear_region_data_chunk((f, indices, mode))
+    _linear_region_data_chunk((signomial, monomial_indices, mode))
 
 Evaluate `_linear_region_data` for a contiguous collection of monomial
 indices.
 The input is a tuple so we can directly pass this to `pmap`.
 """
 function _linear_region_data_chunk(args)
-    f, inds, mode = args
-    return [_linear_region_data((f, i, mode)) for i in inds]
+    signomial, monomial_indices, mode = args
+    return [_linear_region_data((signomial, monomial_index, mode))
+            for monomial_index in monomial_indices]
 end
 
 """
-    _linear_region_data_parallel(f, mode, workers)
+    _linear_region_data_parallel(signomial, mode, workers)
 
-Return dominance-region constraint data for every monomial of `f`. When
+Return dominance-region constraint data for every monomial of `signomial`. When
 `workers` is provided, process index chunks with `Distributed.pmap`.
 """
 function _linear_region_data_parallel(
-        f::Signomial,
+        signomial::Signomial,
         mode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
-    n = length(f)
-    if workers === nothing || n <= 1
-        return [_linear_region_data((f, i, mode)) for i in Base.eachindex(f)]
+    monomial_count = length(signomial)
+    if workers === nothing || monomial_count <= 1
+        return [_linear_region_data((signomial, index, mode))
+                for index in Base.eachindex(signomial)]
     end
 
     _assert_tropicalnn_loaded(workers)
-    chunks = _index_chunks(n, length(Distributed.workers(workers)))
+    chunks = _index_chunks(monomial_count, length(Distributed.workers(workers)))
     chunk_results = Distributed.pmap(
         _linear_region_data_chunk,
         workers,
-        [(f, chunk, mode) for chunk in chunks]
+        [(signomial, chunk, mode) for chunk in chunks]
     )
     return Base.reduce(vcat, chunk_results)
 end
@@ -856,13 +859,13 @@ function _intersect_linear_region_partitions(
         next_regions = []
         for (index, candidate_region) in partition
             for (indices, partial_region) in regions
-                intersection = region_intersection(
+                region = region_intersection(
                     partial_region,
                     candidate_region;
                     mode = mode
                 )
-                if is_full_dimensional(intersection; mode = mode)
-                    push!(next_regions, ((indices..., index), intersection))
+                if is_full_dimensional(region; mode = mode)
+                    push!(next_regions, ((indices..., index), region))
                 end
             end
         end
@@ -874,32 +877,32 @@ function _intersect_linear_region_partitions(
 end
 
 """
-    _signomial_region_partition(f; mode, workers=nothing)
+    _signomial_region_partition(signomials; mode, workers=nothing)
 
-Return the common dominance-cell partition of the signomial vector `f`.
+Return the common dominance-cell partition of the signomial vector `signomials`.
 Each cell stores its active monomial indices as internal data.
 """
 function _signomial_region_partition(
-        f::AbstractVector{<:Signomial};
+        signomials::AbstractVector{<:Signomial};
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    isempty(f) && return _Cell[]
+    isempty(signomials) && return _Cell[]
 
-    linear_regions_vec = map(f) do signomial
+    dominance_partitions = map(signomials) do signomial
         region_data = _linear_region_data_parallel(signomial, mode, workers)
-        return [(i, make_polyhedron(data[1], data[2]; mode = mode))
-                for (i, data) in pairs(region_data) if data[3]]
+        return [(monomial_index, make_polyhedron(data[1], data[2]; mode = mode))
+                for (monomial_index, data) in pairs(region_data) if data[3]]
     end
 
-    partition = _intersect_linear_region_partitions(linear_regions_vec; mode = mode)
-    return map(partition) do (indices, region)
+    partition = _intersect_linear_region_partitions(dominance_partitions; mode = mode)
+    return map(partition) do (dominance_indices, region)
         A, b = _region_constraint_data(region; mode = mode)
         affine_key = [(Rational(get_coeff(signomial, index)),
                           collect(get_exp(signomial, index)))
-                      for (signomial, index) in zip(f, indices)]
+                      for (signomial, index) in zip(signomials, dominance_indices)]
         matrix, offset = _affine_formula_from_linear_map_key(affine_key)
-        return _Cell(A, b, matrix, offset, indices)
+        return _Cell(A, b, matrix, offset, dominance_indices)
     end
 end
 
@@ -922,14 +925,22 @@ function linear_regions(
 end
 
 """
-    _linear_map_key(f, g, i, j)
+    _linear_map_key(numerator, denominator, numerator_index, denominator_index)
 
 Return a hashable representation of the affine map obtained by subtracting
-the `j`th monomial of `g` from the `i`th monomial of `f`.
+monomial `denominator_index` of `denominator` from monomial `numerator_index` of
+`numerator`.
 """
-function _linear_map_key(f::Signomial, g::Signomial, i, j)
-    coeff = Rational(get_coeff(f, i)) - Rational(get_coeff(g, j))
-    exp = collect(get_exp(f, i)) - collect(get_exp(g, j))
+function _linear_map_key(
+        numerator::Signomial,
+        denominator::Signomial,
+        numerator_index,
+        denominator_index
+)
+    coeff = Rational(get_coeff(numerator, numerator_index)) -
+            Rational(get_coeff(denominator, denominator_index))
+    exp = collect(get_exp(numerator, numerator_index)) -
+          collect(get_exp(denominator, denominator_index))
     return (coeff, exp)
 end
 
@@ -984,70 +995,76 @@ function _region_constraint_data(region::_Polyhedra; mode::_HiGHS)
 end
 
 """
-    _rational_region_intersections_chunk((numerator, denominator, pairs, mode))
+    _rational_region_intersections_chunk((numerator_data, denominator_data,
+                                          candidate_pairs, mode))
 
 Test the requested numerator/denominator partition pairs for full-dimensional
 intersection. Return an internal cell for each accepted intersection.
 The input is a tuple so we can directly pass this to `pmap`.
 """
 function _rational_region_intersections_chunk(args)
-    numerator, denominator, pairs, mode = args
-    intersections = _Cell[]
+    numerator_data, denominator_data, candidate_pairs, mode = args
+    cells = _Cell[]
 
-    for (i, j) in pairs
-        numerator_cell = numerator[i]
-        denominator_cell = denominator[j]
-        A = vcat(numerator_cell.A, denominator_cell.A)
-        b = vcat(numerator_cell.b, denominator_cell.b)
-        intersection = make_polyhedron(A, b; mode = mode)
-        if is_full_dimensional(intersection; mode = mode)
+    for (numerator_cell_index, denominator_cell_index) in candidate_pairs
+        numerator_cell = numerator_data[numerator_cell_index]
+        denominator_cell = denominator_data[denominator_cell_index]
+        intersection_matrix = vcat(numerator_cell.A, denominator_cell.A)
+        intersection_vector = vcat(numerator_cell.b, denominator_cell.b)
+        region = make_polyhedron(intersection_matrix, intersection_vector; mode = mode)
+        if is_full_dimensional(region; mode = mode)
             push!(
-                intersections,
+                cells,
                 _Cell(
-                    A,
-                    b,
+                    intersection_matrix,
+                    intersection_vector,
                     numerator_cell.matrix - denominator_cell.matrix,
                     numerator_cell.offset - denominator_cell.offset,
-                    _boundary_sides_from_constraints(A, b)
+                    _boundary_sides_from_constraints(intersection_matrix, intersection_vector)
                 )
             )
         end
     end
 
-    return intersections
+    return cells
 end
 
 """
-    _rational_region_intersections_parallel(numerator, denominator, mode, workers)
+    _rational_region_intersections_parallel(numerator_data, denominator_data,
+                                            mode, workers)
 
 Test every numerator/denominator partition pair for full-dimensional
 intersection. Use `workers` to evaluate pair chunks in parallel when supplied.
 """
 function _rational_region_intersections_parallel(
-        numerator::AbstractVector{<:_Cell},
-        denominator::AbstractVector{<:_Cell},
+        numerator_data::AbstractVector{<:_Cell},
+        denominator_data::AbstractVector{<:_Cell},
         mode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
-    pairs = Tuple{Int, Int}[]
-    for i in Base.eachindex(numerator)
-        for j in Base.eachindex(denominator)
-            push!(pairs, (i, j))
+    candidate_pairs = Tuple{Int, Int}[]
+    for numerator_cell_index in Base.eachindex(numerator_data)
+        for denominator_cell_index in Base.eachindex(denominator_data)
+            push!(candidate_pairs, (numerator_cell_index, denominator_cell_index))
         end
     end
 
-    isempty(pairs) && return _Cell[]
-    if workers === nothing || length(pairs) <= 1
-        return _rational_region_intersections_chunk((numerator, denominator, pairs, mode))
+    isempty(candidate_pairs) && return _Cell[]
+    if workers === nothing || length(candidate_pairs) <= 1
+        return _rational_region_intersections_chunk(
+            (numerator_data, denominator_data, candidate_pairs, mode)
+        )
     end
 
     _assert_tropicalnn_loaded(workers)
-    chunks = _index_chunks(length(pairs), length(Distributed.workers(workers)))
-    pair_chunks = [pairs[chunk] for chunk in chunks]
+    chunks = _index_chunks(
+        length(candidate_pairs), length(Distributed.workers(workers)))
+    pair_chunks = [candidate_pairs[chunk] for chunk in chunks]
     chunk_results = Distributed.pmap(
         _rational_region_intersections_chunk,
         workers,
-        [(numerator, denominator, pair_chunk, mode) for pair_chunk in pair_chunks]
+        [(numerator_data, denominator_data, pair_chunk, mode)
+         for pair_chunk in pair_chunks]
     )
     return Base.reduce(vcat, chunk_results)
 end
@@ -1064,9 +1081,10 @@ function _cell_components(
     length(cells) <= 1 && return [collect(Base.eachindex(cells))]
 
     graph = Graphs.SimpleGraph(length(cells))
-    for (i, j) in Combinatorics.combinations(collect(Base.eachindex(cells)), 2)
-        if regions_intersect_codimension_le_one(cells[i], cells[j]; mode = mode)
-            Graphs.add_edge!(graph, i, j)
+    for (left_index, right_index) in Combinatorics.combinations(collect(Base.eachindex(cells)), 2)
+        if regions_intersect_codimension_le_one(
+            cells[left_index], cells[right_index]; mode = mode)
+            Graphs.add_edge!(graph, left_index, right_index)
         end
     end
     return Graphs.connected_components(graph)
