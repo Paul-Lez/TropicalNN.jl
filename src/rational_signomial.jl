@@ -135,26 +135,28 @@ end
 #==============================================================================#
 
 """
-    evaluate(f::RationalSignomial, a::Vector)
+    evaluate(f::RationalSignomial, a::AbstractVector)
 
 Evaluate `f` at point `a`.
+`a` can be any `AbstractVector` of suitable scalars.
 """
-function evaluate(f::RationalSignomial, a::Vector)
+function evaluate(f::RationalSignomial, a::AbstractVector)
     point = _coerce_evaluation_point(f.num, a)
     return evaluate(f.num, point) / evaluate(f.den, point)
 end
 
 """
-    evaluate(F::Vector{<:RationalSignomial}, a::Vector)
+    evaluate(F::AbstractVector{<:RationalSignomial}, a::AbstractVector)
 
 Evaluate each function in `F` at point `a`.
+`F` and `a` can be any suitable `AbstractVector` values.
 """
-function evaluate(F::Vector{<:RationalSignomial}, a::Vector)
+function evaluate(F::AbstractVector{<:RationalSignomial}, a::AbstractVector)
     return [evaluate(f, a) for f in F]
 end
 
 # Callable syntax: f(x) as sugar for evaluate(f, x)
-(f::RationalSignomial)(x::Vector) = evaluate(f, x)
+(f::RationalSignomial)(x::AbstractVector) = evaluate(f, x)
 
 #==============================================================================#
 #                    MONOMIAL COUNT                                             #
@@ -164,7 +166,7 @@ function monomial_count(f::RationalSignomial)
     return monomial_count(f.num) + monomial_count(f.den)
 end
 
-function monomial_count(F::Vector{<:RationalSignomial})
+function monomial_count(F::AbstractVector{<:RationalSignomial})
     return sum(monomial_count(f) for f in F)
 end
 
@@ -203,11 +205,12 @@ end
 #==============================================================================#
 
 """
-    quicksum(F::Vector{<:RationalSignomial})
+    quicksum(F::AbstractVector{<:RationalSignomial})
 
 Return the tropical sum of `F`.
+`F` can be any `AbstractVector` of rational signomials.
 """
-function quicksum(F::Vector{<:RationalSignomial})
+function quicksum(F::AbstractVector{<:RationalSignomial})
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
     denoms = [f.den for f in F]
     den = foldl(*, denoms)
@@ -225,26 +228,27 @@ end
 
 function _composition_term(e, c, G, one_value)
     term = one_value
-    for i in Base.eachindex(G)
-        term *= G[i]^e[i]
+    for (i, g_index) in enumerate(eachindex(G))
+        term *= G[g_index]^e[i]
     end
     return c * term
 end
 
 """
-    comp(f::Signomial, G::Vector{<:RationalSignomial}; quicksum=false)
+    comp(f::Signomial, G::AbstractVector{<:RationalSignomial}; quicksum=false)
 
 Substitute `G[i]` for variable `i` in `f`.
 Set `quicksum=true` to batch the intermediate tropical sums.
 """
 function comp(
         f::Signomial,
-        G::Vector{<:RationalSignomial};
+        G::AbstractVector{<:RationalSignomial};
         quicksum::Bool = false
 )
     @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
-    zero_value = rational_signomial_zero(nvars(G[1]), G[1])
-    one_value = rational_signomial_one(nvars(G[1]), G[1])
+    first_input = G[firstindex(G)]
+    zero_value = rational_signomial_zero(nvars(first_input), first_input)
+    one_value = rational_signomial_one(nvars(first_input), first_input)
     terms = (
         _composition_term(e, c, G, one_value)
     for (e, c) in monomial_pairs(f)
@@ -258,14 +262,14 @@ function comp(
 end
 
 """
-    comp(f::RationalSignomial, G::Vector{<:RationalSignomial}; quicksum=false)
+    comp(f::RationalSignomial, G::AbstractVector{<:RationalSignomial}; quicksum=false)
 
 Substitute `G[i]` for variable `i` in `f`.
 Set `quicksum=true` to batch the intermediate tropical sums.
 """
 function comp(
         f::RationalSignomial,
-        G::Vector{<:RationalSignomial};
+        G::AbstractVector{<:RationalSignomial};
         quicksum::Bool = false
 )
     num = comp(f.num, G; quicksum = quicksum)
@@ -274,14 +278,14 @@ function comp(
 end
 
 """
-    comp(F::Vector{<:RationalSignomial}, G::Vector{<:RationalSignomial}; quicksum=false)
+    comp(F::AbstractVector{<:RationalSignomial}, G::AbstractVector{<:RationalSignomial}; quicksum=false)
 
 Substitute `G` into each element of `F`.
 Set `quicksum=true` to batch the intermediate tropical sums.
 """
 function comp(
-        F::Vector{<:RationalSignomial},
-        G::Vector{<:RationalSignomial};
+        F::AbstractVector{<:RationalSignomial},
+        G::AbstractVector{<:RationalSignomial};
         quicksum::Bool = false
 )
     return [comp(f, G; quicksum = quicksum) for f in F]
@@ -295,7 +299,7 @@ function Base.show(io::IO, f::RationalSignomial)
     print(io, "(", f.num, ") ⊘ (", f.den, ")")
 end
 
-function Base.show(io::IO, F::Vector{<:RationalSignomial})
+function Base.show(io::IO, F::AbstractVector{<:RationalSignomial})
     for (i, f) in enumerate(F)
         print(io, "f$(_subscript(i)) = ", f, "\n")
     end

@@ -120,8 +120,8 @@ end
 
 # Constructor from vector-of-vectors
 function Signomial{T}(
-        coeff_dict::Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-        exp_vecs::Vector{Vector{T}},
+        coeff_dict::AbstractDict{<:AbstractVector{T}, <:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}},
         sorted::Bool = false
 ) where {T}
     if isempty(exp_vecs)
@@ -133,12 +133,15 @@ end
 
 # Constructor from coefficient vector and exponent vector
 function Signomial{T}(
-        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-        exp_vecs::Vector{Vector{T}},
+        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}},
         sorted::Bool = false
 ) where {T}
     if isempty(exp_vecs)
-        return Signomial{T}(Matrix{T}(undef, 0, 0), coeffs)
+        return Signomial{T}(
+            Matrix{T}(undef, 0, 0),
+            _TROPICAL_COEFF[c for c in coeffs]
+        )
     end
 
     coeffs, exp_vecs = _canonize_terms(coeffs, exp_vecs)
@@ -290,10 +293,10 @@ function Base.:^(f::Signomial{T}, n::Integer) where {T}
     return Signomial{eltype(new_exp)}(new_exp, new_coeff)
 end
 
-function quicksum(F::Vector{Signomial{T}}) where {T}
+function quicksum(F::AbstractVector{Signomial{T}}) where {T}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
-    dim = F[1].dim
+    dim = F[firstindex(F)].dim
     total_terms = sum(length(f) for f in F)
 
     # Combine all exponents and coefficients
@@ -315,17 +318,19 @@ function quicksum(F::Vector{Signomial{T}}) where {T}
     return Signomial{T}(combined_exp, combined_coeff)
 end
 
-function quicksum(F::Vector{<:Signomial})
+function quicksum(F::AbstractVector{<:Signomial})
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
-    result = F[1]
-    for i in 2:length(F)
+    first_index = firstindex(F)
+    result = F[first_index]
+    for i in eachindex(F)
+        i == first_index && continue
         result = result + F[i]
     end
     return result
 end
 
 """
-    comp(f::Signomial, G::Vector{<:Signomial}; quicksum=false)
+    comp(f::Signomial, G::AbstractVector{<:Signomial}; quicksum=false)
 
 Substitute `G[i]` for variable `i` in `f`.
 Set `quicksum=true` to batch the intermediate tropical sums.
@@ -335,7 +340,7 @@ signomials explicitly to compose such an `f`.
 """
 function comp(
         f::Signomial{T},
-        G::Vector{<:Signomial};
+        G::AbstractVector{<:Signomial};
         quicksum::Bool = false
 ) where {T}
     @assert length(G) == f.dim "Number of polynomials must match variables"
@@ -347,15 +352,16 @@ function comp(
     end
 
     # Get a zero polynomial in the output space
+    first_input = G[firstindex(G)]
     zero_poly = Signomial(
         [_tropical_zero(f)],
-        [zeros(T, nvars(G[1]))];
+        [zeros(T, nvars(first_input))];
         sorted = true
     )
 
     one_poly = Signomial(
         [_tropical_one(f)],
-        [zeros(T, nvars(G[1]))];
+        [zeros(T, nvars(first_input))];
         sorted = true
     )
     terms = (
@@ -448,16 +454,20 @@ Base.repr(f::Signomial) = string(f)
 #==============================================================================#
 
 function Signomial(
-        coeffs::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
-        exp_vecs::Vector{<:AbstractVector{T}};
+        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}};
         sorted::Bool = false
 ) where {T}
-    return Signomial{T}(coeffs, [Vector{T}(e) for e in exp_vecs], sorted)
+    return Signomial{T}(
+        _TROPICAL_COEFF[c for c in coeffs],
+        [Vector{T}(e) for e in exp_vecs],
+        sorted
+    )
 end
 
 function Signomial(
-        coeff_dict::Dict{<:AbstractVector{T}, Oscar.TropicalSemiringElem{typeof(max)}},
-        exp_vecs::Vector{<:AbstractVector{T}};
+        coeff_dict::AbstractDict{<:AbstractVector{T}, <:_TROPICAL_COEFF},
+        exp_vecs::AbstractVector{<:AbstractVector{T}};
         sorted::Bool = false
 ) where {T}
     plain_exps = [Vector{T}(e) for e in exp_vecs]
@@ -469,8 +479,8 @@ end
 
 # Convenience constructor: plain Real coefficients -> wrapped in tropical semiring
 function Signomial(
-        coeffs::Vector{<:Real},
-        exp_vecs::Vector{<:AbstractVector{T}};
+        coeffs::AbstractVector{<:Real},
+        exp_vecs::AbstractVector{<:AbstractVector{T}};
         sorted::Bool = false
 ) where {T}
     R = Oscar.tropical_semiring(max)
@@ -525,11 +535,12 @@ function signomial_one(n::Int, f::Signomial)
 end
 
 """
-    signomial_monomial(c, exp::Vector{T})
+    signomial_monomial(c, exp::AbstractVector{T})
 
 Construct a one-monomial signomial with coefficient `c` and exponent `exp`.
+`exp` can be any `AbstractVector`. The constructor copies it.
 """
-function signomial_monomial(c, exp::Vector{T}) where {T}
+function signomial_monomial(c, exp::AbstractVector{T}) where {T}
     return Signomial([c], [exp]; sorted = true)
 end
 
@@ -538,17 +549,20 @@ end
 #==============================================================================#
 
 """
-    evaluate(f::Signomial, a::Vector)
+    evaluate(f::Signomial, a::AbstractVector)
 
 Evaluate `f` at point `a`.
+`a` can be any `AbstractVector` of suitable scalars.
 """
-function evaluate(f::Signomial, a::Vector)
+function evaluate(f::Signomial, a::AbstractVector)
     point = _coerce_evaluation_point(f, a)
-    result = zero(point[1])
+    point_indices = axes(point, 1)
+    first_point = point[firstindex(point)]
+    result = zero(first_point)
     for i in 1:length(f)
-        term = one(point[1])
+        term = one(first_point)
         @inbounds for j in 1:f.dim
-            term *= _tropical_power(point[j], f.exp[j, i])
+            term *= _tropical_power(point[point_indices[j]], f.exp[j, i])
         end
         result += f.coeff[i] * term
     end
@@ -564,14 +578,14 @@ function _lift_evaluation_scalar(R, x::Real)
     return R(x isa AbstractFloat ? rationalize(x) : x)
 end
 
-function _coerce_evaluation_point(f::Signomial, a::Vector)
+function _coerce_evaluation_point(f::Signomial, a::AbstractVector)
     all(x -> x isa Oscar.TropicalSemiringElem, a) && return a
     R = _coefficient_parent(f)
     return [_lift_evaluation_scalar(R, x) for x in a]
 end
 
 # Callable syntax: f(x) as sugar for evaluate(f, x)
-(f::Signomial)(x::Vector) = evaluate(f, x)
+(f::Signomial)(x::AbstractVector) = evaluate(f, x)
 
 #==============================================================================#
 #                    MONOMIAL COUNT                                             #

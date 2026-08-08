@@ -6,8 +6,9 @@
 Convert `x -> max.(A * x + b, t)` to tropical rational functions.
 
 The lengths of `b` and `t` must equal `size(A, 1)`.
+`A` can be any `AbstractMatrix` with a supported element type.
 """
-function single_to_trop(A::Matrix{T}, b::AbstractVector,
+function single_to_trop(A::AbstractMatrix{T}, b::AbstractVector,
         t::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
     G = RationalSignomial[]
 
@@ -22,7 +23,7 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
     b = [R(Rational{BigInt}(i)) for i in b]
     t = [R(Rational{BigInt}(i)) for i in t]
     sizehint!(G, size(A, 1))
-    for i in axes(A, 1)
+    for (row, i) in enumerate(axes(A, 1))
         # Split row i into positive and negative parts.
         pos = Vector{T}()
         neg = Vector{T}()
@@ -31,9 +32,9 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
             push!(neg, max(-A[i, j], 0))
         end
         # The numerator is max(b[i] + pos⋅x, t[i] + neg⋅x).
-        num = signomial_monomial(b[i], pos) + signomial_monomial(t[i], neg)
+        num = signomial_monomial(b[row], pos) + signomial_monomial(t[row], neg)
         # The denominator is neg⋅x.
-        den = signomial_monomial(one(t[i]), neg)
+        den = signomial_monomial(one(t[row]), neg)
         push!(G, num/den)
     end
     return G
@@ -45,6 +46,7 @@ end
 Convert `x -> A * x + b` to tropical rational functions.
 
 The length of `b` must equal `size(A, 1)`.
+`A` can be any `AbstractMatrix` with a supported element type.
 """
 function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
     G = RationalSignomial[]
@@ -59,7 +61,7 @@ function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
     b = [R(Rational{BigInt}(i)) for i in b]
     sizehint!(G, size(A, 1))
     # Split each row into numerator and denominator exponents.
-    for i in axes(A, 1)
+    for (row, i) in enumerate(axes(A, 1))
         pos = Vector{T}()
         neg = Vector{T}()
         for j in axes(A, 2)
@@ -67,8 +69,8 @@ function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
             push!(pos, positive_entry)
             push!(neg, positive_entry - A[i, j])
         end
-        num = signomial_monomial(b[i], pos)
-        den = signomial_monomial(one(b[i]), neg)
+        num = signomial_monomial(b[row], pos)
+        den = signomial_monomial(one(b[row]), neg)
         push!(G, num/den)
     end
     return G
@@ -92,10 +94,12 @@ function _mlp_to_tropical_layers(
     length(biases) == length(linear_maps) || throw(DimensionMismatch(
         "Got $(length(linear_maps)) weight matrices and $(length(biases)) bias vectors"
     ))
+    map_indices = collect(eachindex(linear_maps))
+    bias_indices = collect(eachindex(biases))
     hidden_layer_count = length(linear_maps) - 1
     # Use zero thresholds for ReLU when the caller omits them.
     actual_thresholds = if thresholds === nothing
-        [zeros(eltype(linear_maps[k]), size(linear_maps[k], 1))
+        [zeros(eltype(linear_maps[map_indices[k]]), size(linear_maps[map_indices[k]], 1))
          for k in 1:hidden_layer_count]
     else
         length(thresholds) == hidden_layer_count || throw(DimensionMismatch(
@@ -104,35 +108,35 @@ function _mlp_to_tropical_layers(
         ))
         thresholds
     end
+    threshold_indices = thresholds === nothing ? nothing : collect(eachindex(thresholds))
 
     layers = Vector{Vector{RationalSignomial}}(undef, length(linear_maps))
     # Convert each layer before composition changes its input variables.
-    for k in Base.eachindex(linear_maps)
-        A = linear_maps[k]
-        b = biases[k]
+    for (layer, map_index) in enumerate(map_indices)
+        A = linear_maps[map_index]
+        b = biases[bias_indices[layer]]
         size(A, 1) == length(b) || throw(DimensionMismatch(
-            "Layer $k has $(size(A, 1)) outputs but bias length $(length(b))"
+            "Layer $layer has $(size(A, 1)) outputs but bias length $(length(b))"
         ))
-        if k > firstindex(linear_maps)
-            expected_input_dim = size(linear_maps[k - 1], 1)
+        if layer > 1
+            expected_input_dim = size(linear_maps[map_indices[layer - 1]], 1)
             size(A, 2) == expected_input_dim || throw(DimensionMismatch(
-                "Layer $k has input dimension $(size(A, 2)), but layer $(k - 1) " *
+                "Layer $layer has input dimension $(size(A, 2)), but layer $(layer - 1) " *
                 "has output dimension $expected_input_dim"
             ))
         end
 
         # Keep the output affine and apply thresholds only to hidden layers.
-        if k == lastindex(linear_maps)
-            layers[k] = RationalSignomial[affine_to_trop(Matrix(A), b)...]
+        if layer == length(map_indices)
+            layers[layer] = RationalSignomial[affine_to_trop(A, b)...]
         else
-            threshold = actual_thresholds[k]
+            threshold = thresholds === nothing ? actual_thresholds[layer] :
+                        thresholds[threshold_indices[layer]]
             size(A, 1) == length(threshold) || throw(DimensionMismatch(
-                "Layer $k has $(size(A, 1)) outputs but threshold length " *
+                "Layer $layer has $(size(A, 1)) outputs but threshold length " *
                 "$(length(threshold))"
             ))
-            layers[k] = RationalSignomial[
-                single_to_trop(Matrix(A), b, threshold)...
-            ]
+            layers[layer] = RationalSignomial[single_to_trop(A, b, threshold)...]
         end
     end
     return layers
@@ -219,10 +223,14 @@ Convert an MLP with an affine output layer to tropical rational functions.
 Each hidden layer applies `max.(z, thresholds[i])`. Omit `thresholds` to use
 ReLU. The keywords control batched sums and pruning. Set `dedup=true` to remove
 terms whose coefficient is tropical zero.
+`linear_maps` can be an `AbstractVector` of `AbstractMatrix` values. The bias
+and threshold collections can also be abstract vectors.
 
 `mlp_to_trop` is a deprecated alias for this function.
 """
-function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
+function tropicalize(
+        linear_maps::AbstractVector{<:AbstractMatrix{T}},
+        bias::AbstractVector{<:AbstractVector},
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
         quicksum::Bool = false, prune::Bool = false,
         dedup::Bool = false,

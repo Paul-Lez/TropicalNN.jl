@@ -354,13 +354,13 @@ function create_highs_model(; solver = HIGHS_DEFAULT_SOLVER, threads = nothing)
 end
 
 """
-    highs_is_empty(A::Matrix{Float64}, b::Vector{Float64}; solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
+    highs_is_empty(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Check if polyhedron `{x : Ax <= b}` is empty by solving a linear program using HiGHS.
 """
 function highs_is_empty(
-        A::Matrix{Float64},
-        b::Vector{Float64};
+        A::AbstractMatrix{Float64},
+        b::AbstractVector{Float64};
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
 )
@@ -388,7 +388,7 @@ end
 Remove satisfied constant inequalities from `{x : Ax ≤ b}`. Return `nothing`
 when a constant inequality is infeasible.
 """
-function filter_lp(A::Matrix{T}, b::Vector{T}) where {T}
+function filter_lp(A::AbstractMatrix{T}, b::AbstractVector{T}) where {T}
     m, n = size(A)
 
     zero_rows = [i for i in 1:m if all(iszero, A[i, :])]
@@ -402,13 +402,13 @@ function filter_lp(A::Matrix{T}, b::Vector{T}) where {T}
 end
 
 """
-    highs_is_full_dimensional(A::Matrix{Float64}, b::Vector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
+    highs_is_full_dimensional(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Check if polyhedron `{x : Ax <= b}` is full dimensional by solving a linear program using HiGHS.
 """
 function highs_is_full_dimensional(
-        A::Matrix{Float64},
-        b::Vector{Float64};
+        A::AbstractMatrix{Float64},
+        b::AbstractVector{Float64};
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
@@ -457,14 +457,15 @@ function highs_is_full_dimensional(
 end
 
 """
-    highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Float64},
-                                        A2::Matrix{Float64}, b2::Vector{Float64};
+    highs_intersect_is_full_dimensional(A1::AbstractMatrix{Float64}, b1::AbstractVector{Float64},
+                                        A2::AbstractMatrix{Float64}, b2::AbstractVector{Float64};
                                         tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Check if the intersection of two polyhedra is full dimensional via by solving linear programs using HiGHS.
 """
-function highs_intersect_is_full_dimensional(A1::Matrix{Float64}, b1::Vector{Float64},
-        A2::Matrix{Float64}, b2::Vector{Float64};
+function highs_intersect_is_full_dimensional(
+        A1::AbstractMatrix{Float64}, b1::AbstractVector{Float64},
+        A2::AbstractMatrix{Float64}, b2::AbstractVector{Float64};
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing)
@@ -489,7 +490,7 @@ Check whether the `i`th inequality of `{x : Ax ≤ b}` is an implicit equality,
 using a HiGHS linear program.
 """
 function highs_check_implicit_equality(
-        A::Matrix{Float64}, b::Vector{Float64}, i::Int;
+        A::AbstractMatrix{Float64}, b::AbstractVector{Float64}, i::Int;
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
@@ -529,8 +530,8 @@ end
 Return whether the HiGHS-mode polyhedron `{x : Ax ≤ b}` has codimension at
 most one.
 """
-function _highs_codimension_le_one(A::Matrix{Float64},
-        b::Vector{Float64};
+function _highs_codimension_le_one(A::AbstractMatrix{Float64},
+        b::AbstractVector{Float64};
         tol = HIGHS_DEFAULT_TOL,
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing

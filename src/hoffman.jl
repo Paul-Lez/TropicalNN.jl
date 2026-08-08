@@ -30,23 +30,23 @@ function _linearmap_matrices(f::RationalSignomial)
 end
 
 @doc raw"""
-    _tilde_matrices(A::Matrix)
+    _tilde_matrices(A::AbstractMatrix)
 
 Return `A - ones(m) * A[i, :]'` for each row `i` of `A`.
 """
-function _tilde_matrices(A::Matrix)
+function _tilde_matrices(A::AbstractMatrix)
     m, n = size(A)
     ones_vector = ones(m, 1)
     return [A - ones_vector * reshape(A[row, :], (1, n)) for row in 1:m]
 end
 
 @doc raw"""
-    _tilde_matrices(As::Tuple{Matrix, Matrix})
+    _tilde_matrices(As::Tuple{<:AbstractMatrix, <:AbstractMatrix})
 
 Return the transformed matrices for all numerator-denominator row
 pairs.
 """
-function _tilde_matrices(As::Tuple{Matrix, Matrix})
+function _tilde_matrices(As::Tuple{<:AbstractMatrix, <:AbstractMatrix})
     m_1, n_1 = size(As[1])
     n_2 = size(As[2], 2)
     n_1 == n_2 ||
@@ -58,20 +58,20 @@ function _tilde_matrices(As::Tuple{Matrix, Matrix})
 end
 
 @doc raw"""
-    _tilde_vectors(b::Vector)
+    _tilde_vectors(b::AbstractVector)
 
 Return `b - b[i] * ones(length(b))` for each index `i`.
 """
-function _tilde_vectors(b::Vector)
+function _tilde_vectors(b::AbstractVector)
     return [b - b[row] * ones(length(b)) for row in 1:length(b)]
 end
 
 @doc raw"""
-    _positive_component(b::Vector)
+    _positive_component(b::AbstractVector)
 
 Return `max.(b, 0)` as a vector.
 """
-function _positive_component(b::Vector)
+function _positive_component(b::AbstractVector)
     return vec([max(0, entry) for entry in b])
 end
 
@@ -98,23 +98,23 @@ end
 
 # Hoffman calculations.
 
-function _surjectivity_scale(A::Matrix)
+function _surjectivity_scale(A::AbstractMatrix)
     return norm(A, Inf)
 end
 
-function _surjectivity_objective_tol(A::Matrix, tol::Float64)
+function _surjectivity_objective_tol(A::AbstractMatrix, tol::Float64)
     iszero(tol) && return 0.0
     return tol * _surjectivity_scale(A)
 end
 
 @doc raw"""
-    _surjectivity_test(A::Matrix; tol=1e-10) -> (v, t)
+    _surjectivity_test(A::AbstractMatrix; tol=1e-10) -> (v, t)
 
 Test A-surjectivity with the GLPK problem
 `min ‖A'v‖₁` subject to `sum(v) = 1` and `v ≥ 0`. Return `(v, t)`; the rows
 are A-surjective when `t > 0`. `tol` removes small floating-point results.
 """
-function _surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
+function _surjectivity_test(A::AbstractMatrix; tol::Float64 = 1e-10)
     n = size(A, 2)
     m = size(A, 1)
     tol >= 0 || throw(ArgumentError("tol must be nonnegative, got $tol"))
@@ -145,7 +145,7 @@ function _surjectivity_test(A::Matrix; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    _brute_force_hoff(A::Matrix; tol=1e-10)
+    _brute_force_hoff(A::AbstractMatrix; tol=1e-10)
 
 Compute the infinity-norm Hoffman constant by testing every nonempty
 full-row-rank subset. The Hoffman maximum can be attained by a linearly
@@ -153,7 +153,7 @@ independent row subset, so this is equivalent to unrestricted exhaustive
 enumeration while avoiding subsets with more rows than columns. GLPK uses
 floating-point arithmetic.
 """
-function _brute_force_hoff(A::Matrix; tol::Float64 = 1e-10)
+function _brute_force_hoff(A::AbstractMatrix; tol::Float64 = 1e-10)
     m = size(A, 1)
     H = 0.0
     for j in 1:min(m, size(A, 2))
@@ -170,13 +170,13 @@ function _brute_force_hoff(A::Matrix; tol::Float64 = 1e-10)
 end
 
 @doc raw"""
-    _pvz_hoff(A::Matrix; return_certificates=false, tol=1e-10)
+    _pvz_hoff(A::AbstractMatrix; return_certificates=false, tol=1e-10)
 
 Compute the infinity-norm Hoffman constant with the Peña--Vera--Zuluaga algorithm.
 With `return_certificates=true`, return `(H, F, I)` with the surjective sets
 and obstruction supports. GLPK uses floating-point arithmetic.
 """
-function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
+function _pvz_hoff(A::AbstractMatrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
     m = size(A, 1)
     H = 0.0
 
@@ -238,13 +238,14 @@ function _pvz_hoff(A::Matrix; return_certificates::Bool = false, tol::Float64 = 
 end
 
 @doc raw"""
-    hoffman_constant(A::Matrix; brute_force=false, tol=1e-10)
+    hoffman_constant(A::AbstractMatrix; brute_force=false, tol=1e-10)
 
 Compute the infinity-norm Hoffman constant of `A`. By default, use the
 Peña--Vera--Zuluaga algorithm. Set `brute_force=true` to test every nonempty
 row subset instead. Both algorithms solve floating-point LPs with GLPK.
+`A` can be any `AbstractMatrix` supported by the linear algebra operations.
 """
-function hoffman_constant(A::Matrix; brute_force::Bool = false, tol::Float64 = 1e-10)
+function hoffman_constant(A::AbstractMatrix; brute_force::Bool = false, tol::Float64 = 1e-10)
     if brute_force
         return _brute_force_hoff(A; tol = tol)
     else
@@ -253,12 +254,12 @@ function hoffman_constant(A::Matrix; brute_force::Bool = false, tol::Float64 = 1
 end
 
 @doc raw"""
-    upper_hoffman_constant(A::Matrix)
+    upper_hoffman_constant(A::AbstractMatrix)
 
 Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over
-nonempty full-rank row subsets `J`.
+nonempty full-rank row subsets `J`. `A` can be any suitable `AbstractMatrix`.
 """
-function upper_hoffman_constant(A::Matrix)
+function upper_hoffman_constant(A::AbstractMatrix)
     m, n = size(A)
     HU = 0.0
     for j in 1:m
@@ -276,13 +277,14 @@ function upper_hoffman_constant(A::Matrix)
 end
 
 @doc raw"""
-    lower_hoffman_constant(A::Matrix, num_samples::Int=10; tol=1e-10)
+    lower_hoffman_constant(A::AbstractMatrix, num_samples::Int=10; tol=1e-10)
 
 Return a lower bound from `num_samples` random nonempty row subsets. If
 `num_samples >= 2^m`, compute the exact value with brute force.
+`A` can be any suitable `AbstractMatrix`.
 """
 function lower_hoffman_constant(
-        A::Matrix,
+        A::AbstractMatrix,
         num_samples::Int = 10;
         tol::Float64 = 1e-10
 )

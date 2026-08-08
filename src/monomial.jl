@@ -125,7 +125,7 @@ function prune(
 end
 
 @doc raw"""
-    prune(F::Vector{RationalSignomial{T}};
+    prune(F::AbstractVector{<:RationalSignomial};
           parallel::Bool=true, workers=nothing,
           mode::LinearRegionsCalculationMode=OscarMode())
 
@@ -133,13 +133,13 @@ Prune each rational function in `F`.
 
 # Arguments
 
-- `F::Vector{RationalSignomial{T}}`: Rational functions to prune.
+- `F::AbstractVector{<:RationalSignomial}`: Rational functions to prune.
 - `parallel=true`: Permit parallel checks.
 - `workers=nothing`: Optional Julia worker pool.
 - `mode=OscarMode()`: Backend for full-dimensionality checks.
 """
 function prune(
-        F::Vector{<:RationalSignomial};
+        F::AbstractVector{<:RationalSignomial};
         parallel::Bool = true,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         mode::LinearRegionsCalculationMode = OscarMode()
