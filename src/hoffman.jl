@@ -7,7 +7,7 @@ Return exponent matrix `A` and coefficient vector `b` for all nonzero
 monomials stored in `f`.
 """
 function _linearmap_matrices(f::Signomial)
-    f = dedup_monomials(f)
+    f = _remove_zero_matrix_terms(f)
     if length(f) == 0
         return zeros(Float64, 0, nvars(f)), Any[]
     end

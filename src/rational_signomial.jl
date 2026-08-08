@@ -132,16 +132,8 @@ end
 (f::RationalSignomial)(x::Vector) = evaluate(f, x)
 
 #==============================================================================#
-#                    DEDUP AND MONOMIAL COUNT                                   #
+#                    MONOMIAL COUNT                                             #
 #==============================================================================#
-
-function dedup_monomials(f::RationalSignomial)
-    return RationalSignomial(dedup_monomials(f.num), dedup_monomials(f.den))
-end
-
-function dedup_monomials(F::Vector{<:RationalSignomial})
-    return [dedup_monomials(f) for f in F]
-end
 
 function monomial_count(f::RationalSignomial)
     return monomial_count(f.num) + monomial_count(f.den)

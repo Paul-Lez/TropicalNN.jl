@@ -178,16 +178,12 @@ using Test, TropicalNN, Oscar
     end
 
     #==========================================================================
-    # Dedup Monomials
+    # Monomial Count
     ==========================================================================#
-    @testset verbose = true "Dedup monomials" begin
+    @testset verbose = true "Monomial count" begin
         # Polynomial with one tropical-zero coefficient
         tropical_zero = zero(R(0))
         f = Signomial([tropical_zero, R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
-        f_dedup = TropicalNN.dedup_monomials(f)
-        @test length(f_dedup) == 1
-        @test f_dedup isa Signomial{Rational{Int64}}
-        @test Oscar.nvars(f_dedup) == 6
         @test monomial_count(f) == 1
     end
 

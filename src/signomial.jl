@@ -535,36 +535,8 @@ end
 (f::Signomial)(x::Vector) = evaluate(f, x)
 
 #==============================================================================#
-#                    DEDUP AND MONOMIAL COUNT                                   #
+#                    MONOMIAL COUNT                                             #
 #==============================================================================#
-
-"""
-    dedup_monomials(f)
-
-Remove all terms with a tropical-zero coefficient from `f`.
-"""
-function dedup_monomials(f::Signomial{T}) where {T}
-    length(f) == 0 && return f
-    keep_count = monomial_count(f)
-    keep_count == length(f) && return f
-
-    tropical_zero = zero(f.coeff[1])
-    new_coeffs = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, keep_count)
-    new_exp = Matrix{T}(undef, f.dim, keep_count)
-
-    idx = 1
-    @inbounds for i in Base.eachindex(f)
-        c = f.coeff[i]
-        if c != tropical_zero
-            new_coeffs[idx] = c
-            for d in 1:f.dim
-                new_exp[d, idx] = f.exp[d, i]
-            end
-            idx += 1
-        end
-    end
-    return Signomial{T}(new_exp, new_coeffs, true)
-end
 
 """
     monomial_count(f::Signomial)

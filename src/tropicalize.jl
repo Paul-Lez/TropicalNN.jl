@@ -167,7 +167,10 @@ function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
             end
         end
         if dedup
-            output = dedup_monomials(output)
+            output = [RationalSignomial(
+                          _remove_zero_matrix_terms(f.num),
+                          _remove_zero_matrix_terms(f.den)
+                      ) for f in output]
         end
     end
 

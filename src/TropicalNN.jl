@@ -50,7 +50,6 @@ export
        evaluate,
        quicksum,
        comp,
-       dedup_monomials,
        monomial_count,
        single_to_trop,
        tropicalize,
