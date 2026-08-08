@@ -31,9 +31,9 @@ function single_to_trop(A::Matrix{T}, b::AbstractVector,
             push!(neg, max(-A[i, j], 0))
         end
         # The numerator is max(b[i] + pos⋅x, t[i] + neg⋅x).
-        num = SignomialMonomial(b[i], pos) + SignomialMonomial(t[i], neg)
+        num = signomial_monomial(b[i], pos) + signomial_monomial(t[i], neg)
         # The denominator is neg⋅x.
-        den = SignomialMonomial(one(t[i]), neg)
+        den = signomial_monomial(one(t[i]), neg)
         push!(G, num/den)
     end
     return G
@@ -66,8 +66,8 @@ function affine_to_trop(A::Matrix{T},
             push!(pos, max(A[i, j], 0))
             push!(neg, max(-A[i, j], 0))
         end
-        num = SignomialMonomial(b[i], pos)
-        den = SignomialMonomial(one(b[i]), neg)
+        num = signomial_monomial(b[i], pos)
+        den = signomial_monomial(one(b[i]), neg)
         push!(G, num/den)
     end
     return G

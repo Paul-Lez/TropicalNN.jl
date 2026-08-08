@@ -13,14 +13,14 @@ LinearRegions
 ## Construction
 
 ```@docs
-Signomial_const
-Signomial_zero
-Signomial_one
-SignomialMonomial
+signomial_const
+signomial_zero
+signomial_one
+signomial_monomial
 signomial_to_rational
-RationalSignomial_identity
-RationalSignomial_zero
-RationalSignomial_one
+rational_signomial_identity
+rational_signomial_zero
+rational_signomial_one
 ```
 
 ## Arithmetic

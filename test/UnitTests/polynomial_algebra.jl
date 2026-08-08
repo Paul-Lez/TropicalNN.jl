@@ -30,17 +30,17 @@ using Test, TropicalNN, Oscar
     @testset verbose = true "Edge Cases" begin
         # Test 1: Constant polynomial
         template = Signomial([R(1)], [[0//1, 0//1]]; sorted = false)
-        const_poly = Signomial_const(2, R(5), template)
+        const_poly = signomial_const(2, R(5), template)
         @test length(const_poly) == 1
         @test TropicalNN.get_coeff_by_exp(const_poly, [0//1, 0//1]) == R(5)
 
         # Test 2: One polynomial (multiplicative identity in tropical arithmetic)
-        one = Signomial_one(2, template)
+        one = signomial_one(2, template)
         @test length(one) == 1
         @test TropicalNN.get_coeff_by_exp(one, [0//1, 0//1]) == R(0)  # Tropical one is 0
 
         # Test 3: Single monomial
-        mono = SignomialMonomial(R(3), [2//1, 1//1])
+        mono = signomial_monomial(R(3), [2//1, 1//1])
         @test length(mono) == 1
         @test TropicalNN.get_coeff_by_exp(mono, [2//1, 1//1]) == R(3)
 
@@ -61,6 +61,19 @@ using Test, TropicalNN, Oscar
         exps = TropicalNN.exponents(accessor_poly)
         exps[1] = exps[2]
         @test TropicalNN.get_exp(accessor_poly, 1) == original_exp
+    end
+
+    @testset verbose = true "Deprecated factory names" begin
+        template = Signomial([R(1)], [[0//1, 0//1]]; sorted = false)
+        rational_template = signomial_to_rational(template)
+
+        @test_deprecated TropicalNN.Signomial_const(2, R(5), template)
+        @test_deprecated TropicalNN.Signomial_zero(2, template)
+        @test_deprecated TropicalNN.Signomial_one(2, template)
+        @test_deprecated TropicalNN.SignomialMonomial(R(3), [2//1, 1//1])
+        @test_deprecated TropicalNN.RationalSignomial_identity(2, R(0))
+        @test_deprecated TropicalNN.RationalSignomial_zero(2, rational_template)
+        @test_deprecated TropicalNN.RationalSignomial_one(2, rational_template)
     end
 
     #==========================================================================

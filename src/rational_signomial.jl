@@ -43,43 +43,43 @@ end
 Return `f` as a `RationalSignomial` with denominator equal to tropical one.
 """
 function signomial_to_rational(f::Signomial)
-    return RationalSignomial(f, Signomial_one(nvars(f), f))
+    return RationalSignomial(f, signomial_one(nvars(f), f))
 end
 
 """
-    RationalSignomial_identity(n, c)
+    rational_signomial_identity(n, c)
 
 Return the coordinate projections `[x₁, x₂, …, xₙ]`. Use `c` to infer the
 coefficient type.
 """
-function RationalSignomial_identity(n, c)
+function rational_signomial_identity(n, c)
     output = Vector{RationalSignomial}()
     sizehint!(output, n)
     for i in 1:n
         push!(
             output,
-            signomial_to_rational(SignomialMonomial(one(c), [j == i ? 1 : 0 for j in 1:n]))
+            signomial_to_rational(signomial_monomial(one(c), [j == i ? 1 : 0 for j in 1:n]))
         )
     end
     return output
 end
 
 """
-    RationalSignomial_zero(n, f::RationalSignomial)
+    rational_signomial_zero(n, f::RationalSignomial)
 
 Construct tropical zero in `n` variables. Use `f` to infer the types.
 """
-function RationalSignomial_zero(n::Int, f::RationalSignomial)
-    return RationalSignomial(Signomial_zero(n, f.num), Signomial_one(n, f.den))
+function rational_signomial_zero(n::Int, f::RationalSignomial)
+    return RationalSignomial(signomial_zero(n, f.num), signomial_one(n, f.den))
 end
 
 """
-    RationalSignomial_one(n, f::RationalSignomial)
+    rational_signomial_one(n, f::RationalSignomial)
 
 Construct tropical one in `n` variables. Use `f` to infer the types.
 """
-function RationalSignomial_one(n::Int, f)
-    return RationalSignomial(Signomial_one(n, f.num), Signomial_one(n, f.num))
+function rational_signomial_one(n::Int, f)
+    return RationalSignomial(signomial_one(n, f.num), signomial_one(n, f.num))
 end
 
 #==============================================================================#
@@ -155,7 +155,7 @@ Base.:^(f::RationalSignomial, n::Int) = f^Base.Rational(n)
 
 function Base.:^(f::RationalSignomial, r::Rational{T}) where {T <: Integer}
     if r == 0
-        return RationalSignomial_one(nvars(f), f)
+        return rational_signomial_one(nvars(f), f)
     elseif r < 0
         magnitude = -r
         return RationalSignomial(f.den^magnitude, f.num^magnitude)
@@ -209,8 +209,8 @@ function comp(
         quicksum::Bool = false
 )
     @assert length(G) == nvars(f) "Number of polynomials must match number of variables"
-    zero_value = RationalSignomial_zero(nvars(G[1]), G[1])
-    one_value = RationalSignomial_one(nvars(G[1]), G[1])
+    zero_value = rational_signomial_zero(nvars(G[1]), G[1])
+    one_value = rational_signomial_one(nvars(G[1]), G[1])
     terms = (
         _composition_term(e, c, G, one_value)
     for (e, c) in monomial_pairs(f)

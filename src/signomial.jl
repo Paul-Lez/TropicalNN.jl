@@ -458,39 +458,39 @@ end
 #==============================================================================#
 
 """
-    Signomial_const(n, c, f::Signomial{T})
+    signomial_const(n, c, f::Signomial{T})
 
 Construct the constant `c` in `n` variables. Use `f` to infer the exponent
 type.
 """
-function Signomial_const(n, c, f::Signomial{T}) where {T}
+function signomial_const(n, c, f::Signomial{T}) where {T}
     return Signomial([c], [zeros(T, n)]; sorted = true)
 end
 
 """
-    Signomial_zero(n, f::Signomial)
+    signomial_zero(n, f::Signomial)
 
 Construct tropical zero in `n` variables. Use `f` to infer the types.
 """
-function Signomial_zero(n::Int, f::Signomial)
-    return Signomial_const(n, _tropical_zero(f), f)
+function signomial_zero(n::Int, f::Signomial)
+    return signomial_const(n, _tropical_zero(f), f)
 end
 
 """
-    Signomial_one(n, f::Signomial)
+    signomial_one(n, f::Signomial)
 
 Construct tropical one in `n` variables. Use `f` to infer the types.
 """
-function Signomial_one(n::Int, f::Signomial)
-    return Signomial_const(n, _tropical_one(f), f)
+function signomial_one(n::Int, f::Signomial)
+    return signomial_const(n, _tropical_one(f), f)
 end
 
 """
-    SignomialMonomial(c, exp::Vector{T})
+    signomial_monomial(c, exp::Vector{T})
 
 Construct a one-monomial signomial with coefficient `c` and exponent `exp`.
 """
-function SignomialMonomial(c, exp::Vector{T}) where {T}
+function signomial_monomial(c, exp::Vector{T}) where {T}
     return Signomial([c], [exp]; sorted = true)
 end
 

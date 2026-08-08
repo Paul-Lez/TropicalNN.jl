@@ -74,8 +74,8 @@ using Test, TropicalNN, Oscar
         R_comp = tropical_semiring(max)
         exps_comp = [Rational{BigInt}[1, 0], Rational{BigInt}[0, 1]]
         f_comp = Signomial([R_comp(0), R_comp(0)], exps_comp; sorted = false)
-        g1 = signomial_to_rational(SignomialMonomial(R_comp(1), Rational{BigInt}[1, 0]))
-        g2 = signomial_to_rational(SignomialMonomial(R_comp(2), Rational{BigInt}[0, 1]))
+        g1 = signomial_to_rational(signomial_monomial(R_comp(1), Rational{BigInt}[1, 0]))
+        g2 = signomial_to_rational(signomial_monomial(R_comp(2), Rational{BigInt}[0, 1]))
         composed_known = comp(f_comp, [g1, g2])
         composed_batched = comp(f_comp, [g1, g2]; quicksum = true)
         points_and_values = [
@@ -123,7 +123,7 @@ using Test, TropicalNN, Oscar
 
         # Test 5: Negative exponents require an explicit rational conversion.
         negative_outer = Signomial([R_comp(0)], [Rational{BigInt}[-1]]; sorted = false)
-        signomial_input = SignomialMonomial(R_comp(0), Rational{BigInt}[1])
+        signomial_input = signomial_monomial(R_comp(0), Rational{BigInt}[1])
         @test_throws ArgumentError comp(negative_outer, [signomial_input])
 
         rational_input = signomial_to_rational(signomial_input)
