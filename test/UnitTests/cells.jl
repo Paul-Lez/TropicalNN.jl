@@ -30,10 +30,17 @@ using Test, TropicalNN
     @test cell.b === b
     @test cell.matrix === matrix
     @test cell.offset === offset
-    @test internal_cell isa TropicalNN._Cell{typeof(boundaries)}
+    @test internal_cell isa TropicalNN._Cell{typeof(boundaries), Float64}
     @test internal_cell.data === boundaries
     @test length(internal_cell.data) == 2
     @test Set(last.(internal_cell.data)) == Set([true, false])
+    @test_throws MethodError TropicalNN._Cell(
+        A,
+        Rational{BigInt}.(b),
+        matrix,
+        offset,
+        boundaries
+    )
 
     public_cell = TropicalNN.Cell(internal_cell)
     @test public_cell.A === internal_cell.A

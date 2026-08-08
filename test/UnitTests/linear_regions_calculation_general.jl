@@ -105,7 +105,13 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
 
         for mode in (oscar_mode, highs_mode)
             partition = TropicalNN._signomial_region_partition([f]; mode = mode)
-            @test all(cell -> cell isa TropicalNN._Cell{Tuple{Int}}, partition)
+            coefficient_type = TropicalNN._linear_region_coefficient_type(mode)
+            @test all(
+                cell -> cell isa TropicalNN._Cell{Tuple{Int}, coefficient_type},
+                partition
+            )
+            @test all(cell -> cell.A isa Matrix{coefficient_type}, partition)
+            @test all(cell -> cell.b isa Vector{coefficient_type}, partition)
             @test sort([only(cell.data) for cell in partition]) == [1, 2]
         end
     end

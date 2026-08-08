@@ -224,8 +224,16 @@ end
     _Cell(A, b, matrix, offset, data)
 
 Store an affine cell with data used by an internal computation.
+The constraint matrix and vector have the same coefficient type.
 """
-struct _Cell{D, AM, BV, MM, OV} <: _AbstractCell
+struct _Cell{
+    D,
+    T,
+    AM <: AbstractMatrix{T},
+    BV <: AbstractVector{T},
+    MM,
+    OV
+} <: _AbstractCell
     A::AM
     b::BV
     matrix::MM
@@ -582,8 +590,10 @@ end
 Return whether two regions meet in codimension zero or one.
 """
 function regions_intersect_codimension_le_one(region_1, region_2; mode::LinearRegionsCalculationMode)
-    A = vcat(get_matrix(region_1; mode = mode), get_matrix(region_2; mode = mode))
-    b = vcat(get_vector(region_1; mode = mode), get_vector(region_2; mode = mode))
+    A_1, b_1 = _region_constraint_data(region_1; mode = mode)
+    A_2, b_2 = _region_constraint_data(region_2; mode = mode)
+    A = vcat(A_1, A_2)
+    b = vcat(b_1, b_2)
     return codimension_le_one(A, b; mode = mode)
 end
 
@@ -612,7 +622,8 @@ end
 Construct the selected backend representation of `cell`.
 """
 function make_polyhedron(cell::_AbstractCell; mode::LinearRegionsCalculationMode)
-    make_polyhedron(cell.A, cell.b; mode = mode)
+    A, b = _region_constraint_data(cell; mode = mode)
+    make_polyhedron(A, b; mode = mode)
 end
 
 """
@@ -620,13 +631,8 @@ end
 
 Return the scalar type used to construct linear-region constraints for `mode`.
 """
-function _linear_region_coefficient_type(mode::LinearRegionsCalculationMode)
-    if mode isa _Oscar
-        return OSCAR_POLYHEDRON_COEFF_TYPE
-    else
-        return Float64
-    end
-end
+_linear_region_coefficient_type(::_Oscar) = OSCAR_POLYHEDRON_COEFF_TYPE
+_linear_region_coefficient_type(::_HiGHS) = Float64
 
 """
     _linear_region_constraint_data(f, i, mode; competitors=eachindex(f))
@@ -763,8 +769,10 @@ end
 Return the `mode` representation of `region_1 ∩ region_2`.
 """
 function region_intersection(region_1, region_2; mode::LinearRegionsCalculationMode)
-    A = vcat(get_matrix(region_1; mode = mode), get_matrix(region_2; mode = mode))
-    b = vcat(get_vector(region_1; mode = mode), get_vector(region_2; mode = mode))
+    A_1, b_1 = _region_constraint_data(region_1; mode = mode)
+    A_2, b_2 = _region_constraint_data(region_2; mode = mode)
+    A = vcat(A_1, A_2)
+    b = vcat(b_1, b_2)
     return make_polyhedron(A, b; mode = mode)
 end
 
@@ -984,14 +992,28 @@ as two inequalities.
 function _region_constraint_data(region::Oscar.Polyhedron; mode::_Oscar)
     facets = Oscar.halfspace_matrix_pair(Oscar.facets(region))
     affine_hull = Oscar.halfspace_matrix_pair(Oscar.affine_hull(region))
+    A = vcat(facets.A, affine_hull.A, -affine_hull.A)
+    b = vcat(facets.b, affine_hull.b, -affine_hull.b)
     return (
-        vcat(facets.A, affine_hull.A, -affine_hull.A),
-        vcat(facets.b, affine_hull.b, -affine_hull.b)
+        _constraint_matrix(OSCAR_POLYHEDRON_COEFF_TYPE, A),
+        _constraint_vector(OSCAR_POLYHEDRON_COEFF_TYPE, b)
     )
 end
 
 function _region_constraint_data(region::_Polyhedra; mode::_HiGHS)
     return (region.A, region.b)
+end
+
+"""
+    _region_constraint_data(cell::_AbstractCell; mode)
+
+Return the stored halfspace matrix and vector of `cell`.
+"""
+function _region_constraint_data(
+        cell::_AbstractCell;
+        mode::LinearRegionsCalculationMode
+)
+    return (cell.A, cell.b)
 end
 
 """
