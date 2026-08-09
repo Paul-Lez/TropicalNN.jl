@@ -307,3 +307,27 @@ function linear_regions(
 
     return _linear_regions_composition(layers; mode = mode, workers = workers)
 end
+
+"""
+    linear_regions(linear_maps, biases, thresholds=nothing;
+                   mode, workers=nothing)
+
+Return the linear regions of an MLP. Each hidden layer applies
+`max.(A * x + b, threshold)`. The final layer is affine. The function computes
+the regions after each layer. It does not construct one rational signomial map
+for the complete network.
+"""
+function linear_regions(
+        linear_maps::AbstractVector{<:AbstractMatrix},
+        biases::AbstractVector{<:AbstractVector},
+        thresholds::Union{Nothing, AbstractVector{<:AbstractVector}} = nothing;
+        mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+)
+    layers = _mlp_to_tropical_layers(linear_maps, biases, thresholds)
+    return _linear_regions_composition(
+        layers;
+        mode = mode,
+        workers = workers
+    )
+end
