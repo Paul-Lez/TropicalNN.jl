@@ -23,15 +23,18 @@ using Test, TropicalNN
     offset = Rational{BigInt}[4]
 
     cell = TropicalNN.Cell(A, b, matrix, offset)
-    boundaries = TropicalNN._boundary_sides_from_constraints(A, b)
-    internal_cell = TropicalNN._Cell(A, b, matrix, offset, boundaries)
+    halfspace_keys = Tuple{Any, Bool}[
+        TropicalNN._canonical_halfspace_key(A[1, :], b[1]),
+        TropicalNN._canonical_halfspace_key(A[3, :], b[3])
+    ]
+    internal_cell = TropicalNN._Cell(A, b, matrix, offset, halfspace_keys)
 
     @test cell.A === A
     @test cell.b === b
     @test cell.matrix === matrix
     @test cell.offset === offset
-    @test internal_cell isa TropicalNN._Cell{typeof(boundaries), Float64}
-    @test internal_cell.data === boundaries
+    @test internal_cell isa TropicalNN._Cell{typeof(halfspace_keys), Float64}
+    @test internal_cell.data === halfspace_keys
     @test length(internal_cell.data) == 2
     @test Set(last.(internal_cell.data)) == Set([true, false])
     @test_throws MethodError TropicalNN._Cell(
@@ -39,7 +42,7 @@ using Test, TropicalNN
         Rational{BigInt}.(b),
         matrix,
         offset,
-        boundaries
+        halfspace_keys
     )
 
     public_cell = TropicalNN.Cell(internal_cell)
