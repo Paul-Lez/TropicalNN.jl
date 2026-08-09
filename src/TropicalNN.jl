@@ -94,6 +94,7 @@ include("cells.jl")
 include("polyhedra.jl")
 include("linear_regions.jl")
 include("tropicalize.jl")
+include("linear_regions_layerwise.jl")
 include("util.jl")
 include("monomial.jl")
 
