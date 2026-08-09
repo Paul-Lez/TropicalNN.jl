@@ -15,7 +15,7 @@ println("  Layer 2 weight matrix size: ", size(weights[2]))
 println()
 
 f = only(tropicalize(weights, biases, thresholds;
-    quicksum = true, strong_elim = true))
+    quicksum = true, prune = true))
 
 println("Tropical rational function:")
 println("  Numerator monomials:   ", monomial_count(f.num))

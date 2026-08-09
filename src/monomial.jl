@@ -16,9 +16,9 @@ function prune(
         mode::LinearRegionsCalculationMode = OscarMode()
 )
     keep = if parallel
-        _strong_elim_keep_mask(f, workers, mode)
+        _prune_keep_mask(f, workers, mode)
     else
-        _strong_elim_keep_mask(f, nothing, mode)
+        _prune_keep_mask(f, nothing, mode)
     end
 
     return _filter_monomials(f, keep)
@@ -48,27 +48,27 @@ function _filter_monomials(f::Signomial{T}, keep::AbstractVector{Bool}) where {T
 end
 
 """
-    _strong_elim_keep_mask(f, workers, mode)
+    _prune_keep_mask(f, workers, mode)
 
 Find the monomials of the input `Signomial` `f` that have full-dimensional
 dominance regions. `workers` is `nothing` or an `AbstractWorkerPool`, and
 `mode` selects the polyhedral backend. Return a Boolean vector in which `true`
 marks a monomial with a full-dimensional dominance region.
 """
-function _strong_elim_keep_mask(
+function _prune_keep_mask(
         f::Signomial,
         workers::Union{Nothing, Distributed.AbstractWorkerPool},
         mode::LinearRegionsCalculationMode
 )
     n = length(f)
     if workers === nothing || n <= 1
-        return _strong_elim_keep_chunk((f, 1:n, mode))
+        return _prune_keep_chunk((f, 1:n, mode))
     end
 
     _assert_tropicalnn_loaded(workers)
     chunks = _index_chunks(n, length(Distributed.workers(workers)))
     chunk_results = Distributed.pmap(
-        _strong_elim_keep_chunk,
+        _prune_keep_chunk,
         workers,
         [(f, chunk, mode) for chunk in chunks]
     )
@@ -76,14 +76,14 @@ function _strong_elim_keep_mask(
 end
 
 """
-    _strong_elim_keep_chunk(args)
+    _prune_keep_chunk(args)
 
 Check one ordered collection of monomial indices. The input is a tuple `(f,
 inds, mode)` with a `Signomial`, its indices to check, and a polyhedral backend
 mode. Return a Boolean vector in the same order as `inds`; `true` marks a
 monomial with a full-dimensional dominance region.
 """
-function _strong_elim_keep_chunk(args)
+function _prune_keep_chunk(args)
     f, inds, mode = args
     keep = Vector{Bool}(undef, length(inds))
     # A discarded monomial does not affect later full-dimensionality checks.

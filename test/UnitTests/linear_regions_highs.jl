@@ -111,7 +111,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
         @test TropicalNN.codimension_le_one(A, b; mode = oscar_mode) == true
     end
 
-    @testset verbose = true "Strong elimination with threaded HiGHS" begin
+    @testset verbose = true "Pruning with threaded HiGHS" begin
         mode = HiGHSMode(threads = 2)
         u = Signomial([R(0), R(0), R(0)], [[0//1], [1//1], [2//1]]; sorted = false)
 
@@ -136,10 +136,10 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
             b,
             t;
             quicksum = true,
-            strong_elim = true,
+            prune = true,
             elim_mode = mode
         )
-        oscar_output = tropicalize(W, b, t; quicksum = true, strong_elim = true)
+        oscar_output = tropicalize(W, b, t; quicksum = true, prune = true)
         @test collect(monomial_pairs(highs_output[1].num)) ==
               collect(monomial_pairs(oscar_output[1].num))
         @test collect(monomial_pairs(highs_output[1].den)) ==

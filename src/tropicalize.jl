@@ -179,7 +179,7 @@ end
 function _compose_tropical_layers(
         layers::AbstractVector{<:AbstractVector{<:RationalSignomial}};
         quicksum::Bool = false,
-        strong_elim::Bool = false,
+        prune::Bool = false,
         dedup::Bool = false,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
@@ -194,8 +194,8 @@ function _compose_tropical_layers(
             output = comp(tropical_layer, output; quicksum = quicksum)
 
             # Prune only after the layer composition is complete.
-            if strong_elim
-                output = prune(output; mode = elim_mode, workers = workers)
+            if prune
+                output = TropicalNN.prune(output; mode = elim_mode, workers = workers)
             end
         end
         # Remove tropical-zero terms before the next composition.
@@ -212,7 +212,7 @@ end
 
 """
     tropicalize(linear_maps, bias, thresholds;
-                quicksum=false, strong_elim=false, dedup=false,
+                quicksum=false, prune=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
 
 Convert an MLP with an affine output layer to tropical rational functions.
@@ -224,7 +224,7 @@ terms whose coefficient is tropical zero.
 """
 function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
         thresholds::Union{AbstractVector{<:AbstractVector}, Nothing} = nothing;
-        quicksum::Bool = false, strong_elim::Bool = false,
+        quicksum::Bool = false, prune::Bool = false,
         dedup::Bool = false,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
@@ -233,7 +233,7 @@ function tropicalize(linear_maps::Vector{Matrix{T}}, bias,
     return _compose_tropical_layers(
         layers;
         quicksum = quicksum,
-        strong_elim = strong_elim,
+        prune = prune,
         dedup = dedup,
         elim_mode = elim_mode,
         workers = workers
@@ -242,7 +242,7 @@ end
 
 """
     tropicalize(layer::AbstractNeuralNetworkLayer;
-                quicksum=false, strong_elim=false, dedup=false,
+                quicksum=false, prune=false, dedup=false,
                 elim_mode=OscarMode(), workers=nothing)
 
 Convert a neural-network layer or network to tropical rational functions. The
@@ -252,7 +252,7 @@ whose coefficient is tropical zero.
 function tropicalize(
         layer::AbstractNeuralNetworkLayer{T};
         quicksum::Bool = false,
-        strong_elim::Bool = false,
+        prune::Bool = false,
         dedup::Bool = false,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
@@ -260,7 +260,7 @@ function tropicalize(
     return _compose_tropical_layers(
         tropicalize_layers(layer);
         quicksum = quicksum,
-        strong_elim = strong_elim,
+        prune = prune,
         dedup = dedup,
         elim_mode = elim_mode,
         workers = workers

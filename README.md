@@ -59,7 +59,7 @@ g = Signomial([0, 4, -5], [[1 // 1, 7 // 1], [0 // 1, 1 // 1], [9 // 1, 1 // 1]]
 @show f * g # Ordinary sum of the represented functions.
 ```
 
-You can use `quicksum` and `strong_elim` to accelerate computation and reduce intermediate expression size:
+You can use `quicksum` and `prune` to accelerate computation and reduce intermediate expression size:
 
 ```julia
 mode = HiGHSMode(threads = 4)
@@ -68,7 +68,7 @@ q_reduced = tropicalize(
     b,
     thresholds;
     quicksum = true,
-    strong_elim = true,
+    prune = true,
     elim_mode = mode,
 )
 ```

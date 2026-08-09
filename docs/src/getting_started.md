@@ -27,7 +27,7 @@ p = f * g # Ordinary sum of the represented functions.
 
 ## Control expression growth
 
-You can use `quicksum` and `strong_elim` to accelerate computation and reduce intermediate expression size:
+You can use `quicksum` and `prune` to accelerate computation and reduce intermediate expression size:
 
 ```julia
 mode = HiGHSMode(threads = 4)
@@ -36,7 +36,7 @@ q_reduced = tropicalize(
     b,
     thresholds;
     quicksum = true,
-    strong_elim = true,
+    prune = true,
     elim_mode = mode,
 )
 pruned = prune(q_reduced[1]; mode = mode)
