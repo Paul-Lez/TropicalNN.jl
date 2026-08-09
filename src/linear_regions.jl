@@ -212,6 +212,35 @@ function _boundary_sides_from_constraints(A, b)
 end
 
 """
+    _dominance_halfspace_keys(signomials, dominance_indices)
+
+`dominance_indices` specifies one monomial in each signomial. Compare this
+monomial with every other monomial in the same signomial. Return the distinct
+halfspace keys on which the specified monomials dominate. Each key has the
+format returned by `_canonical_halfspace_key`.
+"""
+function _dominance_halfspace_keys(
+        signomials::AbstractVector{<:Signomial}, dominance_indices)
+    halfspace_keys = Tuple{Any, Bool}[]
+
+    # Compare each dominant monomial with the other monomials in its signomial.
+    for (signomial, dominant_index) in zip(signomials, dominance_indices)
+        for competitor_index in Base.eachindex(signomial)
+            competitor_index == dominant_index && continue
+            A, b = _linear_region_constraints(
+                signomial,
+                dominant_index,
+                OSCAR_POLYHEDRON_COEFF_TYPE;
+                competitors = (competitor_index,)
+            )
+            halfspace_key = _canonical_halfspace_key(@view(A[1, :]), b[1])
+            push!(halfspace_keys, halfspace_key)
+        end
+    end
+    return unique!(halfspace_keys)
+end
+
+"""
     _AbstractCell
 
 Common internal interface for public and internal affine cells.
@@ -1197,6 +1226,144 @@ function _polyhedral_subdivision(
         mode,
         workers
     )
+end
+
+"""
+    _inequality_has_supporting_hyperplane(row, rhs, hyperplane_key; atol=1e-9)
+
+Return `true` if the supporting hyperplane of a floating-point inequality is
+the hyperplane in `hyperplane_key`.
+"""
+function _inequality_has_supporting_hyperplane(
+        row, rhs, hyperplane_key; atol = 1.0e-9)
+    # Store the affine equation `row*x - rhs = 0` as a coefficient vector.
+    equation = [Float64.(row); -Float64(rhs)]
+
+    # Normalize the equation so that scalar multiples have the same coefficients.
+    pivot_index = findfirst(!iszero, equation)
+    normalized = equation ./ equation[pivot_index]
+
+    # Scale the tolerance by the larger of one and the largest coefficient magnitude.
+    target_hyperplane = Float64.(collect(hyperplane_key))
+    comparison_scale = max(1.0, maximum(abs, target_hyperplane))
+    return maximum(abs, normalized .- target_hyperplane) <= atol * comparison_scale
+end
+
+"""
+    _highs_cells_share_facet(left, right, hyperplane_key, mode)
+
+Test whether two full-dimensional cells share a facet with the specified
+supporting hyperplane.
+"""
+function _highs_cells_share_facet(
+        left::_Cell,
+        right::_Cell,
+        hyperplane_key,
+        mode::_HiGHS
+)
+    # Get the equation of the candidate hyperplane.
+    n = size(left.A, 2)
+    normal = Float64.(collect(hyperplane_key[1:n]))
+    rhs = -Float64(hyperplane_key[n + 1])
+
+    # Constrain the slack model to the candidate hyperplane.
+    model = create_highs_model(; solver = mode.solver, threads = mode.threads)
+    @variable(model, x[1:n])
+    @variable(model, epsilon)
+    @constraint(model, LinearAlgebra.dot(normal, x) == rhs)
+    @constraint(model, epsilon <= 1)
+
+    # Require positive slack for every other nonconstant inequality.
+    for (A, b) in ((left.A, left.b), (right.A, right.b))
+        for i in axes(A, 1)
+            row = @view A[i, :]
+            all(iszero, row) && continue
+            _inequality_has_supporting_hyperplane(
+                row, b[i], hyperplane_key) && continue
+            row_norm = LinearAlgebra.norm(Float64.(row))
+            normalized_row = Float64.(row) ./ row_norm
+            normalized_rhs = Float64(b[i]) / row_norm
+            @constraint(model,
+                LinearAlgebra.dot(normalized_row, x) + epsilon <= normalized_rhs)
+        end
+    end
+
+    # A positive optimum confirms that the common face is a facet.
+    @objective(model, Max, epsilon)
+    optimize!(model)
+    return value(epsilon) > mode.tol
+end
+
+"""
+    _cells_share_facet(left, right, hyperplane_key, mode)
+
+Test whether two cells share a facet supported by the hyperplane in
+`hyperplane_key`. Use the backend selected by `mode`.
+"""
+function _cells_share_facet(left::_Cell, right::_Cell, hyperplane_key, mode)
+    if mode isa _HiGHS
+        return _highs_cells_share_facet(left, right, hyperplane_key, mode)
+    end
+    return regions_intersect_codimension_le_one(left, right; mode = mode)
+end
+
+"""
+    _facet_connected_components(cells; mode)
+
+Return one set of cell indices for each full-dimensional region. Two cells
+belong to the same region if a sequence of cells joins them. Each consecutive
+pair in this sequence must share a facet. The `data` field of each cell must
+contain halfspace keys in the format returned by `_canonical_halfspace_key`.
+"""
+function _facet_connected_components(
+        cells::AbstractVector{<:_Cell};
+        mode::LinearRegionsCalculationMode
+)
+    graph = Graphs.SimpleGraph(length(cells))
+
+    # Group cells by each supporting hyperplane and the side they select.
+    hyperplane_buckets = Dict{Any, Tuple{Vector{Int}, Vector{Int}}}()
+    for (cell_index, cell) in pairs(cells)
+        for (hyperplane_key, is_nonpositive_side) in cell.data
+            if !haskey(hyperplane_buckets, hyperplane_key)
+                hyperplane_buckets[hyperplane_key] = (Int[], Int[])
+            end
+            nonpositive_cell_indices, nonnegative_cell_indices =
+                hyperplane_buckets[hyperplane_key]
+            push!(
+                is_nonpositive_side ? nonpositive_cell_indices : nonnegative_cell_indices,
+                cell_index
+            )
+        end
+    end
+
+    # Collect cell pairs on opposite sides of the same supporting hyperplane.
+    pair_hyperplanes = Dict{Tuple{Int, Int}, Vector{Any}}()
+    for (hyperplane_key, side_cell_indices) in hyperplane_buckets
+        nonpositive_cell_indices, nonnegative_cell_indices = side_cell_indices
+        for nonpositive_cell_index in nonpositive_cell_indices,
+            nonnegative_cell_index in nonnegative_cell_indices
+
+            # Use one key order to collect all separating hyperplanes.
+            # This is later useful: we can directly reject pairs with more than
+            # one separating hyperplane!
+            cell_pair = minmax(nonpositive_cell_index, nonnegative_cell_index)
+            if !haskey(pair_hyperplanes, cell_pair)
+                pair_hyperplanes[cell_pair] = Any[]
+            end
+            push!(pair_hyperplanes[cell_pair], hyperplane_key)
+        end
+    end
+
+    # Add a graph edge when the cells share a facet.
+    for ((left_index, right_index), hyperplane_keys) in pair_hyperplanes
+        length(hyperplane_keys) == 1 || continue
+        if _cells_share_facet(
+            cells[left_index], cells[right_index], only(hyperplane_keys), mode)
+            Graphs.add_edge!(graph, left_index, right_index)
+        end
+    end
+    return Graphs.connected_components(graph)
 end
 
 """
