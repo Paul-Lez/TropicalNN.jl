@@ -1,4 +1,5 @@
 using Distributed
+using Oscar: tropical_semiring
 using Test
 using TropicalNN
 
@@ -33,7 +34,7 @@ try
         local_regions = linear_regions(q; mode = HiGHSMode())
         distributed_regions = linear_regions(q; mode = HiGHSMode(), workers = pool)
         region_signature(regions) = (
-            length(regions), sort(length(region) for region in regions))
+            length(regions), sort([length(region) for region in regions]))
         @test region_signature(distributed_regions) == (4, [1, 1, 1, 1])
         @test region_signature(distributed_regions) == region_signature(local_regions)
 
