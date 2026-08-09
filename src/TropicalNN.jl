@@ -90,6 +90,8 @@ export
 include("signomial.jl")
 include("rational_signomial.jl")
 include("neural_network.jl")
+include("cells.jl")
+include("polyhedra.jl")
 include("linear_regions.jl")
 include("tropicalize.jl")
 include("util.jl")
