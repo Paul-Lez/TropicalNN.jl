@@ -1,21 +1,21 @@
 using Test, TropicalNN
 
 @testset verbose = true "Affine cells" begin
-    float_boundary = TropicalNN._canonical_boundary_side([2.0, -4.0], 6.0)
-    rational_boundary = TropicalNN._canonical_boundary_side(
+    float_halfspace_key = TropicalNN._canonical_halfspace_key([2.0, -4.0], 6.0)
+    rational_halfspace_key = TropicalNN._canonical_halfspace_key(
         Rational{BigInt}[2, -4],
         Rational{BigInt}(6)
     )
-    @test float_boundary == ((1.0, -2.0, -3.0), true)
-    @test rational_boundary == ((1 // 1, -2 // 1, -3 // 1), true)
-    @test all(value -> value isa Float64, first(float_boundary))
-    @test all(value -> value isa Rational{BigInt}, first(rational_boundary))
-    @test TropicalNN._canonical_boundary_side([-1.0, 2.0], -3.0) ==
-          (first(float_boundary), false)
-    positive_zero_boundary = TropicalNN._canonical_boundary_side([1.0, 0.0], 1.0)
-    negative_zero_boundary = TropicalNN._canonical_boundary_side([-1.0, 0.0], -1.0)
-    @test isequal(first(positive_zero_boundary), first(negative_zero_boundary))
-    @test hash(first(positive_zero_boundary)) == hash(first(negative_zero_boundary))
+    @test float_halfspace_key == ((1.0, -2.0, -3.0), true)
+    @test rational_halfspace_key == ((1 // 1, -2 // 1, -3 // 1), true)
+    @test all(value -> value isa Float64, first(float_halfspace_key))
+    @test all(value -> value isa Rational{BigInt}, first(rational_halfspace_key))
+    @test TropicalNN._canonical_halfspace_key([-1.0, 2.0], -3.0) ==
+          (first(float_halfspace_key), false)
+    positive_zero_key = TropicalNN._canonical_halfspace_key([1.0, 0.0], 1.0)
+    negative_zero_key = TropicalNN._canonical_halfspace_key([-1.0, 0.0], -1.0)
+    @test isequal(first(positive_zero_key), first(negative_zero_key))
+    @test hash(first(positive_zero_key)) == hash(first(negative_zero_key))
 
     A = [1.0 0.0; 2.0 0.0; -1.0 0.0; 0.0 0.0]
     b = [1.0, 2.0, -1.0, 0.0]

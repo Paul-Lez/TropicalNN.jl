@@ -257,7 +257,7 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         end
     end
 
-    @testset "Disconnected repeated-map pieces match public HiGHS component splitting" begin
+    @testset "Separated repeated-map pieces form distinct HiGHS regions" begin
         f = Signomial([R(0), R(0), R(-2)], [[0//1], [1//1], [2//1]]; sorted = false)
         g = Signomial([R(0), R(-2)], [[0//1], [2//1]]; sorted = false)
         q = f / g

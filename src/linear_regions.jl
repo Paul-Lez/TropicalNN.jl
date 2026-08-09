@@ -172,14 +172,16 @@ function _linear_region_constraints(
 end
 
 """
-    _canonical_boundary_side(a, rhs)
+    _canonical_halfspace_key(a, rhs)
 
-Return a normalized key for the hyperplane `a*x = rhs` and the side selected
-by `a*x <= rhs`. Divide `(a..., -rhs)` by its first nonzero entry, so the first
-nonzero key entry is one. The side flag is `true` when the divisor is positive.
+Return `(hyperplane_key, is_nonpositive_side)` for the halfspace `a*x <= rhs`.
+Divide `(a..., -rhs)` by its first nonzero entry to form `hyperplane_key`.
+The first nonzero key entry is one. `is_nonpositive_side` is `true` when the
+selected halfspace has normalized affine expression at most zero. It is `false`
+when the expression is at least zero.
 Constant inequalities return `nothing`.
 """
-function _canonical_boundary_side(a, rhs)
+function _canonical_halfspace_key(a, rhs)
     all(iszero, a) && return nothing
     equation = [a; -rhs]
     pivot_index = findfirst(!iszero, equation)
@@ -200,7 +202,7 @@ function _boundary_sides_from_constraints(A, b)
     boundaries = Tuple{Any, Bool}[]
     seen = Set{Tuple{Any, Bool}}()
     for i in axes(A, 1)
-        boundary = _canonical_boundary_side(@view(A[i, :]), b[i])
+        boundary = _canonical_halfspace_key(@view(A[i, :]), b[i])
         boundary === nothing && continue
         boundary in seen && continue
         push!(boundaries, boundary)
@@ -233,7 +235,9 @@ end
 """
     _Cell(A, b, matrix, offset, data)
 
-Store an affine cell with data used by an internal computation.
+Store an affine cell with data used by an internal computation. For a
+signomial subdivision, `data` contains the dominant monomial indices. For a
+rational subdivision, it contains the halfspace keys of the dominance cell.
 The constraint matrix and vector have the same coefficient type.
 """
 struct _Cell{
@@ -1025,7 +1029,6 @@ map. The key has one `(offset, coefficients)` pair for each output coordinate.
 The coefficients are the corresponding row of the affine matrix.
 """
 function _affine_formula_from_linear_map_key(key)
-    isempty(key) && throw(ArgumentError("An affine map must have at least one output"))
     rows = [permutedims(collect(component[2])) for component in key]
     matrix = reduce(vcat, rows)
     offset = [component[1] for component in key]
@@ -1151,14 +1154,14 @@ function _rational_region_intersections_parallel(
 end
 
 """
-    _rational_atomic_subdivision(rational_signomials; mode, workers=nothing,
-                                 base_region=nothing)
+    _polyhedral_subdivision(rational_signomials; mode, workers=nothing,
+                            base_region=nothing)
 
 Subdivide the domain of `rational_signomials` according to the dominant terms
 of their numerators and denominators. If `base_region` is provided, subdivide
 only that region.
 """
-function _rational_atomic_subdivision(
+function _polyhedral_subdivision(
         rational_signomials::AbstractVector{<:RationalSignomial};
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
@@ -1271,7 +1274,7 @@ function linear_regions(
     any(rational_signomial -> length(rational_signomial.den) == 0, q) &&
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    cells = _rational_atomic_subdivision(
+    cells = _polyhedral_subdivision(
         q;
         mode = mode,
         workers = workers
