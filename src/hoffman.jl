@@ -99,7 +99,7 @@ end
 # Hoffman calculations.
 
 function _surjectivity_scale(A::AbstractMatrix)
-    return norm(A, Inf)
+    return LinearAlgebra.norm(A, Inf)
 end
 
 function _surjectivity_objective_tol(A::AbstractMatrix, tol::Float64)
@@ -159,7 +159,7 @@ function _brute_force_hoff(A::AbstractMatrix; tol::Float64 = 1e-10)
     for j in 1:min(m, size(A, 2))
         for subset in Combinatorics.combinations(1:m, j)
             AA = A[subset, :]
-            rank(AA) == j || continue
+            LinearAlgebra.rank(AA) == j || continue
             _, t = _surjectivity_test(AA; tol = tol)
             if t > 0
                 H = max(H, 1 / t)
@@ -265,8 +265,8 @@ function upper_hoffman_constant(A::AbstractMatrix)
     for j in 1:m
         for subset in Combinatorics.combinations(1:m, j)
             AJ = A[subset, :]
-            if rank(AJ) == min(j, n)
-                p_J = minimum(svdvals(AJ))
+            if LinearAlgebra.rank(AJ) == min(j, n)
+                p_J = minimum(LinearAlgebra.svdvals(AJ))
                 if p_J > 0
                     HU = max(HU, sqrt(length(subset)) / p_J)
                 end
@@ -295,8 +295,8 @@ function lower_hoffman_constant(
         return hoffman_constant(A; brute_force = true, tol = tol)
     else
         for i in 1:num_samples
-            K = rand(1:m)
-            J = sort(unique(rand(1:m, K)))
+            K = Random.rand(1:m)
+            J = sort(unique(Random.rand(1:m, K)))
             AJ = A[J, :]
             x, t = _surjectivity_test(AJ; tol = tol)
             if t > 0
@@ -390,7 +390,8 @@ function exact_er(f::Signomial;
     iszero(hoff_const) && return 0.0
     tilde_bs = _tilde_vectors(b)
     return hoff_const *
-           maximum([norm(_positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
+           maximum([LinearAlgebra.norm(_positive_component(tilde_b), Inf)
+                    for tilde_b in tilde_bs])
 end
 
 @doc raw"""
@@ -409,7 +410,8 @@ function upper_er(f::Signomial;
     iszero(hoff_upper) && return 0.0
     tilde_bs = _tilde_vectors(b)
     return hoff_upper *
-           maximum([norm(_positive_component(tilde_b), Inf) for tilde_b in tilde_bs])
+           maximum([LinearAlgebra.norm(_positive_component(tilde_b), Inf)
+                    for tilde_b in tilde_bs])
 end
 
 @doc raw"""

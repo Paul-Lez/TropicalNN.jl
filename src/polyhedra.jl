@@ -346,7 +346,7 @@ function _highs_codimension_le_one(A::AbstractMatrix{Float64},
         if length(redundantIdx) > 1
             # Test independence with the row rank.
             A_redundant = A_filtered[redundantIdx, :]
-            if rank(A_redundant) > 1
+            if LinearAlgebra.rank(A_redundant) > 1
                 return false
             end
         end

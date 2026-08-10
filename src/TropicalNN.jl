@@ -7,21 +7,28 @@ and linear-region analysis.
 module TropicalNN
 
 using Oscar
+using JuMP: MOI,
+            Model,
+            @constraint,
+            @constraints,
+            @objective,
+            @variable,
+            optimize!,
+            set_attribute,
+            set_silent,
+            termination_status,
+            value
+using MetaGraphsNext: MetaGraph, edge_labels
+
+import CDDLib
 import Combinatorics
-using Distributions
-
-using Polyhedra
-using CDDLib
-
-using JuMP
-using GLPK
-using HiGHS
-using LinearAlgebra
-
-using Graphs
-using MetaGraphsNext
-
 import Distributed
+import GLPK
+import Graphs
+import HiGHS
+import LinearAlgebra
+import Polyhedra
+import Random
 
 export
        Signomial,
