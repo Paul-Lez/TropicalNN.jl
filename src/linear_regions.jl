@@ -61,55 +61,6 @@ function _linear_region_constraints(
 end
 
 """
-    _canonical_halfspace_key(a, rhs)
-
-Return `(hyperplane_key, is_nonpositive_side)` for the halfspace `a*x <= rhs`.
-Divide `(a..., -rhs)` by its first nonzero entry to form `hyperplane_key`.
-The first nonzero key entry is one. `is_nonpositive_side` is `true` when the
-selected halfspace has normalized affine expression at most zero. It is `false`
-when the expression is at least zero.
-"""
-function _canonical_halfspace_key(a, rhs)
-    equation = [a; -rhs]
-    pivot_index = findfirst(!iszero, equation)
-    pivot = equation[pivot_index]
-    key = Tuple(map(equation) do value
-        normalized = value / pivot
-        return iszero(normalized) ? zero(normalized) : normalized
-    end)
-    return (key, pivot > 0)
-end
-
-"""
-    _dominance_halfspace_keys(signomials, dominance_indices)
-
-`dominance_indices` specifies one monomial in each signomial. Compare this
-monomial with every other monomial in the same signomial. Return the distinct
-halfspace keys on which the specified monomials dominate. Each key has the
-format returned by `_canonical_halfspace_key`.
-"""
-function _dominance_halfspace_keys(
-        signomials::AbstractVector{<:Signomial}, dominance_indices)
-    halfspace_keys = Tuple{Any, Bool}[]
-
-    # Compare each dominant monomial with the other monomials in its signomial.
-    for (signomial, dominant_index) in zip(signomials, dominance_indices)
-        for competitor_index in Base.eachindex(signomial)
-            competitor_index == dominant_index && continue
-            A, b = _linear_region_constraints(
-                signomial,
-                dominant_index,
-                OSCAR_POLYHEDRON_COEFF_TYPE;
-                competitors = (competitor_index,)
-            )
-            halfspace_key = _canonical_halfspace_key(@view(A[1, :]), b[1])
-            push!(halfspace_keys, halfspace_key)
-        end
-    end
-    return unique!(halfspace_keys)
-end
-
-"""
     _components_graph(V, D)
 
 Construct the undirected graph with vertices `V` and the true-valued edges in
@@ -363,6 +314,7 @@ function _signomial_region_partition(
         mode = mode,
         base_region = base_region
     )
+    isempty(partition) && return _Cell[]
 
     # Store the constraints and affine map of each cell.
     return map(partition) do (dominance_indices, region)
@@ -428,48 +380,26 @@ function _affine_formula_from_linear_map_key(key)
 end
 
 """
-    _affine_map_key(matrix, offset)
-
-Return an immutable, globally comparable key for an affine map.
-"""
-function _affine_map_key(matrix, offset)
-    return (size(matrix), Tuple(vec(matrix)), Tuple(offset))
-end
-
-"""
-    _rational_region_intersections_chunk((numerator_cells_with_keys,
-                                          denominator_cells_with_keys,
-                                          candidate_pairs,
-                                          base_halfspace_keys,
-                                          mode))
+    _rational_region_intersections_chunk((numerator_cells, denominator_cells,
+                                          candidate_pairs, mode))
 
 Test the requested numerator/denominator partition pairs for full-dimensional
-intersection. Each entry in `numerator_cells_with_keys` and
-`denominator_cells_with_keys` is `(cell, halfspace_keys)`. Return an internal
-cell for each accepted intersection. The input is a tuple so we can directly
-pass this to `pmap`.
+intersection. Return an internal cell for each accepted intersection. The input
+is a tuple so we can directly pass this to `pmap`.
 """
 function _rational_region_intersections_chunk(args)
-    (
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        candidate_pairs,
-        base_halfspace_keys,
-        mode
-    ) = args
+    numerator_cells, denominator_cells, candidate_pairs, mode = args
     cells = _Cell[]
 
     # Intersect each requested pair of numerator and denominator cells.
     for (numerator_cell_index, denominator_cell_index) in candidate_pairs
-        numerator_cell, numerator_halfspace_keys =
-            numerator_cells_with_keys[numerator_cell_index]
-        denominator_cell, denominator_halfspace_keys =
-            denominator_cells_with_keys[denominator_cell_index]
+        numerator_cell = numerator_cells[numerator_cell_index]
+        denominator_cell = denominator_cells[denominator_cell_index]
         intersection_matrix = vcat(numerator_cell.A, denominator_cell.A)
         intersection_vector = vcat(numerator_cell.b, denominator_cell.b)
         region = make_polyhedron(intersection_matrix, intersection_vector; mode = mode)
 
-        # Store each full-dimensional intersection and its halfspace keys.
+        # Store each full-dimensional intersection and its compact selection.
         if is_full_dimensional(region; mode = mode)
             push!(
                 cells,
@@ -478,11 +408,7 @@ function _rational_region_intersections_chunk(args)
                     intersection_vector,
                     numerator_cell.matrix - denominator_cell.matrix,
                     numerator_cell.offset - denominator_cell.offset,
-                    unique!(vcat(
-                        base_halfspace_keys,
-                        numerator_halfspace_keys,
-                        denominator_halfspace_keys
-                    ))
+                    (numerator_cell.data..., denominator_cell.data...)
                 )
             )
         end
@@ -492,26 +418,22 @@ function _rational_region_intersections_chunk(args)
 end
 
 """
-    _rational_region_intersections_parallel(numerator_cells_with_keys,
-                                            denominator_cells_with_keys,
-                                            base_halfspace_keys, mode, workers)
+    _rational_region_intersections_parallel(numerator_cells, denominator_cells,
+                                            mode, workers)
 
 Test every numerator/denominator partition pair for full-dimensional
-intersection. Each entry in the first two arguments is `(cell,
-halfspace_keys)`. Use `workers` to evaluate pair chunks in parallel when
-supplied.
+intersection. Use `workers` to evaluate pair chunks in parallel when supplied.
 """
 function _rational_region_intersections_parallel(
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        base_halfspace_keys,
+        numerator_cells::AbstractVector{<:_Cell},
+        denominator_cells::AbstractVector{<:_Cell},
         mode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
     # Create all pairs of numerator and denominator cells.
     candidate_pairs = Tuple{Int, Int}[]
-    for numerator_cell_index in Base.eachindex(numerator_cells_with_keys)
-        for denominator_cell_index in Base.eachindex(denominator_cells_with_keys)
+    for numerator_cell_index in Base.eachindex(numerator_cells)
+        for denominator_cell_index in Base.eachindex(denominator_cells)
             push!(candidate_pairs, (numerator_cell_index, denominator_cell_index))
         end
     end
@@ -520,10 +442,9 @@ function _rational_region_intersections_parallel(
     if workers === nothing || length(candidate_pairs) <= 1
         return _rational_region_intersections_chunk(
             (
-                numerator_cells_with_keys,
-                denominator_cells_with_keys,
+                numerator_cells,
+                denominator_cells,
                 candidate_pairs,
-                base_halfspace_keys,
                 mode
             )
         )
@@ -537,10 +458,9 @@ function _rational_region_intersections_parallel(
     chunk_results = Distributed.pmap(
         _rational_region_intersections_chunk,
         workers,
-        [(numerator_cells_with_keys,
-             denominator_cells_with_keys,
+        [(numerator_cells,
+             denominator_cells,
              pair_chunk,
-             base_halfspace_keys,
              mode)
          for pair_chunk in pair_chunks]
     )
@@ -549,20 +469,17 @@ end
 
 """
     _polyhedral_subdivision(rational_signomials; mode, workers=nothing,
-                            base_region=nothing, base_halfspace_keys=[])
+                            base_region=nothing)
 
 Subdivide the domain of `rational_signomials` according to the dominant terms
-of their numerators and denominators. Each cell records the supporting
-hyperplanes and selected sides from its dominance comparisons. If `base_region`
-is provided, subdivide only that region. Add the supporting hyperplanes and
-selected sides in `base_halfspace_keys` to each cell.
+of their numerators and denominators. If `base_region` is provided, subdivide
+only that region.
 """
 function _polyhedral_subdivision(
         rational_signomials::AbstractVector{<:RationalSignomial};
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
-        base_region = nothing,
-        base_halfspace_keys = Tuple{Any, Bool}[]
+        base_region = nothing
 )
     # Separate the numerator and denominator signomials.
     numerators = [rational_signomial.num
@@ -584,120 +501,13 @@ function _polyhedral_subdivision(
         base_region = base_region
     )
 
-    # Record the supporting hyperplanes and selected sides for each dominance cell.
-    numerator_cells_with_keys = [
-        (cell, _dominance_halfspace_keys(numerators, cell.data))
-        for cell in numerator_cells
-    ]
-    denominator_cells_with_keys = [
-        (cell, _dominance_halfspace_keys(denominators, cell.data))
-        for cell in denominator_cells
-    ]
-
     # Intersect the numerator and denominator subdivisions.
     return _rational_region_intersections_parallel(
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        base_halfspace_keys,
+        numerator_cells,
+        denominator_cells,
         mode,
         workers
     )
-end
-
-"""
-    _facet_connected_components(cells; mode)
-
-Return one set of cell indices for each full-dimensional region. Two cells
-belong to the same region if a sequence of cells joins them. Each consecutive
-pair in this sequence must share a facet. The `data` field of each cell must
-contain halfspace keys in the format returned by `_canonical_halfspace_key`.
-"""
-function _facet_connected_components(
-        cells::AbstractVector{<:_Cell};
-        mode::LinearRegionsCalculationMode
-)
-    graph = Graphs.SimpleGraph(length(cells))
-
-    # Group cells by each supporting hyperplane and the side they select.
-    hyperplane_buckets = Dict{Any, Tuple{Vector{Int}, Vector{Int}}}()
-    for (cell_index, cell) in pairs(cells)
-        for (hyperplane_key, is_nonpositive_side) in cell.data
-            if !haskey(hyperplane_buckets, hyperplane_key)
-                hyperplane_buckets[hyperplane_key] = (Int[], Int[])
-            end
-            nonpositive_cell_indices, nonnegative_cell_indices =
-                hyperplane_buckets[hyperplane_key]
-            push!(
-                is_nonpositive_side ? nonpositive_cell_indices : nonnegative_cell_indices,
-                cell_index
-            )
-        end
-    end
-
-    # Collect cell pairs on opposite sides of the same supporting hyperplane.
-    pair_hyperplanes = Dict{Tuple{Int, Int}, Vector{Any}}()
-    for (hyperplane_key, side_cell_indices) in hyperplane_buckets
-        nonpositive_cell_indices, nonnegative_cell_indices = side_cell_indices
-        for nonpositive_cell_index in nonpositive_cell_indices,
-            nonnegative_cell_index in nonnegative_cell_indices
-
-            # Use one key order to collect all separating hyperplanes.
-            # This is later useful: we can directly reject pairs with more than
-            # one separating hyperplane!
-            cell_pair = minmax(nonpositive_cell_index, nonnegative_cell_index)
-            if !haskey(pair_hyperplanes, cell_pair)
-                pair_hyperplanes[cell_pair] = Any[]
-            end
-            push!(pair_hyperplanes[cell_pair], hyperplane_key)
-        end
-    end
-
-    # Add a graph edge when the cells share a facet.
-    for ((left_index, right_index), hyperplane_keys) in pair_hyperplanes
-        length(hyperplane_keys) == 1 || continue
-        if _cells_share_facet(
-            cells[left_index], cells[right_index], only(hyperplane_keys), mode)
-            Graphs.add_edge!(graph, left_index, right_index)
-        end
-    end
-    return Graphs.connected_components(graph)
-end
-
-"""
-    _group_cells(cells; mode)
-
-Group cells by affine-map equality and split each group into full-dimensional
-regions. Return the constituent cells and linear regions.
-"""
-function _group_cells(
-        cells::AbstractVector{C};
-        mode::LinearRegionsCalculationMode
-) where {C <: _Cell}
-    isempty(cells) && throw(ArgumentError(
-        "No full-dimensional linear regions were found for the rational signomial"
-    ))
-
-    # Group cells that define the same affine map.
-    map_to_indices = Dict{Any, Vector{Int}}()
-    for (index, cell) in pairs(cells)
-        key = _affine_map_key(cell.matrix, cell.offset)
-        push!(get!(map_to_indices, key, Int[]), index)
-    end
-
-    grouped_cells = C[]
-    linear_regions = LinearRegion{Cell}[]
-
-    # Split the cells for each affine map into full-dimensional regions.
-    for indices in values(map_to_indices)
-        affine_cells = cells[indices]
-        for region_indices in _facet_connected_components(affine_cells; mode = mode)
-            region_cells = affine_cells[region_indices]
-            append!(grouped_cells, region_cells)
-            push!(linear_regions, LinearRegion(Cell[Cell(cell) for cell in region_cells]))
-        end
-    end
-
-    return grouped_cells, LinearRegions(linear_regions)
 end
 
 """
@@ -717,12 +527,13 @@ function linear_regions(
     any(rational_signomial -> length(rational_signomial.den) == 0, q) &&
         throw(ArgumentError("RationalSignomial denominator must have at least one monomial"))
 
-    cells = _polyhedral_subdivision(
-        q;
-        mode = mode,
-        workers = workers
-    )
-    _, regions = _group_cells(cells; mode = mode)
+    source_id = _BoundarySourceID(1, 1)
+    boundary_sources = Dict(source_id => _boundary_source_components(q))
+    cells = _polyhedral_subdivision(q; mode = mode, workers = workers)
+    if !isempty(cells)
+        cells = _attach_boundary_provenance(cells, source_id)
+    end
+    _, regions = _group_cells(cells, boundary_sources; mode = mode)
     return regions
 end
 

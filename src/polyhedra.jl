@@ -355,81 +355,184 @@ function _highs_codimension_le_one(A::AbstractMatrix{Float64},
 end
 
 """
-    _inequality_has_supporting_hyperplane(row, rhs, hyperplane_key; atol=1e-9)
+    _hyperplanes_coincide(left_row, left_rhs, right_row, right_rhs, mode)
 
-Return `true` if the supporting hyperplane of a floating-point inequality is
-the hyperplane in `hyperplane_key`.
+Return whether two exact affine equations have the same zero set.
 """
-function _inequality_has_supporting_hyperplane(
-        row, rhs, hyperplane_key; atol = 1.0e-9)
-    # Store the affine equation `row*x - rhs = 0` as a coefficient vector.
-    equation = [Float64.(row); -Float64(rhs)]
+function _hyperplanes_coincide(left_row, left_rhs, right_row, right_rhs, ::_Oscar)
+    pivot_index = findfirst(!iszero, left_row)
+    pivot_index === nothing && return false
+    left_pivot = left_row[pivot_index]
+    right_pivot = right_row[pivot_index]
+    iszero(right_pivot) && return false
 
-    # Normalize the equation so that scalar multiples have the same coefficients.
-    pivot_index = findfirst(!iszero, equation)
-    normalized = equation ./ equation[pivot_index]
-
-    # Scale the tolerance by the larger of one and the largest coefficient magnitude.
-    target_hyperplane = Float64.(collect(hyperplane_key))
-    comparison_scale = max(1.0, maximum(abs, target_hyperplane))
-    return maximum(abs, normalized .- target_hyperplane) <= atol * comparison_scale
+    for index in eachindex(left_row, right_row)
+        left_row[index] * right_pivot == right_row[index] * left_pivot || return false
+    end
+    return left_rhs * right_pivot == right_rhs * left_pivot
 end
 
 """
-    _highs_cells_share_facet(left, right, hyperplane_key, mode)
+    _hyperplanes_coincide(left_row, left_rhs, right_row, right_rhs, mode)
 
-Test whether two full-dimensional cells share a facet with the specified
-supporting hyperplane.
+Return whether two Float64 affine equations represent the same hyperplane.
+"""
+function _hyperplanes_coincide(left_row, left_rhs, right_row, right_rhs, ::_HiGHS)
+    pivot_index = argmax(abs.(left_row))
+    left_pivot = left_row[pivot_index]
+    right_pivot = right_row[pivot_index]
+    (iszero(left_pivot) || iszero(right_pivot)) && return false
+
+    left_scale = inv(left_pivot)
+    right_scale = inv(right_pivot)
+    for index in eachindex(left_row, right_row)
+        isapprox(
+            left_row[index] * left_scale,
+            right_row[index] * right_scale;
+            atol = 1.0e-9,
+            rtol = 1.0e-9
+        ) || return false
+    end
+    return isapprox(
+        left_rhs * left_scale,
+        right_rhs * right_scale;
+        atol = 1.0e-9,
+        rtol = 1.0e-9
+    )
+end
+
+"""
+    _dominance_transition_indices(signomial, monomial_index, mode)
+
+Return the monomials whose dominance regions can share a facet with
+`monomial_index`. Keep all comparisons on a retained facet, including
+proportional and reversed representations.
+"""
+function _dominance_transition_indices(
+        signomial::Signomial,
+        monomial_index::Int,
+        mode::LinearRegionsCalculationMode
+)
+    A, b = _linear_region_constraint_data(signomial, monomial_index, mode)
+    isempty(b) && return Int[]
+
+    arithmetic = mode isa _Oscar ? :exact : :float
+    region = Polyhedra.polyhedron(
+        Polyhedra.hrep(A, b),
+        CDDLib.Library(arithmetic)
+    )
+    redundant_rows = CDDLib.gethredundantindices(region)
+    facet_rows = [index for index in eachindex(b) if !(index in redundant_rows)]
+    competitor_indices = [index for index in Base.eachindex(signomial)
+                          if index != monomial_index]
+
+    transition_indices = Int[]
+    for row_index in eachindex(b)
+        any(facet_rows) do facet_index
+            _hyperplanes_coincide(
+                @view(A[row_index, :]),
+                b[row_index],
+                @view(A[facet_index, :]),
+                b[facet_index],
+                mode
+            )
+        end || continue
+        push!(transition_indices, competitor_indices[row_index])
+    end
+    return transition_indices
+end
+
+"""
+    _highs_cells_share_facet(left, right, transition, boundary_sources, mode)
+
+Test whether two HiGHS cells share a facet on the selected monomial equality.
 """
 function _highs_cells_share_facet(
         left::_Cell,
         right::_Cell,
-        hyperplane_key,
+        transition::_MonomialTransition,
+        boundary_sources,
         mode::_HiGHS
 )
-    # Get the equation of the candidate hyperplane.
-    n = size(left.A, 2)
-    normal = Float64.(collect(hyperplane_key[1:n]))
-    rhs = -Float64(hyperplane_key[n + 1])
+    signomial = boundary_sources[transition.source_id][transition.component_id]
+    candidate_matrix, candidate_vector = _linear_region_constraints(
+        signomial,
+        transition.lower_index,
+        Float64;
+        competitors = (transition.upper_index,)
+    )
+    candidate_row = @view candidate_matrix[1, :]
+    candidate_rhs = candidate_vector[1]
+    candidate_scale = LinearAlgebra.norm(candidate_row)
+    iszero(candidate_scale) && return false
+    normal = candidate_row ./ candidate_scale
+    rhs = candidate_rhs / candidate_scale
+    isfinite(rhs) || return false
 
-    # Constrain the slack model to the candidate hyperplane.
+    # Constrain the common face to the candidate monomial equality.
     model = create_highs_model(; solver = mode.solver, threads = mode.threads)
-    @variable(model, x[1:n])
+    @variable(model, x[axes(left.A, 2)])
     @variable(model, epsilon)
     @constraint(model, LinearAlgebra.dot(normal, x) == rhs)
     @constraint(model, epsilon <= 1)
 
-    # Require positive slack for every other nonconstant inequality.
+    # Require positive slack away from the candidate hyperplane.
     for (A, b) in ((left.A, left.b), (right.A, right.b))
-        for i in axes(A, 1)
-            row = @view A[i, :]
+        for row_index in axes(A, 1)
+            row = @view A[row_index, :]
             all(iszero, row) && continue
-            _inequality_has_supporting_hyperplane(
-                row, b[i], hyperplane_key) && continue
-            row_norm = LinearAlgebra.norm(Float64.(row))
-            normalized_row = Float64.(row) ./ row_norm
-            normalized_rhs = Float64(b[i]) / row_norm
+            _hyperplanes_coincide(
+                row,
+                b[row_index],
+                candidate_row,
+                candidate_rhs,
+                mode
+            ) && continue
+            row_norm = LinearAlgebra.norm(row)
             @constraint(model,
-                LinearAlgebra.dot(normalized_row, x) + epsilon <= normalized_rhs)
+                LinearAlgebra.dot(row, x) + row_norm * epsilon <= b[row_index])
         end
     end
 
-    # A positive optimum confirms that the common face is a facet.
     @objective(model, Max, epsilon)
     optimize!(model)
-    return value(epsilon) > mode.tol
+    status = termination_status(model)
+    if status == MOI.OPTIMAL
+        return value(epsilon) > mode.tol
+    elseif status == MOI.INFEASIBLE || status == MOI.INFEASIBLE_OR_UNBOUNDED
+        return false
+    end
+    throw(ErrorException("HiGHS facet check ended with unexpected status $status"))
 end
 
 """
-    _cells_share_facet(left, right, hyperplane_key, mode)
+    _cells_share_facet(left, right, transitions, boundary_sources, mode)
 
-Test whether two cells share a facet supported by the hyperplane in
-`hyperplane_key`. Use the backend selected by `mode`.
+Test whether two cells share a facet with the selected geometry backend.
 """
-function _cells_share_facet(left::_Cell, right::_Cell, hyperplane_key, mode)
-    if mode isa _HiGHS
-        return _highs_cells_share_facet(left, right, hyperplane_key, mode)
-    end
+function _cells_share_facet(
+        left::_Cell,
+        right::_Cell,
+        transitions,
+        boundary_sources,
+        mode::_HiGHS
+)
+    return _highs_cells_share_facet(
+        left,
+        right,
+        first(transitions),
+        boundary_sources,
+        mode
+    )
+end
+
+function _cells_share_facet(
+        left::_Cell,
+        right::_Cell,
+        _,
+        _,
+        mode::LinearRegionsCalculationMode
+)
     return regions_intersect_codimension_le_one(left, right; mode = mode)
 end
 
@@ -441,7 +544,7 @@ Return whether `{x : Ax ≤ b}` has codimension at most one.
 function codimension_le_one(A, b; mode::LinearRegionsCalculationMode)
     if mode isa _Oscar
         poly = make_polyhedron(A, b; mode = mode)
-        return Oscar.codim(poly) <= 1
+        return Oscar.is_feasible(poly) && Oscar.codim(poly) <= 1
     elseif mode isa _HiGHS
         return _highs_codimension_le_one(
             A,

@@ -1,48 +1,26 @@
 using Test, TropicalNN
 
 @testset verbose = true "Affine cells" begin
-    float_halfspace_key = TropicalNN._canonical_halfspace_key([2.0, -4.0], 6.0)
-    rational_halfspace_key = TropicalNN._canonical_halfspace_key(
-        Rational{BigInt}[2, -4],
-        Rational{BigInt}(6)
-    )
-    @test float_halfspace_key == ((1.0, -2.0, -3.0), true)
-    @test rational_halfspace_key == ((1 // 1, -2 // 1, -3 // 1), true)
-    @test all(value -> value isa Float64, first(float_halfspace_key))
-    @test all(value -> value isa Rational{BigInt}, first(rational_halfspace_key))
-    @test TropicalNN._canonical_halfspace_key([-1.0, 2.0], -3.0) ==
-          (first(float_halfspace_key), false)
-    positive_zero_key = TropicalNN._canonical_halfspace_key([1.0, 0.0], 1.0)
-    negative_zero_key = TropicalNN._canonical_halfspace_key([-1.0, 0.0], -1.0)
-    @test isequal(first(positive_zero_key), first(negative_zero_key))
-    @test hash(first(positive_zero_key)) == hash(first(negative_zero_key))
-
     A = [1.0 0.0; 2.0 0.0; -1.0 0.0; 0.0 0.0]
     b = [1.0, 2.0, -1.0, 0.0]
     matrix = reshape(Rational{BigInt}[2, 3], 1, 2)
     offset = Rational{BigInt}[4]
 
     cell = TropicalNN.Cell(A, b, matrix, offset)
-    halfspace_keys = Tuple{Any, Bool}[
-        TropicalNN._canonical_halfspace_key(A[1, :], b[1]),
-        TropicalNN._canonical_halfspace_key(A[3, :], b[3])
-    ]
-    internal_cell = TropicalNN._Cell(A, b, matrix, offset, halfspace_keys)
+    internal_cell = TropicalNN._Cell(A, b, matrix, offset, nothing)
 
     @test cell.A === A
     @test cell.b === b
     @test cell.matrix === matrix
     @test cell.offset === offset
-    @test internal_cell isa TropicalNN._Cell{typeof(halfspace_keys), Float64}
-    @test internal_cell.data === halfspace_keys
-    @test length(internal_cell.data) == 2
-    @test Set(last.(internal_cell.data)) == Set([true, false])
+    @test internal_cell isa TropicalNN._Cell{Nothing, Float64}
+    @test internal_cell.data === nothing
     @test_throws MethodError TropicalNN._Cell(
         A,
         Rational{BigInt}.(b),
         matrix,
         offset,
-        halfspace_keys
+        nothing
     )
 
     public_cell = TropicalNN.Cell(internal_cell)

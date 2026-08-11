@@ -74,6 +74,15 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         end
         @test_throws ArgumentError TropicalNN.linear_regions(
             RationalSignomial(empty, empty); mode = highs_mode)
+
+        tiny = Rational{BigInt}(1, big(10)^309)
+        no_full_dimensional_cell = Signomial(
+            [R(0), R(0)],
+            [Rational{BigInt}[0], Rational{BigInt}[tiny]];
+            sorted = false
+        )
+        q = no_full_dimensional_cell / no_full_dimensional_cell
+        @test_throws ArgumentError TropicalNN.linear_regions(q; mode = highs_mode)
     end
 
     @testset verbose = true "Polynomial region enumeration by mode" begin
@@ -207,7 +216,6 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             [[0//1], [1//1], [2//1], [3//1], [4//1], [5//1]];
             sorted = false
         )
-
         cases = [
             ("single monomial quotient", constant_1d / constant_1d, (1, [1])),
             ("basic quotient", max_xy / constant_2d, (2, [1, 1])),
@@ -215,6 +223,8 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 lower_dimensional / constant_1d, (2, [1, 1])),
             ("empty monomial ignored", has_empty_region / constant_1d, (2, [1, 1])),
             ("boundary-glued repeated map", max_xy / max_xy, (1, [2])),
+            ("scaled coincident boundaries",
+                lower_dimensional / lower_dimensional, (1, [2])),
             ("many adjacent glued pieces",
                 six_adjacent_regions / six_adjacent_regions, (1, [6]))
         ]
@@ -254,6 +264,71 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
                 ((1 // 1, 0 // 1), (0 // 1,))
             ])
             @test fieldnames(typeof(first(cells))) == (:A, :b, :matrix, :offset)
+        end
+    end
+
+    @testset "Facet-connected repeated affine maps" begin
+        affine_matrix = reshape(Rational{BigInt}[1, 0], 1, 2)
+        affine_offset = Rational{BigInt}[0]
+
+        singleton = TropicalNN._Cell(
+            zeros(Float64, 0, 2),
+            Float64[],
+            affine_matrix,
+            affine_offset,
+            nothing
+        )
+        grouped, regions = TropicalNN._group_cells(
+            [singleton], Dict(); mode = UnsupportedLinearRegionsMode())
+        @test length(grouped) == length(regions) == length(only(regions)) == 1
+
+        max_x = Signomial(
+            [R(0), R(0)], [[0//1, 0//1], [1//1, 0//1]]; sorted = false)
+        max_y = Signomial(
+            [R(0), R(0)], [[0//1, 0//1], [0//1, 1//1]]; sorted = false)
+        constant = Signomial([R(0)], [[0//1, 0//1]]; sorted = false)
+        quadrant_map = [max_x / max_x, max_y / max_y]
+        source_id = TropicalNN._BoundarySourceID(1, 1)
+        boundary_sources = Dict(
+            source_id => TropicalNN._boundary_source_components(quadrant_map))
+
+        for mode in (oscar_mode, highs_mode)
+            quadrant_cells = TropicalNN._attach_boundary_provenance(
+                TropicalNN._polyhedral_subdivision(quadrant_map; mode = mode),
+                source_id
+            )
+            grouped, regions = TropicalNN._group_cells(
+                quadrant_cells, boundary_sources; mode = mode)
+            @test length(grouped) == 4
+            @test rational_region_signature(regions) == (1, [4])
+            @test all(cell.data.source_id == source_id for cell in quadrant_cells)
+
+            # These cells meet only at the origin, which has codimension two.
+            corners = Dict(cell.data.selection => cell for cell in quadrant_cells)
+            components = TropicalNN._facet_connected_components(
+                [corners[(1, 1, 1, 1)], corners[(2, 2, 2, 2)]],
+                boundary_sources,
+                Dict();
+                mode = mode
+            )
+            @test sort(length.(components)) == [1, 1]
+
+            @test rational_region_signature(linear_regions(
+                [max_x / max_x, max_x / max_x]; mode = mode)) == (1, [2])
+
+            blocked = Signomial(
+                [R(0), R(1), R(0)],
+                [[0//1], [1//1], [2//1]];
+                sorted = false
+            )
+            @test [TropicalNN._dominance_transition_indices(blocked, i, mode)
+                   for i in (1, 3)] == [[2], [2]]
+
+            inherited_boundary = linear_regions(
+                [[max_x / constant, max_y / constant], [constant / constant]];
+                mode = mode
+            )
+            @test rational_region_signature(inherited_boundary) == (1, [4])
         end
     end
 

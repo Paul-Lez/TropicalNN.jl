@@ -31,16 +31,40 @@ try
         max_y = Signomial([R(0), R(0)], [[0//1, 0//1], [0//1, 1//1]]; sorted = false)
         q = [max_x / constant, max_y / constant]
 
-        local_regions = linear_regions(q; mode = HiGHSMode())
-        distributed_regions = linear_regions(q; mode = HiGHSMode(), workers = pool)
         region_signature(regions) = (
             length(regions), sort([length(region) for region in regions]))
-        @test region_signature(distributed_regions) == (4, [1, 1, 1, 1])
-        @test region_signature(distributed_regions) == region_signature(local_regions)
+        cell_signature(cell) = (
+            Tuple(sort([
+                (Tuple(cell.A[row, :]), cell.b[row]) for row in axes(cell.A, 1)
+            ]; by = repr)),
+            size(cell.matrix),
+            Tuple(vec(cell.matrix)),
+            Tuple(cell.offset)
+        )
+        region_data_signature(regions) = sort([
+            sort(cell_signature.(collect(region)); by = repr) for region in regions
+        ]; by = repr)
 
-        scalar_local = linear_regions(max_x / constant; mode = HiGHSMode())
-        scalar_distributed = linear_regions(max_x / constant; mode = HiGHSMode(), workers = pool)
-        @test region_signature(scalar_distributed) == region_signature(scalar_local)
+        for mode in (OscarMode(), HiGHSMode())
+            local_regions = linear_regions(q; mode = mode)
+            distributed_regions = linear_regions(q; mode = mode, workers = pool)
+            @test region_signature(distributed_regions) == (4, [1, 1, 1, 1])
+            @test region_data_signature(distributed_regions) ==
+                  region_data_signature(local_regions)
+
+            repeated_local = linear_regions(max_x / max_x; mode = mode)
+            repeated_distributed = linear_regions(
+                max_x / max_x; mode = mode, workers = pool)
+            @test region_signature(repeated_distributed) == (1, [2])
+            @test region_data_signature(repeated_distributed) ==
+                  region_data_signature(repeated_local)
+
+            layers = [q, q]
+            layerwise_local = linear_regions(layers; mode = mode)
+            layerwise_distributed = linear_regions(layers; mode = mode, workers = pool)
+            @test region_data_signature(layerwise_distributed) ==
+                  region_data_signature(layerwise_local)
+        end
     end
 finally
     isempty(worker_ids) || rmprocs(worker_ids)

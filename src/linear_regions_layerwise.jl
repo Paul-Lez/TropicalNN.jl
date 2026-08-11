@@ -108,8 +108,7 @@ function _affine_layer_formula(layer::AbstractVector{<:RationalSignomial})
 end
 
 """
-    _layer_subdivision(composed_layer, base_matrix, base_vector, base_halfspace_keys,
-                       mode, workers)
+    _layer_subdivision(composed_layer, base_matrix, base_vector, mode, workers)
 
 Subdivide the cell `base_matrix * x <= base_vector` with `composed_layer`.
 """
@@ -117,7 +116,6 @@ function _layer_subdivision(
         composed_layer::AbstractVector{<:RationalSignomial},
         base_matrix::AbstractMatrix,
         base_vector::AbstractVector,
-        base_halfspace_keys::AbstractVector{<:Tuple{Any, Bool}},
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool}
 )
@@ -128,7 +126,7 @@ function _layer_subdivision(
             base_vector,
             matrix,
             offset,
-            base_halfspace_keys
+            nothing
         )]
     end
 
@@ -137,19 +135,28 @@ function _layer_subdivision(
         composed_layer;
         mode = mode,
         workers = workers,
-        base_region = base_region,
-        base_halfspace_keys = base_halfspace_keys
+        base_region = base_region
     )
 end
 
 """
-    _layer_subdivision_chunk((jobs, mode))
+    _layer_subdivision_group_job((composed_layer, jobs, mode))
 
-Subdivide a chunk of cells on one worker.
+Subdivide one group of base cells that use the same composed source.
 """
-function _layer_subdivision_chunk(args)
-    jobs, mode = args
-    return [_layer_subdivision(job..., mode, nothing) for job in jobs]
+function _layer_subdivision_group_job(args)
+    composed_layer, jobs, mode = args
+    return [
+        (cell_index, _layer_subdivision(composed_layer, A, b, mode, nothing))
+        for (cell_index, A, b) in jobs
+    ]
+end
+
+"""Group one composed layer source with the base cells that use it."""
+struct _LayerSubdivisionGroup{L}
+    source_id::_BoundarySourceID
+    composed_layer::L
+    cell_indices::Vector{Int}
 end
 
 """
@@ -162,6 +169,8 @@ function _apply_affine_layer(
         cells::AbstractVector{<:_Cell},
         layer::AbstractVector{<:RationalSignomial}
 )
+    isempty(cells) && return _Cell[]
+
     layer_matrix, layer_offset = _affine_layer_formula(layer)
 
     return map(cells) do cell
@@ -176,60 +185,71 @@ function _apply_affine_layer(
 end
 
 """
-    _subdivide_cells_by_layer(cells, layer; mode, workers=nothing)
+    _subdivide_cells_by_layer(cells, layer, boundary_sources, stage_id;
+                              mode, workers=nothing)
 
 Compose `layer` with each cell map. Subdivide each cell by the resulting
 numerator and denominator dominance regions.
 """
 function _subdivide_cells_by_layer(
         cells::AbstractVector{<:_Cell},
-        layer::AbstractVector{<:RationalSignomial};
+        layer::AbstractVector{<:RationalSignomial},
+        boundary_sources,
+        stage_id::Int;
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    # Compose the layer with each distinct cell map.
-    composition_cache = Dict{Any, Vector{RationalSignomial}}()
-    composed_layers = map(cells) do cell
-        cell_map_key = _affine_map_key(cell.matrix, cell.offset)
-        get!(composition_cache, cell_map_key) do
-            _compose_affine(layer, cell.matrix, cell.offset)
+    # Compose each distinct cell map and give it a stable stage-local ID.
+    group_by_map = Dict{Any, _LayerSubdivisionGroup}()
+    source_ids = _BoundarySourceID[]
+    for (cell_index, cell) in pairs(cells)
+        group = get!(group_by_map, _affine_map_key(cell.matrix, cell.offset)) do
+            source_id = _BoundarySourceID(stage_id, length(group_by_map) + 1)
+            composed_layer = _compose_affine(layer, cell.matrix, cell.offset)
+            boundary_sources[source_id] = _boundary_source_components(composed_layer)
+            _LayerSubdivisionGroup(source_id, composed_layer, Int[])
+        end
+        push!(group.cell_indices, cell_index)
+        push!(source_ids, group.source_id)
+    end
+
+    # Group base cells so each distributed job carries one composed source.
+    subdivision_jobs = map(values(group_by_map)) do group
+        jobs = [(index, cells[index].A, cells[index].b) for index in group.cell_indices]
+        (group.composed_layer, jobs, mode)
+    end
+
+    # Subdivide each source group.
+    cell_subdivisions = if workers !== nothing && length(cells) > 1
+        _assert_tropicalnn_loaded(workers)
+        Distributed.pmap(
+            _layer_subdivision_group_job,
+            workers,
+            subdivision_jobs
+        )
+    else
+        [_layer_subdivision_group_job(job) for job in subdivision_jobs]
+    end
+
+    # Restore parent-cell order and attach compact provenance locally.
+    subdivisions_by_parent = Vector{Any}(undef, length(cells))
+    for group_result in cell_subdivisions
+        for (cell_index, subdivision) in group_result
+            subdivisions_by_parent[cell_index] = subdivision
         end
     end
 
-    # Subdivide each cell with its composed layer.
-    cell_subdivisions = if workers !== nothing && length(cells) > 1
-        _assert_tropicalnn_loaded(workers)
-        jobs = [
-            (composed_layer, cell.A, cell.b, cell.data)
-            for (cell, composed_layer) in zip(cells, composed_layers)
-        ]
-        chunks = _index_chunks(
-            length(jobs),
-            length(Distributed.workers(workers))
-        )
-        chunk_results = Distributed.pmap(
-            _layer_subdivision_chunk,
-            workers,
-            [(jobs[chunk], mode) for chunk in chunks]
-        )
-        Base.reduce(vcat, chunk_results)
-    else
-        [
-            _layer_subdivision(
-                composed_layer,
-                cell.A,
-                cell.b,
-                cell.data,
-                mode,
-                workers
-            )
-            for (cell, composed_layer) in zip(cells, composed_layers)
-        ]
-    end
-
     next_cells = _Cell[]
-    for subdivision in cell_subdivisions
-        append!(next_cells, subdivision)
+    for (parent_cell, source_id, subdivision) in
+        zip(cells, source_ids, subdivisions_by_parent)
+        for cell in subdivision
+            provenance = if cell.data === nothing
+                parent_cell.data
+            else
+                _BoundaryProvenance(source_id, cell.data, parent_cell.data)
+            end
+            push!(next_cells, _Cell(cell, provenance))
+        end
     end
     return next_cells
 end
@@ -261,17 +281,20 @@ function _linear_regions_composition(
             constraint_type[],
             identity_matrix,
             identity_offset,
-            Tuple{Any, Bool}[]
+            nothing
         )
     ]
+    boundary_sources = Dict{_BoundarySourceID, Any}()
 
-    for layer in layers
+    for (stage_id, layer) in pairs(layers)
         if _is_affine_layer(layer)
             current_cells = _apply_affine_layer(current_cells, layer)
         else
             current_cells = _subdivide_cells_by_layer(
                 current_cells,
-                layer;
+                layer,
+                boundary_sources,
+                stage_id;
                 mode = mode,
                 workers = workers
             )
@@ -279,7 +302,7 @@ function _linear_regions_composition(
     end
 
     # Materialize the final regions and join their facet-connected cells.
-    _, regions = _group_cells(current_cells; mode = mode)
+    _, regions = _group_cells(current_cells, boundary_sources; mode = mode)
     return regions
 end
 
