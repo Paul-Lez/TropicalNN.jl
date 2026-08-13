@@ -17,5 +17,6 @@ println("  Exponents (sorted):  ", exponents(f))
 f_pruned = prune(f)
 
 println("\nPruned polynomial:")
+println("  Expression:           ", f_pruned)
 println("  Number of monomials: ", monomial_count(f_pruned))
 println("  Exponents (sorted):  ", exponents(f_pruned))

@@ -55,6 +55,7 @@ network = NeuralNetwork(
 )
 q = tropicalize(network)
 layer_maps = tropicalize_layers(network)
+regions = linear_regions(network; mode = HiGHSMode())
 
 input_dimension(network)  # 2
 output_dimension(network) # 1
@@ -63,6 +64,10 @@ output_dimension(network) # 1
 `tropicalize_layers` converts each layer separately. The result contains one
 vector of rational signomials for each layer. `tropicalize` composes the layer
 maps. It returns one vector for the complete network.
+
+`linear_regions(network; mode)` uses `tropicalize_layers` internally and
+computes the regions one layer at a time, without constructing the complete
+tropical expression.
 
 All layers in a network must use the same scalar type. The default type for an
 activation is `Rational{BigInt}`. If an affine layer uses a different type,

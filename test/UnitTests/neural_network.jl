@@ -181,4 +181,27 @@ end
         @test TropicalNN.evaluate(float_leaky_output, Float32[-1]) ==
               tropical_semiring(max)(-1 // 8)
     end
+
+    @testset "Network linear regions" begin
+        network = NeuralNetwork(
+            AffineLayer(
+                Rational{BigInt}[0 1; 1 0],
+                Rational{BigInt}[1, 1]
+            ),
+            ActivationLayer(relu(), 2),
+            AffineLayer(
+                Rational{BigInt}[1 -1],
+                Rational{BigInt}[0]
+            )
+        )
+        mode = HiGHSMode()
+        network_regions = linear_regions(network; mode = mode)
+        layer_regions = linear_regions(tropicalize_layers(network); mode = mode)
+
+        cell_data(regions) = [(cell.A, cell.b, cell.matrix, cell.offset)
+                              for region in regions for cell in region]
+
+        @test length(network_regions) == 4
+        @test cell_data(network_regions) == cell_data(layer_regions)
+    end
 end
