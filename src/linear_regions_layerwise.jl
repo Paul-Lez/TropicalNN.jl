@@ -309,6 +309,25 @@ function linear_regions(
 end
 
 """
+    linear_regions(network::NeuralNetwork; mode, workers=nothing)
+
+Return the linear regions of `network`, computed one layer at a time. The
+method converts each network layer independently with `tropicalize_layers`; it
+does not construct a complete rational signomial map for the network.
+"""
+function linear_regions(
+        network::NeuralNetwork;
+        mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
+)
+    return linear_regions(
+        tropicalize_layers(network);
+        mode = mode,
+        workers = workers
+    )
+end
+
+"""
     linear_regions(linear_maps, biases, thresholds=nothing;
                    mode, workers=nothing)
 
