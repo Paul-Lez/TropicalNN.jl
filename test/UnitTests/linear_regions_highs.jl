@@ -146,7 +146,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
               collect(monomial_pairs(oscar_output[1].den))
     end
 
-    @testset verbose = true "Deprecated Hoffman mode keyword" begin
+    @testset verbose = true "Hoffman calculation with threaded HiGHS" begin
         mode = HiGHSMode(threads = 1)
         f = Signomial(
             [R(0), R(1), R(-1)],
@@ -154,8 +154,7 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
             sorted = false
         )
 
-        er = @test_deprecated exact_er(f; mode = mode)
-        @test er ≈ exact_er(f)
+        @test exact_er(f; mode = mode) ≈ exact_er(f)
     end
 
     @testset verbose = true "Graph construction with threaded HiGHS" begin
