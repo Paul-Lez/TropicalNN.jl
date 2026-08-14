@@ -256,16 +256,17 @@ end
 @doc raw"""
     upper_hoffman_constant(A::AbstractMatrix)
 
-Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over
-nonempty full-rank row subsets `J`. `A` can be any suitable `AbstractMatrix`.
+Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over nonempty row subsets `J`
+with `length(J) <= min(m, n)` and `rank(A[J, :]) == length(J)`, where
+`m, n = size(A)`. `A` can be any suitable `AbstractMatrix`.
 """
 function upper_hoffman_constant(A::AbstractMatrix)
     m, n = size(A)
     HU = 0.0
-    for j in 1:m
+    for j in 1:min(m, n)
         for subset in Combinatorics.combinations(1:m, j)
             AJ = A[subset, :]
-            if LinearAlgebra.rank(AJ) == min(j, n)
+            if LinearAlgebra.rank(AJ) == j
                 p_J = minimum(LinearAlgebra.svdvals(AJ))
                 if p_J > 0
                     HU = max(HU, sqrt(length(subset)) / p_J)

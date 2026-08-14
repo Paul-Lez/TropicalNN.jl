@@ -61,6 +61,9 @@ using Test, TropicalNN, Random, Oscar
     @test upper_hoffman_constant(zero_matrix) == 0
     @test lower_hoffman_constant(zero_matrix) == 0
 
+    tall_matrix = [1 0; 0 1; 1 0]
+    @test upper_hoffman_constant(tall_matrix) ≈ sqrt(2)
+
     redundant = Signomial(
         [R(0), R(-1), R(0)],
         [[0//1], [1//1], [2//1]];
