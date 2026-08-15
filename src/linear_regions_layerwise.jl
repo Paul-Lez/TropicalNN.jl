@@ -311,9 +311,7 @@ end
 """
     linear_regions(network::NeuralNetwork; mode, workers=nothing)
 
-Return the linear regions of `network`, computed one layer at a time. The
-method converts each network layer independently with `tropicalize_layers`; it
-does not construct a complete rational signomial map for the network.
+Return the linear regions of `network`, computed layerwise.
 """
 function linear_regions(
         network::NeuralNetwork;
@@ -331,10 +329,9 @@ end
     linear_regions(linear_maps, biases, thresholds=nothing;
                    mode, workers=nothing)
 
-Return the linear regions of an MLP. Each hidden layer applies
-`max.(A * x + b, threshold)`. The final layer is affine. The function computes
-the regions after each layer. It does not construct one rational signomial map
-for the complete network.
+Return the linear regions of an MLP (given by arrays containing the
+weight matrices, the biases, and the thresholds for each layer), computed layerwise.
+This is a legacy method, and nowadays using the `NeuralNetwork` API is preferred.
 """
 function linear_regions(
         linear_maps::AbstractVector{<:AbstractMatrix},
