@@ -552,7 +552,8 @@ end
     evaluate(f::Signomial, a::AbstractVector)
 
 Evaluate `f` at point `a`.
-`a` can be any `AbstractVector` of suitable scalars.
+Entries of `a` may be real numbers or max-plus tropical scalars. Real inputs
+are converted to the tropical semiring before evaluation.
 """
 function evaluate(f::Signomial, a::AbstractVector)
     point = _coerce_evaluation_point(f, a)

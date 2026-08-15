@@ -111,8 +111,10 @@ end
     _surjectivity_test(A::AbstractMatrix; tol=1e-10) -> (v, t)
 
 Test A-surjectivity with the GLPK problem
-`min ‖A'v‖₁` subject to `sum(v) = 1` and `v ≥ 0`. Return `(v, t)`; the rows
-are A-surjective when `t > 0`. `tol` removes small floating-point results.
+`min ‖A'v‖₁` subject to `sum(v) = 1` and `v ≥ 0`.
+
+Return `(v, t)`. The rows are A-surjective when `t > 0`; `tol` removes small
+floating-point results.
 """
 function _surjectivity_test(A::AbstractMatrix; tol::Float64 = 1e-10)
     n = size(A, 2)
@@ -172,9 +174,10 @@ end
 @doc raw"""
     _pvz_hoff(A::AbstractMatrix; return_certificates=false, tol=1e-10)
 
-Compute the infinity-norm Hoffman constant with the Peña--Vera--Zuluaga algorithm.
-With `return_certificates=true`, return `(H, F, I)` with the surjective sets
-and obstruction supports. GLPK uses floating-point arithmetic.
+Compute the infinity-norm Hoffman constant with the Peña--Vera--Zuluaga
+algorithm. With `return_certificates=true`, return `(H, F, I)`, where `F`
+contains the surjective row sets and `I` contains the obstruction supports.
+GLPK uses floating-point arithmetic.
 """
 function _pvz_hoff(A::AbstractMatrix; return_certificates::Bool = false, tol::Float64 = 1e-10)
     m = size(A, 1)
@@ -243,7 +246,7 @@ end
 Compute the infinity-norm Hoffman constant of `A`. By default, use the
 Peña--Vera--Zuluaga algorithm. Set `brute_force=true` to test every nonempty
 row subset instead. Both algorithms solve floating-point LPs with GLPK.
-`A` can be any `AbstractMatrix` supported by the linear algebra operations.
+`A` must be a real-valued matrix.
 """
 function hoffman_constant(A::AbstractMatrix; brute_force::Bool = false, tol::Float64 = 1e-10)
     if brute_force
@@ -257,7 +260,7 @@ end
     upper_hoffman_constant(A::AbstractMatrix)
 
 Return the largest `sqrt(length(J)) / minimum(svdvals(A[J, :]))` over
-nonempty full-rank row subsets `J`. `A` can be any suitable `AbstractMatrix`.
+nonempty full-rank row subsets `J` of a real-valued matrix `A`.
 """
 function upper_hoffman_constant(A::AbstractMatrix)
     m, n = size(A)
@@ -281,7 +284,7 @@ end
 
 Return a lower bound from `num_samples` random nonempty row subsets. If
 `num_samples >= 2^m`, compute the exact value with brute force.
-`A` can be any suitable `AbstractMatrix`.
+`A` must be a real-valued matrix.
 """
 function lower_hoffman_constant(
         A::AbstractMatrix,
@@ -313,10 +316,10 @@ end
 
 Compute the Hoffman constant for the stored expression of `f`. By default, use
 the Peña--Vera--Zuluaga algorithm on every transformed matrix. Set
-`brute_force=true` to use exhaustive subset enumeration. This function uses
-all stored nonzero monomials. Call [`prune`](@ref) before this function to
-remove redundant monomials. The `mode` keyword is deprecated and has no
-effect. Pass it to `prune` instead.
+`brute_force=true` to enumerate all relevant row subsets.
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function hoffman_constant(f::Union{Signomial, RationalSignomial};
         brute_force::Bool = false,
@@ -334,10 +337,10 @@ end
 @doc raw"""
     upper_hoffman_constant(f::Union{Signomial,RationalSignomial})
 
-Return a Hoffman-constant upper bound for the stored expression of `f`. This
-function uses all stored nonzero monomials. Call [`prune`](@ref) before this
-function to remove redundant monomials. The `mode` keyword is deprecated and
-has no effect. Pass it to `prune` instead.
+Return a Hoffman-constant upper bound for the stored expression of `f`.
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function upper_hoffman_constant(
         f::Union{Signomial, RationalSignomial};
@@ -353,9 +356,10 @@ end
                            num_samples::Int=10; tol=1e-10)
 
 Return a sampled Hoffman-constant lower bound for the stored expression of
-`f`. This function uses all stored nonzero monomials. Call [`prune`](@ref)
-before this function to remove redundant monomials. The `mode` keyword is
-deprecated and has no effect. Pass it to `prune` instead.
+`f`.
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function lower_hoffman_constant(f::Union{Signomial, RationalSignomial},
         num_samples::Int = 10;
@@ -375,9 +379,9 @@ end
     exact_er(f::Signomial; brute_force=false)
 
 Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
-This function uses all stored nonzero monomials. Call [`prune`](@ref) before
-this function to remove redundant monomials. The `mode` keyword is deprecated
-and has no effect. Pass it to `prune` instead.
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function exact_er(f::Signomial;
         brute_force::Bool = false,
@@ -398,10 +402,10 @@ end
     upper_er(f::Signomial)
 
 Return an infinity-norm effective-radius bound using
-[`upper_hoffman_constant`](@ref). This function uses all stored nonzero
-monomials. Call [`prune`](@ref) before this function to remove redundant
-monomials. The `mode` keyword is deprecated and has no effect. Pass it to
-`prune` instead.
+[`upper_hoffman_constant`](@ref).
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function upper_er(f::Signomial;
         mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)
@@ -418,9 +422,9 @@ end
     exact_er(f::RationalSignomial; brute_force=false)
 
 Return an infinity-norm effective-radius bound using [`hoffman_constant`](@ref).
-This function uses all stored nonzero monomials. Call [`prune`](@ref) before
-this function to remove redundant monomials. The `mode` keyword is deprecated
-and has no effect. Pass it to `prune` instead.
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function exact_er(f::RationalSignomial;
         brute_force::Bool = false,
@@ -438,10 +442,10 @@ end
     upper_er(f::RationalSignomial)
 
 Return an infinity-norm effective-radius bound using
-[`upper_hoffman_constant`](@ref). This function uses all stored nonzero
-monomials. Call [`prune`](@ref) before this function to remove redundant
-monomials. The `mode` keyword is deprecated and has no effect. Pass it to
-`prune` instead.
+[`upper_hoffman_constant`](@ref).
+
+The calculation uses every stored nonzero monomial; call [`prune`](@ref) first
+to exclude redundant ones. The deprecated `mode` keyword has no effect.
 """
 function upper_er(f::RationalSignomial;
         mode::Union{Nothing, LinearRegionsCalculationMode} = nothing)

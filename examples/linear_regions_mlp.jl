@@ -1,9 +1,8 @@
 # Example: linear regions of an MLP
 #
-# Construct a [2, 2, 1] ReLU MLP as a NeuralNetwork and convert it to a
-# tropical rational function. Then use the layerwise implementation with
-# HiGHS to compute its linear regions without forming the complete tropical
-# expression as part of that computation.
+# Construct a [2, 2, 1] ReLU MLP and convert it to a tropical rational
+# function. Then compute its regions layer by layer with HiGHS, without
+# constructing the fully composed expression during the region calculation.
 
 using TropicalNN
 

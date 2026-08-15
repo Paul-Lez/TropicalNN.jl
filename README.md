@@ -24,11 +24,14 @@ TropicalNN provides symbolic tropical-geometry tools for neural networks.
 
 ### Tropical expressions of neural networks
 
-A fully connected ReLU multilayer perceptron (MLP) can be expressed as a tropical rational function with real exponents [1]. TropicalNN can construct and manipulate these expressions.
+A fully connected ReLU network can be represented by a tropical rational
+function with real exponents [1]. TropicalNN constructs and manipulates these
+expressions.
 
 ### Tropical measures of neural-network expressivity
 
-TropicalNN can compute the linear regions of a neural network, analyze their geometry, and count the monomials in its stored tropical expression.
+TropicalNN computes a network's linear regions and their geometry. It also
+counts monomials in a stored tropical representation.
 
 ## Quick start
 
@@ -59,7 +62,8 @@ g = Signomial([0, 4, -5], [[1 // 1, 7 // 1], [0 // 1, 1 // 1], [9 // 1, 1 // 1]]
 @show f * g # Ordinary sum of the represented functions.
 ```
 
-You can use `quicksum` and `prune` to accelerate computation and reduce intermediate expression size:
+Use `quicksum` to combine tropical sums in batches and `prune` to remove
+redundant monomials:
 
 ```julia
 mode = HiGHSMode(threads = 4)

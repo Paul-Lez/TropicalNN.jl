@@ -240,7 +240,8 @@ end
                                         A2::AbstractMatrix{Float64}, b2::AbstractVector{Float64};
                                         tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
-Check if the intersection of two polyhedra is full dimensional via by solving linear programs using HiGHS.
+Return whether the intersection of the two polyhedra is full-dimensional.
+The check is performed with HiGHS.
 """
 function highs_intersect_is_full_dimensional(
         A1::AbstractMatrix{Float64}, b1::AbstractVector{Float64},

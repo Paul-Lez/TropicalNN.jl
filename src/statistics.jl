@@ -48,8 +48,9 @@ end
 """
     m_reps(f::RationalSignomial; mode::LinearRegionsCalculationMode=OscarMode()) -> Dict
 
-Return `[A, b]` for each full-dimensional numerator-denominator region
-intersection of `f`. The `"f_indices"` entry contains the matching index pairs.
+Return `[A, b]` for each full-dimensional intersection of a numerator dominance
+region and a denominator dominance region. The `"f_indices"` entry contains the
+matching index pairs.
 """
 function m_reps(
         f::RationalSignomial;
@@ -281,8 +282,8 @@ end
 @doc raw"""
     volumes(linear_regions::Dict)
 
-Return one volume for each linear region by summing the volumes
-of the (full-dimensional) polyhedra that it the union of.
+Return one volume for each linear region by summing the volumes of its
+full-dimensional polyhedra.
 """
 function volumes(linear_regions::Dict)
     vols = Dict()
@@ -337,8 +338,10 @@ end
 @doc raw"""
     get_graph(linear_regions::Dict)
 
-Construct the facet-adjacency graph of `linear_regions`, with one vertex per linear region.
-Edges correspond to linear regions intersecting along a codimension one edge.
+Construct the facet-adjacency graph of `linear_regions`.
+
+Vertices represent linear regions. Two vertices are adjacent when the
+corresponding regions share a facet.
 """
 function get_graph(linear_regions::Dict)
     function connection(polys_1, polys_2)
@@ -390,12 +393,12 @@ end
 """
     _edge_direction(edge_intersection)
 
-Return a direction vector for the intersection of two-dimensional polyhedra.
+Return a direction vector for the shared edge of two-dimensional polyhedra.
+
+Return `nothing` when the intersection has neither two finite vertices nor a ray.
 """
 function _edge_direction(edge_intersection)
     vertices = Oscar.vertices(edge_intersection)
-    # TODO: perhaps here we should throw an error if the intersection is not one dimensional (here
-    # we're implicitely assuming this and always use it in that context).
     if length(vertices) >= 2
         return [vertices[2][1] - vertices[1][1], vertices[2][2] - vertices[1][2]]
     end
@@ -423,9 +426,10 @@ end
     _normalized_direction(direction)
 
 Normalize `direction` as a `Float64` vector.
+
+Return `nothing` for a missing or zero direction.
 """
 function _normalized_direction(direction)
-    # TODO: Maybe here we should just throw an error?
     direction === nothing && return nothing
     d = Float64.(direction)
     norm_d = sqrt(sum(x -> x^2, d))
@@ -436,12 +440,11 @@ end
 """
     _canonical_direction(direction)
 
-Normalize `direction` and make its first nonzero component positive.
-(note that direction is a vector representing the direction of an edge, so we can replace it by its negative).
+Normalize an unoriented edge direction and make its first nonzero component
+positive. A direction and its negation represent the same edge.
 """
 function _canonical_direction(direction)
     d = _normalized_direction(direction)
-    # TODO: Maybe here we should just throw an error?
     d === nothing && return nothing
     for x in d
         if !iszero(x)

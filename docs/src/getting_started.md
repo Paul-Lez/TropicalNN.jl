@@ -2,7 +2,8 @@
 
 ## Full pipeline
 
-This example converts an MLP to a tropical rational function, computes its linear regions, and counts its stored monomials.
+This example converts an MLP to a tropical rational function, computes its
+linear regions, and counts its stored monomials.
 
 ```julia
 using TropicalNN
@@ -27,7 +28,8 @@ p = f * g # Ordinary sum of the represented functions.
 
 ## Control expression growth
 
-You can use `quicksum` and `prune` to accelerate computation and reduce intermediate expression size:
+Use `quicksum` to combine tropical sums in batches and `prune` to remove
+redundant monomials:
 
 ```julia
 mode = HiGHSMode(threads = 4)
@@ -65,9 +67,8 @@ output_dimension(network) # 1
 vector of rational signomials for each layer. `tropicalize` composes the layer
 maps. It returns one vector for the complete network.
 
-`linear_regions(network; mode)` uses `tropicalize_layers` internally and
-computes the regions one layer at a time, without constructing the complete
-tropical expression.
+`linear_regions(network; mode)` computes regions one layer at a time, without
+constructing the network's fully composed tropical expression.
 
 All layers in a network must use the same scalar type. The default type for an
 activation is `Rational{BigInt}`. If an affine layer uses a different type,

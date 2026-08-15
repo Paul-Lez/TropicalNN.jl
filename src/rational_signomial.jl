@@ -138,7 +138,8 @@ end
     evaluate(f::RationalSignomial, a::AbstractVector)
 
 Evaluate `f` at point `a`.
-`a` can be any `AbstractVector` of suitable scalars.
+Entries of `a` may be real numbers or max-plus tropical scalars. Real inputs
+are converted to the tropical semiring before evaluation.
 """
 function evaluate(f::RationalSignomial, a::AbstractVector)
     point = _coerce_evaluation_point(f.num, a)
@@ -149,7 +150,7 @@ end
     evaluate(F::AbstractVector{<:RationalSignomial}, a::AbstractVector)
 
 Evaluate each function in `F` at point `a`.
-`F` and `a` can be any suitable `AbstractVector` values.
+Entries of `a` may be real numbers or max-plus tropical scalars.
 """
 function evaluate(F::AbstractVector{<:RationalSignomial}, a::AbstractVector)
     return [evaluate(f, a) for f in F]

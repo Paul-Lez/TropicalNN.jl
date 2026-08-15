@@ -6,7 +6,8 @@
 Convert `x -> max.(A * x + b, t)` to tropical rational functions.
 
 The lengths of `b` and `t` must equal `size(A, 1)`.
-`A` can be any `AbstractMatrix` with a supported element type.
+The entries of `A` must be Oscar scalars or `Rational{BigInt}` values. The
+entries of `b` and `t` must be convertible to `Rational{BigInt}`.
 """
 function single_to_trop(A::AbstractMatrix{T}, b::AbstractVector,
         t::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
@@ -46,7 +47,8 @@ end
 Convert `x -> A * x + b` to tropical rational functions.
 
 The length of `b` must equal `size(A, 1)`.
-`A` can be any `AbstractMatrix` with a supported element type.
+Entries of `A` must support comparison with zero and subtraction. Entries of
+`b` must be convertible to `Rational{BigInt}`.
 """
 function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
     G = RationalSignomial[]
