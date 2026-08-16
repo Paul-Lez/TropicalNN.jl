@@ -77,6 +77,10 @@ function _constraint_scalar(::Type{Float64}, x::Oscar.TropicalSemiringElem)
     return Float64(Rational(x))
 end
 
+function _constraint_scalar(::Type{Float64}, x::_FLOAT_TROPICAL_COEFF)
+    return _constraint_scalar(Float64, TropicalNumbers.content(x))
+end
+
 function _constraint_scalar(::Type{Float64}, x::Real)
     return Float64(x)
 end
@@ -87,6 +91,16 @@ end
 
 function _constraint_scalar(::Type{OSCAR_POLYHEDRON_COEFF_TYPE}, x::AbstractFloat)
     return OSCAR_POLYHEDRON_COEFF_TYPE(x)
+end
+
+function _constraint_scalar(
+        ::Type{OSCAR_POLYHEDRON_COEFF_TYPE},
+        x::_FLOAT_TROPICAL_COEFF
+)
+    return _constraint_scalar(
+        OSCAR_POLYHEDRON_COEFF_TYPE,
+        TropicalNumbers.content(x)
+    )
 end
 
 function _constraint_scalar(::Type{OSCAR_POLYHEDRON_COEFF_TYPE}, x)

@@ -94,11 +94,13 @@ function get_linear_maps(f::Union{Signomial, RationalSignomial}, f_indices)
     linear_maps = Vector{Vector{Any}}()
     for f_idx in f_indices
         if length(f_idx) == 1
-            push!(linear_maps, [Rational(get_coeff(f, f_idx)), collect(get_exp(f, f_idx))])
+            push!(linear_maps,
+                [_coefficient_rational(get_coeff(f, f_idx)), collect(get_exp(f, f_idx))])
         else
             numr, denr = f.num, f.den
             push!(linear_maps,
-                [Rational(get_coeff(numr, f_idx[1])) - Rational(get_coeff(denr, f_idx[2])),
+                [_coefficient_rational(get_coeff(numr, f_idx[1])) -
+                 _coefficient_rational(get_coeff(denr, f_idx[2])),
                     collect(get_exp(numr, f_idx[1])) - collect(get_exp(denr, f_idx[2]))])
         end
     end

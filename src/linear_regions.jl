@@ -367,7 +367,7 @@ function _signomial_region_partition(
     # Store the constraints and affine map of each cell.
     return map(partition) do (dominance_indices, region)
         A, b = _region_constraint_data(region; mode = mode)
-        affine_key = [(Rational(get_coeff(signomial, index)),
+        affine_key = [(_coefficient_rational(get_coeff(signomial, index)),
                           collect(get_exp(signomial, index)))
                       for (signomial, index) in zip(signomials, dominance_indices)]
         matrix, offset = _affine_formula_from_linear_map_key(affine_key)
@@ -406,8 +406,8 @@ function _linear_map_key(
         numerator_index,
         denominator_index
 )
-    coeff = Rational(get_coeff(numerator, numerator_index)) -
-            Rational(get_coeff(denominator, denominator_index))
+    coeff = _coefficient_rational(get_coeff(numerator, numerator_index)) -
+            _coefficient_rational(get_coeff(denominator, denominator_index))
     exp = collect(get_exp(numerator, numerator_index)) -
           collect(get_exp(denominator, denominator_index))
     return (coeff, exp)

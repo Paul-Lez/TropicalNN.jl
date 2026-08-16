@@ -1,4 +1,5 @@
 using Test, TropicalNN, Oscar
+import TropicalNumbers
 
 struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode end
 
@@ -114,6 +115,27 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
             @test all(cell -> cell.b isa Vector{coefficient_type}, partition)
             @test sort([only(cell.data) for cell in partition]) == [1, 2]
         end
+    end
+
+    @testset "Float-backed polynomial region enumeration" begin
+        TropicalFloat = TropicalNumbers.Tropical{Float64}
+        f = Signomial(
+            TropicalFloat.([1.0, 2.0]),
+            [[1.0, 0.0], [0.0, 1.0]];
+            sorted = false
+        )
+        expected_maps = [([0.0, 1.0], [2 // 1]), ([1.0, 0.0], [1 // 1])]
+
+        for mode in (oscar_mode, highs_mode)
+            regions = TropicalNN.linear_regions(f; mode = mode)
+            @test [(vec(only(region).matrix), only(region).offset) for region in regions] ==
+                  expected_maps
+        end
+
+        extreme = nextfloat(0.0)
+        extreme_f = Signomial(TropicalFloat.([extreme]), [[0.0]]; sorted = false)
+        extreme_regions = TropicalNN.linear_regions(extreme_f; mode = oscar_mode)
+        @test only(only(extreme_regions)).offset == Rational{BigInt}[Rational{BigInt}(extreme)]
     end
 
     @testset verbose = true "Polynomial mode enumeration on edge cases" begin

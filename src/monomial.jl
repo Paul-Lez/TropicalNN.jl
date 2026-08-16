@@ -31,10 +31,13 @@ Select monomials from the input `Signomial` `f`. The Boolean vector `keep`
 must have one value for each monomial. Return a `Signomial` that
 contains the selected monomials.
 """
-function _filter_monomials(f::Signomial{T}, keep::AbstractVector{Bool}) where {T}
+function _filter_monomials(
+        f::Signomial{T, C},
+        keep::AbstractVector{Bool}
+) where {T, C}
     new_exp = Vector{Vector{T}}()
     sizehint!(new_exp, count(keep))
-    new_coeff = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}()
+    new_coeff = Dict{Vector{T}, C}()
 
     for i in Base.eachindex(f)
         if keep[i]

@@ -13,7 +13,7 @@ function _linearmap_matrices(f::Signomial)
     end
 
     A = Float64.(permutedims(f.exp))
-    b = Rational.(f.coeff)
+    b = _coefficient_rational.(f.coeff)
     return A, b
 end
 

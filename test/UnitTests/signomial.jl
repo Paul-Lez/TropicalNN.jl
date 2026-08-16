@@ -1,4 +1,5 @@
 using Test, TropicalNN, Oscar
+import TropicalNumbers
 
 @testset verbose = true "Signomial" begin
     R = tropical_semiring(max)
@@ -21,6 +22,7 @@ using Test, TropicalNN, Oscar
             sorted = false
         )
         @test low_dim isa Signomial{Rational{Int64}}
+        @test low_dim isa Signomial{Rational{Int64}, TropicalNN._TROPICAL_COEFF}
         @test Oscar.nvars(low_dim) == 2
 
         f = Signomial([R(1), R(2)], [unit_exp(1), unit_exp(2)]; sorted = false)
@@ -234,5 +236,37 @@ using Test, TropicalNN, Oscar
 
         h = Signomial([R(1), R(3)], [unit_exp(1), unit_exp(2)]; sorted = false)
         @test f != h
+    end
+
+    @testset verbose = true "Float-backed tropical coefficients" begin
+        TropicalFloat = TropicalNumbers.Tropical{Float64}
+        exps = [[1.0, 0.0], [0.0, 1.0]]
+        f = Signomial(TropicalFloat.([1.0, 2.0]), exps; sorted = false)
+        @test f isa Signomial{Float64, TropicalFloat}
+        @test TropicalNN._constraint_scalar(Float64, TropicalFloat(1.5)) == 1.5
+        @test TropicalNN._constraint_scalar(Rational{BigInt}, TropicalFloat(1.5)) == 3 // 2
+
+        duplicate = Signomial(
+            TropicalFloat.([1.0, 3.0]),
+            [[1.0, 0.0], [1.0, 0.0]];
+            sorted = false
+        )
+        @test length(duplicate) == 1
+        @test TropicalNN.get_coeff(duplicate, 1) == TropicalFloat(3.0)
+
+        product = f * f
+        @test TropicalNN.get_coeff_by_exp(product, [1.0, 1.0]) == TropicalFloat(3.0)
+        @test TropicalNN.evaluate(f, [2.0, 3.0]) == TropicalFloat(5.0)
+
+        half_power = f^(1//2)
+        @test TropicalNN.get_coeff_by_exp(half_power, [0.5, 0.0]) == TropicalFloat(0.5)
+
+        rational = signomial_to_rational(f)
+        @test rational isa RationalSignomial{Float64, TropicalFloat}
+        @test TropicalNN.evaluate(rational * rational, [2.0, 3.0]) == TropicalFloat(10.0)
+
+        empty = Signomial{Float64}(zeros(Float64, 2, 0), TropicalFloat[], true)
+        @test only(TropicalNN.coefficients(signomial_zero(2, empty))) == zero(TropicalFloat)
+        @test only(TropicalNN.coefficients(signomial_one(2, empty))) == one(TropicalFloat)
     end
 end

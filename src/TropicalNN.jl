@@ -29,6 +29,7 @@ import HiGHS
 import LinearAlgebra
 import Polyhedra
 import Random
+import TropicalNumbers
 
 export
        Signomial,

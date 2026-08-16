@@ -44,7 +44,7 @@ function _compose_affine(
             transposed_matrix,
             multiplication_exponent
         )
-        coefficient = Rational(get_coeff(f, index)) +
+        coefficient = _coefficient_rational(get_coeff(f, index)) +
                       LinearAlgebra.dot(exponent, offset)
         composed_coefficients[index] = coefficient_parent(Rational{BigInt}(coefficient))
     end

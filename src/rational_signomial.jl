@@ -5,19 +5,23 @@
 #==============================================================================#
 
 """
-    RationalSignomial{T}
+    RationalSignomial{T,C}
 
 Tropical rational function represented by a quotient of two signomials.
+`T` is the exponent type, and `C` is the tropical coefficient type.
 
 Use `convert(RationalSignomial{S}, f)` to convert the exponent type of `f` to
 `S`.
 """
-struct RationalSignomial{T}
-    num::Signomial{T}
-    den::Signomial{T}
+struct RationalSignomial{T, C <: _SUPPORTED_TROPICAL_COEFF}
+    num::Signomial{T, C}
+    den::Signomial{T, C}
 
-    function RationalSignomial(num::Signomial{T}, den::Signomial{T}) where {T}
-        new{T}(num, den)
+    function RationalSignomial(
+            num::Signomial{T, C},
+            den::Signomial{T, C}
+    ) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
+        new{T, C}(num, den)
     end
 end
 
@@ -44,17 +48,26 @@ function _embed_variables(
 end
 
 # Arithmetic
-function Base.:+(f::RationalSignomial{T}, g::RationalSignomial{T}) where {T}
+function Base.:+(
+        f::RationalSignomial{T, C},
+        g::RationalSignomial{T, C}
+) where {T, C}
     num = f.num * g.den + f.den * g.num
     den = f.den * g.den
     return RationalSignomial(num, den)
 end
 
-function Base.:*(f::RationalSignomial{T}, g::RationalSignomial{T}) where {T}
+function Base.:*(
+        f::RationalSignomial{T, C},
+        g::RationalSignomial{T, C}
+) where {T, C}
     return RationalSignomial(f.num * g.num, f.den * g.den)
 end
 
-function Base.:/(f::RationalSignomial{T}, g::RationalSignomial{T}) where {T}
+function Base.:/(
+        f::RationalSignomial{T, C},
+        g::RationalSignomial{T, C}
+) where {T, C}
     return RationalSignomial(f.num * g.den, f.den * g.num)
 end
 
@@ -112,17 +125,23 @@ end
 #==============================================================================#
 
 # Division: Signomial / Signomial -> RationalSignomial
-function Base.:/(f::Signomial{T}, g::Signomial{T}) where {T}
+function Base.:/(f::Signomial{T, C}, g::Signomial{T, C}) where {T, C}
     return RationalSignomial(f, g)
 end
 
-# TropicalSemiringElem x RationalSignomial
-function Base.:*(a::Oscar.TropicalSemiringElem, f::RationalSignomial)
+# Tropical scalar x RationalSignomial
+function Base.:*(
+        a::C,
+        f::RationalSignomial{T, C}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     return RationalSignomial(a * f.num, f.den)
 end
 
-# RationalSignomial x TropicalSemiringElem
-function Base.:*(val::RationalSignomial, a::Oscar.TropicalSemiringElem)
+# RationalSignomial x tropical scalar
+function Base.:*(
+        val::RationalSignomial{T, C},
+        a::C
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     return RationalSignomial(a * val.num, val.den)
 end
 

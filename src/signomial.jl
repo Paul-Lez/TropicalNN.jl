@@ -5,16 +5,8 @@
 # representation used by the public Signomial constructor.
 
 const _TROPICAL_COEFF = Oscar.TropicalSemiringElem{typeof(max)}
-
-function _coefficient_parent(f)
-    if length(f) == 0
-        return Oscar.tropical_semiring(max)
-    end
-    return parent(get_coeff(f, 1))
-end
-
-_tropical_zero(f) = zero(_coefficient_parent(f)(0))
-_tropical_one(f) = one(_coefficient_parent(f)(0))
+const _FLOAT_TROPICAL_COEFF = TropicalNumbers.Tropical{<:AbstractFloat}
+const _SUPPORTED_TROPICAL_COEFF = Union{_TROPICAL_COEFF, _FLOAT_TROPICAL_COEFF}
 
 """
     _canonize_terms(coeffs, exp_vecs)
@@ -27,18 +19,18 @@ merged by tropical addition of their coefficients, and the returned exponent
 vectors are sorted lexicographically.
 """
 function _canonize_terms(
-        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        coeffs::AbstractVector{C},
         exp_vecs::AbstractVector{<:AbstractVector{T}}
-) where {T}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     length(coeffs) == length(exp_vecs) ||
         throw(DimensionMismatch("Coefficient count must match exponent count"))
 
     if isempty(exp_vecs)
-        return _TROPICAL_COEFF[], Vector{Vector{T}}()
+        return C[], Vector{Vector{T}}()
     end
 
     dim = length(exp_vecs[begin])
-    coeff_by_exp = Dict{Tuple, _TROPICAL_COEFF}()
+    coeff_by_exp = Dict{Tuple, C}()
     exp_by_key = Dict{Tuple, Vector{T}}()
 
     for (c, exp_vec) in zip(coeffs, exp_vecs)
@@ -56,7 +48,7 @@ function _canonize_terms(
 
     exps = collect(values(exp_by_key))
     sort!(exps)
-    return _TROPICAL_COEFF[coeff_by_exp[Tuple(exp)] for exp in exps], exps
+    return C[coeff_by_exp[Tuple(exp)] for exp in exps], exps
 end
 
 #==============================================================================#
@@ -74,9 +66,10 @@ function _matrix_col_lexless(exp::Matrix, i::Int, j::Int)
 end
 
 """
-    Signomial{T}
+    Signomial{T,C}
 
 Max-plus tropical signomial.
+`T` is the exponent type, and `C` is the tropical coefficient type.
 
 Use `convert(Signomial{S}, f)` to convert the exponent type of `f` to `S`.
 
@@ -85,25 +78,25 @@ Use `convert(Signomial{S}, f)` to convert the exponent type of `f` to `S`.
 - `coeff`: Coefficients in the same order as the exponent columns.
 - `dim`: Number of variables.
 """
-struct Signomial{T}
+struct Signomial{T, C <: _SUPPORTED_TROPICAL_COEFF}
     exp::Matrix{T}
-    coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}}
+    coeff::Vector{C}
     dim::Int
 
-    function Signomial{T}(
+    function Signomial{T, C}(
             exp::Matrix{T},
-            coeff::Vector{Oscar.TropicalSemiringElem{typeof(max)}},
+            coeff::Vector{C},
             sorted_unique::Bool = false
-    ) where {T}
+    ) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
         dim, n_monomials = size(exp)
         @assert length(coeff) == n_monomials "Coefficient count must match monomial count"
         if n_monomials <= 1
-            return new{T}(exp, coeff, dim)
+            return new{T, C}(exp, coeff, dim)
         end
         if sorted_unique
             @assert all(_matrix_col_lexless(exp, i - 1, i)
             for i in 2:n_monomials) "Signomial exponents must be sorted and unique"
-            return new{T}(exp, coeff, dim)
+            return new{T, C}(exp, coeff, dim)
         end
 
         exp_vecs = [Vector{T}(exp[:, i]) for i in 1:n_monomials]
@@ -114,33 +107,53 @@ struct Signomial{T}
                 canonical_matrix[d, i] = canonical_exp[i][d]
             end
         end
-        new{T}(canonical_matrix, canonical_coeff, dim)
+        new{T, C}(canonical_matrix, canonical_coeff, dim)
     end
 end
 
+function Signomial{T}(
+        exp::Matrix{T},
+        coeff::Vector{C},
+        sorted_unique::Bool = false
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
+    return Signomial{T, C}(exp, coeff, sorted_unique)
+end
+
+_coefficient_parent(::Type{_TROPICAL_COEFF}) = Oscar.tropical_semiring(max)
+_coefficient_parent(::Type{C}) where {C <: _FLOAT_TROPICAL_COEFF} = C
+_coefficient_parent(c::_TROPICAL_COEFF) = parent(c)
+_coefficient_parent(c::_FLOAT_TROPICAL_COEFF) = typeof(c)
+
+function _coefficient_parent(f::Signomial{T, C}) where {T, C}
+    return isempty(f.coeff) ? _coefficient_parent(C) : _coefficient_parent(first(f.coeff))
+end
+
+_tropical_zero(f::Signomial) = zero(_coefficient_parent(f)(0))
+_tropical_one(f::Signomial) = one(_coefficient_parent(f)(0))
+
 # Constructor from vector-of-vectors
 function Signomial{T}(
-        coeff_dict::AbstractDict{<:AbstractVector{T}, <:_TROPICAL_COEFF},
+        coeff_dict::AbstractDict{<:AbstractVector{T}, C},
         exp_vecs::AbstractVector{<:AbstractVector{T}},
         sorted::Bool = false
-) where {T}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     if isempty(exp_vecs)
         return Signomial{T}(Matrix{T}(undef, 0, 0), eltype(values(coeff_dict))[])
     end
-    coeffs = Oscar.TropicalSemiringElem{typeof(max)}[coeff_dict[e] for e in exp_vecs]
+    coeffs = C[coeff_dict[e] for e in exp_vecs]
     return Signomial{T}(coeffs, exp_vecs, sorted)
 end
 
 # Constructor from coefficient vector and exponent vector
 function Signomial{T}(
-        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        coeffs::AbstractVector{C},
         exp_vecs::AbstractVector{<:AbstractVector{T}},
         sorted::Bool = false
-) where {T}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     if isempty(exp_vecs)
         return Signomial{T}(
             Matrix{T}(undef, 0, 0),
-            _TROPICAL_COEFF[c for c in coeffs]
+            C[c for c in coeffs]
         )
     end
 
@@ -170,7 +183,7 @@ function get_coeff(f::Signomial, i::Int)
     return f.coeff[i]
 end
 
-function _remove_zero_matrix_terms(f::Signomial{T}) where {T}
+function _remove_zero_matrix_terms(f::Signomial{T, C}) where {T, C}
     length(f) == 0 && return f
 
     tropical_zero = zero(f.coeff[1])
@@ -178,7 +191,7 @@ function _remove_zero_matrix_terms(f::Signomial{T}) where {T}
     keep_count == length(f) && return f
 
     new_exp = Matrix{T}(undef, f.dim, keep_count)
-    new_coeff = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, keep_count)
+    new_coeff = Vector{C}(undef, keep_count)
 
     idx = 1
     @inbounds for i in Base.eachindex(f)
@@ -195,7 +208,7 @@ function _remove_zero_matrix_terms(f::Signomial{T}) where {T}
     return Signomial{T}(new_exp, new_coeff, true)
 end
 
-function Base.:+(f::Signomial{T}, g::Signomial{T}) where {T}
+function Base.:+(f::Signomial{T, C}, g::Signomial{T, C}) where {T, C}
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -219,7 +232,7 @@ function Base.:+(f::Signomial{T}, g::Signomial{T}) where {T}
     return _remove_zero_matrix_terms(Signomial{T}(combined_exp, combined_coeff))
 end
 
-function Base.:*(f::Signomial{T}, g::Signomial{T}) where {T}
+function Base.:*(f::Signomial{T, C}, g::Signomial{T, C}) where {T, C}
     @assert f.dim == g.dim "Dimensions must match"
 
     m, n = length(f), length(g)
@@ -227,7 +240,7 @@ function Base.:*(f::Signomial{T}, g::Signomial{T}) where {T}
     result_size = m * n
 
     result_exp = Matrix{T}(undef, dim, result_size)
-    result_coeff = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, result_size)
+    result_coeff = Vector{C}(undef, result_size)
 
     idx = 1
     @inbounds for i in 1:m
@@ -244,11 +257,11 @@ function Base.:*(f::Signomial{T}, g::Signomial{T}) where {T}
     return Signomial{T}(result_exp, result_coeff)
 end
 
-function Base.:*(c::Oscar.TropicalSemiringElem, f::Signomial{T}) where {T}
+function Base.:*(c::C, f::Signomial{T, C}) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     return Signomial{T}(copy(f.exp), c .* f.coeff)
 end
 
-function Base.:^(f::Signomial{T}, r::Base.Rational) where {T}
+function Base.:^(f::Signomial{T, C}, r::Base.Rational) where {T, C}
     if r == 0
         # Return one polynomial
         return Signomial{T}(
@@ -271,11 +284,11 @@ function Base.:^(f::Signomial{T}, r::Base.Rational) where {T}
             new_exp[d, i] = r * f.exp[d, i]
         end
     end
-    new_coeff = Oscar.TropicalSemiringElem{typeof(max)}[c^r for c in f.coeff]
+    new_coeff = C[_tropical_power(c, r) for c in f.coeff]
     return Signomial{S}(new_exp, new_coeff)
 end
 
-function Base.:^(f::Signomial{T}, n::Integer) where {T}
+function Base.:^(f::Signomial{T, C}, n::Integer) where {T, C}
     if iszero(n)
         return Signomial{T}(
             zeros(T, f.dim, 1),
@@ -289,11 +302,11 @@ function Base.:^(f::Signomial{T}, n::Integer) where {T}
     end
 
     new_exp = n .* f.exp
-    new_coeff = Oscar.TropicalSemiringElem{typeof(max)}[c^n for c in f.coeff]
+    new_coeff = C[_tropical_power(c, n) for c in f.coeff]
     return Signomial{eltype(new_exp)}(new_exp, new_coeff)
 end
 
-function quicksum(F::AbstractVector{Signomial{T}}) where {T}
+function quicksum(F::AbstractVector{Signomial{T, C}}) where {T, C}
     isempty(F) && throw(ArgumentError("Cannot quicksum empty vector"))
 
     dim = F[firstindex(F)].dim
@@ -301,7 +314,7 @@ function quicksum(F::AbstractVector{Signomial{T}}) where {T}
 
     # Combine all exponents and coefficients
     combined_exp = Matrix{T}(undef, dim, total_terms)
-    combined_coeff = Vector{Oscar.TropicalSemiringElem{typeof(max)}}(undef, total_terms)
+    combined_coeff = Vector{C}(undef, total_terms)
 
     idx = 1
     @inbounds for f in F
@@ -454,24 +467,24 @@ Base.repr(f::Signomial) = string(f)
 #==============================================================================#
 
 function Signomial(
-        coeffs::AbstractVector{<:_TROPICAL_COEFF},
+        coeffs::AbstractVector{C},
         exp_vecs::AbstractVector{<:AbstractVector{T}};
         sorted::Bool = false
-) where {T}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     return Signomial{T}(
-        _TROPICAL_COEFF[c for c in coeffs],
+        C[c for c in coeffs],
         [Vector{T}(e) for e in exp_vecs],
         sorted
     )
 end
 
 function Signomial(
-        coeff_dict::AbstractDict{<:AbstractVector{T}, <:_TROPICAL_COEFF},
+        coeff_dict::AbstractDict{<:AbstractVector{T}, C},
         exp_vecs::AbstractVector{<:AbstractVector{T}};
         sorted::Bool = false
-) where {T}
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
     plain_exps = [Vector{T}(e) for e in exp_vecs]
-    plain_dict = Dict{Vector{T}, Oscar.TropicalSemiringElem{typeof(max)}}(
+    plain_dict = Dict{Vector{T}, C}(
         Vector{T}(k) => v for (k, v) in coeff_dict
     )
     return Signomial{T}(plain_dict, plain_exps, sorted)
@@ -569,17 +582,27 @@ function evaluate(f::Signomial, a::AbstractVector)
     return result
 end
 
-_tropical_power(a::Oscar.TropicalSemiringElem, r::AbstractFloat) = a^rationalize(r)
-_tropical_power(a::Oscar.TropicalSemiringElem, r) = a^r
+_tropical_power(a::_TROPICAL_COEFF, r::AbstractFloat) = a^rationalize(r)
+_tropical_power(a::_TROPICAL_COEFF, r) = a^r
 
-_lift_evaluation_scalar(_, x::Oscar.TropicalSemiringElem) = x
+function _tropical_power(a::_FLOAT_TROPICAL_COEFF, r)
+    iszero(r) && return one(a)
+    return typeof(a)(TropicalNumbers.content(a) * r)
+end
+
+_lift_evaluation_scalar(::Oscar.TropicalSemiring, x::_TROPICAL_COEFF) = x
+_lift_evaluation_scalar(::Type{C}, x::C) where {C <: _FLOAT_TROPICAL_COEFF} = x
+
+function _lift_evaluation_scalar(::Type{C}, x::Real) where {C <: _FLOAT_TROPICAL_COEFF}
+    return C(x)
+end
 
 function _lift_evaluation_scalar(R, x::Real)
     return R(x isa AbstractFloat ? rationalize(x) : x)
 end
 
-function _coerce_evaluation_point(f::Signomial, a::AbstractVector)
-    all(x -> x isa Oscar.TropicalSemiringElem, a) && return a
+function _coerce_evaluation_point(f::Signomial{T, C}, a::AbstractVector) where {T, C}
+    all(x -> x isa C, a) && return a
     R = _coefficient_parent(f)
     return [_lift_evaluation_scalar(R, x) for x in a]
 end
@@ -628,8 +651,13 @@ _coeff_str(c::Rational) = denominator(c) == 1 ? "$(numerator(c))" : "$(c)"
 _coeff_str(c::Integer) = "$(c)"
 _coeff_str(c) = "$(c)"
 
-function _monomial_str(coeff::Oscar.TropicalSemiringElem, exp)
-    c = Oscar.data(coeff)
+_coefficient_data(coeff::_TROPICAL_COEFF) = Oscar.data(coeff)
+_coefficient_data(coeff::_FLOAT_TROPICAL_COEFF) = TropicalNumbers.content(coeff)
+_coefficient_rational(coeff::_SUPPORTED_TROPICAL_COEFF) =
+    Rational{BigInt}(_coefficient_data(coeff))
+
+function _monomial_str(coeff::_SUPPORTED_TROPICAL_COEFF, exp)
+    c = _coefficient_data(coeff)
     terms = String[]
     for (i, α) in enumerate(exp)
         α == 0 && continue
