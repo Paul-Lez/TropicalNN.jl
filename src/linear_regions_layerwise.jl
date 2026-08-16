@@ -31,8 +31,6 @@ function _compose_affine(
         Vector{composed_exponent_type}(undef, nvars(f))
     end
     transposed_matrix = transpose(matrix)
-    coefficient_parent = _coefficient_parent(f)
-
     # Keep the established column-wise reduction order for floating-point data.
     for index in Base.eachindex(f)
         copyto!(exponent, get_exp(f, index))
@@ -44,9 +42,9 @@ function _compose_affine(
             transposed_matrix,
             multiplication_exponent
         )
-        coefficient = _coefficient_rational(get_coeff(f, index)) +
-                      LinearAlgebra.dot(exponent, offset)
-        composed_coefficients[index] = coefficient_parent(Rational{BigInt}(coefficient))
+        coefficient = get_coeff(f, index)
+        value = _coefficient_value(coefficient) + LinearAlgebra.dot(exponent, offset)
+        composed_coefficients[index] = _coefficient_parent(coefficient)(value)
     end
 
     # Canonical construction merges monomials that composition makes equal.
@@ -102,9 +100,55 @@ Return the matrix and offset of an affine rational signomial map.
 """
 function _affine_layer_formula(layer::AbstractVector{<:RationalSignomial})
     component_linear_map_keys = [
-        _linear_map_key(component.num, component.den, 1, 1) for component in layer
+        _linear_map_key(
+            component.num,
+            component.den,
+            1,
+            1;
+            map_coefficient = _coefficient_value
+        ) for component in layer
     ]
     return _affine_formula_from_linear_map_key(component_linear_map_keys)
+end
+
+function _exact_layer(layer::AbstractVector{<:RationalSignomial})
+    exact_type = RationalSignomial{Rational{BigInt}, _TROPICAL_COEFF}
+    return RationalSignomial[convert(exact_type, component) for component in layer]
+end
+
+_validate_composition_mode(::LinearRegionsCalculationMode) = nothing
+_validate_composition_mode(mode::_HiGHS) = _validate_highs_tolerance(mode.tol)
+
+function _prepare_composition_layers(
+        layers,
+        ::LinearRegionsCalculationMode,
+        ::RationalSignomial
+)
+    return layers
+end
+
+function _prepare_composition_layers(
+        layers,
+        ::LinearRegionsCalculationMode,
+        ::RationalSignomial{T, TropicalNumbers.Tropical{T}}
+) where {T <: AbstractFloat}
+    return [_exact_layer(layer) for layer in layers]
+end
+
+function _prepare_composition_layers(
+        layers,
+        ::_HiGHS,
+        ::RationalSignomial{T, TropicalNumbers.Tropical{T}}
+) where {T <: AbstractFloat}
+    return layers
+end
+
+function _prepare_composition_layers(
+        layers,
+        mode::LinearRegionsCalculationMode
+)
+    # All layers use the storage of the first component.
+    return _prepare_composition_layers(layers, mode, first(first(layers)))
 end
 
 """
@@ -138,7 +182,8 @@ function _layer_subdivision(
         mode = mode,
         workers = workers,
         base_region = base_region,
-        base_halfspace_keys = base_halfspace_keys
+        base_halfspace_keys = base_halfspace_keys,
+        map_coefficient = _coefficient_value
     )
 end
 
@@ -244,28 +289,33 @@ function _linear_regions_composition(
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
 )
-    mode isa _HiGHS && _validate_highs_tolerance(mode.tol)
-    input_dimension = nvars(first(first(layers)))
+    _validate_composition_mode(mode)
+    composition_layers = _prepare_composition_layers(layers, mode)
+    return _linear_regions_composition(composition_layers, mode, workers)
+end
+
+function _linear_regions_composition(
+        composition_layers::AbstractVector{<:AbstractVector{<:RationalSignomial}},
+        mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool}
+)
+    input_dimension = nvars(first(first(composition_layers)))
     constraint_type = _linear_region_coefficient_type(mode)
-    identity_matrix = Matrix{Rational{BigInt}}(
-        LinearAlgebra.I,
-        input_dimension,
-        input_dimension
+    base_matrix = zeros(constraint_type, 0, input_dimension)
+    base_vector = constraint_type[]
+    base_halfspace_keys = Tuple{Any, Bool}[]
+
+    # Apply the first layer directly on the full input space.
+    current_cells = _layer_subdivision(
+        first(composition_layers),
+        base_matrix,
+        base_vector,
+        base_halfspace_keys,
+        mode,
+        workers
     )
-    identity_offset = zeros(Rational{BigInt}, input_dimension)
 
-    # Start with the identity map on the full input space.
-    current_cells = [
-        _Cell(
-            zeros(constraint_type, 0, input_dimension),
-            constraint_type[],
-            identity_matrix,
-            identity_offset,
-            Tuple{Any, Bool}[]
-        )
-    ]
-
-    for layer in layers
+    for layer in Iterators.drop(composition_layers, 1)
         if _is_affine_layer(layer)
             current_cells = _apply_affine_layer(current_cells, layer)
         else

@@ -1,4 +1,5 @@
 using Test, TropicalNN, Oscar
+import TropicalNumbers
 
 @testset verbose = true "MLP to Tropical Conversion" begin
     #==========================================================================
@@ -59,6 +60,23 @@ using Test, TropicalNN, Oscar
         b_bad = Rational{BigInt}.([0, 0, 0])  # Wrong size
         t_bad = Rational{BigInt}.([0, 0])
         @test_throws DimensionMismatch single_to_trop(A_bad, b_bad, t_bad)
+
+        float32_hidden = only(single_to_trop(
+            reshape(Float32[1.5], 1, 1),
+            Float32[0.25],
+            Float32[0.5]
+        ))
+        TropicalFloat32 = TropicalNumbers.Tropical{Float32}
+        @test TropicalNN.evaluate(float32_hidden, Float32[0]) ==
+              TropicalFloat32(0.5)
+
+        float32_network = tropicalize(
+            [reshape(Float32[1.5], 1, 1), reshape(Float32[2], 1, 1)],
+            [Float32[0.25], Float32[0.125]],
+            [Float32[0.5]]
+        )
+        @test TropicalNN.evaluate(only(float32_network), Float32[1]) ==
+              TropicalFloat32(3.625)
     end
 
     #==========================================================================

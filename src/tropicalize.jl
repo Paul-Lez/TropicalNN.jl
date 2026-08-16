@@ -9,7 +9,8 @@ The lengths of `b` and `t` must equal `size(A, 1)`.
 `A` can be any `AbstractMatrix` with a supported element type.
 """
 function single_to_trop(A::AbstractMatrix{T}, b::AbstractVector,
-        t::AbstractVector) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+        t::AbstractVector
+) where {T <: Union{AbstractFloat, Oscar.scalar_types, Rational{BigInt}}}
     G = RationalSignomial[]
 
     # Check the output dimension.
@@ -18,10 +19,9 @@ function single_to_trop(A::AbstractMatrix{T}, b::AbstractVector,
             "Dimension mismatch: A has $(size(A,1)) rows, b has length $(length(b)), t has length $(length(t)). All must match."
         ))
     end
-    R = tropical_semiring(max)
     # Convert the bias and threshold to max-plus scalars.
-    b = [R(Rational{BigInt}(i)) for i in b]
-    t = [R(Rational{BigInt}(i)) for i in t]
+    b = [_coefficient_from_scalar(T, value) for value in b]
+    t = [_coefficient_from_scalar(T, value) for value in t]
     sizehint!(G, size(A, 1))
     for (row, i) in enumerate(axes(A, 1))
         # Split row i into positive and negative parts.
@@ -57,8 +57,7 @@ function affine_to_trop(A::AbstractMatrix{T}, b::AbstractVector) where {T}
         ))
     end
 
-    R = tropical_semiring(max)
-    b = [R(Rational{BigInt}(i)) for i in b]
+    b = [_coefficient_from_scalar(T, value) for value in b]
     sizehint!(G, size(A, 1))
     # Split each row into numerator and denominator exponents.
     for (row, i) in enumerate(axes(A, 1))
@@ -236,7 +235,7 @@ function tropicalize(
         dedup::Bool = false,
         elim_mode::LinearRegionsCalculationMode = OscarMode(),
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing
-) where {T <: Union{Oscar.scalar_types, Rational{BigInt}}}
+) where {T <: Union{AbstractFloat, Oscar.scalar_types, Rational{BigInt}}}
     layers = _mlp_to_tropical_layers(linear_maps, bias, thresholds)
     return _compose_tropical_layers(
         layers;

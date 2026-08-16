@@ -31,6 +31,21 @@ function Base.convert(::Type{RationalSignomial{T}}, f::RationalSignomial) where 
     return RationalSignomial(convert(Signomial{T}, f.num), convert(Signomial{T}, f.den))
 end
 
+Base.convert(
+    ::Type{RationalSignomial{T, C}},
+    f::RationalSignomial{T, C}
+) where {T, C} = f
+
+function Base.convert(
+        ::Type{RationalSignomial{T, C}},
+        f::RationalSignomial
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
+    return RationalSignomial(
+        convert(Signomial{T, C}, f.num),
+        convert(Signomial{T, C}, f.den)
+    )
+end
+
 """
     _embed_variables(f::RationalSignomial, block, input_dimension)
 

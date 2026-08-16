@@ -8,8 +8,9 @@ as a `RationalSignomial`.
 """
 function _max_activation(exponents::AbstractVector{<:AbstractVector{T}}) where {T}
     # Use one tropical monomial for each linear form in the maximum.
+    coefficients = [_coefficient_from_scalar(T, 0) for _ in exponents]
     return signomial_to_rational(
-        Signomial(zeros(Int, length(exponents)), exponents; sorted = false)
+        Signomial(coefficients, exponents; sorted = false)
     )
 end
 

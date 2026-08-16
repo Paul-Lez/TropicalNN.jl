@@ -135,7 +135,9 @@ struct UnsupportedLinearRegionsMode <: TropicalNN.LinearRegionsCalculationMode e
         extreme = nextfloat(0.0)
         extreme_f = Signomial(TropicalFloat.([extreme]), [[0.0]]; sorted = false)
         extreme_regions = TropicalNN.linear_regions(extreme_f; mode = oscar_mode)
-        @test only(only(extreme_regions)).offset == Rational{BigInt}[Rational{BigInt}(extreme)]
+        extreme_offset = only(only(extreme_regions)).offset
+        @test extreme_offset isa Vector{Rational{BigInt}}
+        @test extreme_offset == Rational{BigInt}[Rational{BigInt}(extreme)]
     end
 
     @testset verbose = true "Polynomial mode enumeration on edge cases" begin

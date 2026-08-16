@@ -21,7 +21,6 @@ import TropicalNumbers
             [[1//1, 0//1], [0//1, 1//1]];
             sorted = false
         )
-        @test low_dim isa Signomial{Rational{Int64}}
         @test low_dim isa Signomial{Rational{Int64}, TropicalNN._TROPICAL_COEFF}
         @test Oscar.nvars(low_dim) == 2
 
@@ -264,6 +263,16 @@ import TropicalNumbers
         rational = signomial_to_rational(f)
         @test rational isa RationalSignomial{Float64, TropicalFloat}
         @test TropicalNN.evaluate(rational * rational, [2.0, 3.0]) == TropicalFloat(10.0)
+
+        coefficient_type = TropicalNumbers.Tropical{Float32}
+        converted_relu = convert(RationalSignomial{Float32, coefficient_type}, relu())
+        @test TropicalNN.evaluate(converted_relu, Float32[-1]) == coefficient_type(0)
+        @test TropicalNN.evaluate(converted_relu, Float32[2]) == coefficient_type(2)
+        converted_zero = convert(
+            Signomial{Float32, coefficient_type},
+            signomial_zero(1, relu().num)
+        )
+        @test only(TropicalNN.coefficients(converted_zero)) == zero(coefficient_type)
 
         empty = Signomial{Float64}(zeros(Float64, 2, 0), TropicalFloat[], true)
         @test only(TropicalNN.coefficients(signomial_zero(2, empty))) == zero(TropicalFloat)

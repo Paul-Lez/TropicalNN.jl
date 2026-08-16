@@ -334,7 +334,8 @@ function _signomial_region_partition(
         signomials::AbstractVector{<:Signomial};
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
-        base_region = nothing
+        base_region = nothing,
+        map_coefficient = _coefficient_rational
 )
     isempty(signomials) && return _Cell[]
 
@@ -367,7 +368,7 @@ function _signomial_region_partition(
     # Store the constraints and affine map of each cell.
     return map(partition) do (dominance_indices, region)
         A, b = _region_constraint_data(region; mode = mode)
-        affine_key = [(_coefficient_rational(get_coeff(signomial, index)),
+        affine_key = [(map_coefficient(get_coeff(signomial, index)),
                           collect(get_exp(signomial, index)))
                       for (signomial, index) in zip(signomials, dominance_indices)]
         matrix, offset = _affine_formula_from_linear_map_key(affine_key)
@@ -404,10 +405,11 @@ function _linear_map_key(
         numerator::Signomial,
         denominator::Signomial,
         numerator_index,
-        denominator_index
+        denominator_index;
+        map_coefficient = _coefficient_rational
 )
-    coeff = _coefficient_rational(get_coeff(numerator, numerator_index)) -
-            _coefficient_rational(get_coeff(denominator, denominator_index))
+    coeff = map_coefficient(get_coeff(numerator, numerator_index)) -
+            map_coefficient(get_coeff(denominator, denominator_index))
     exp = collect(get_exp(numerator, numerator_index)) -
           collect(get_exp(denominator, denominator_index))
     return (coeff, exp)
@@ -562,7 +564,8 @@ function _polyhedral_subdivision(
         mode::LinearRegionsCalculationMode,
         workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         base_region = nothing,
-        base_halfspace_keys = Tuple{Any, Bool}[]
+        base_halfspace_keys = Tuple{Any, Bool}[],
+        map_coefficient = _coefficient_rational
 )
     # Separate the numerator and denominator signomials.
     numerators = [rational_signomial.num
@@ -575,13 +578,15 @@ function _polyhedral_subdivision(
         numerators;
         mode = mode,
         workers = workers,
-        base_region = base_region
+        base_region = base_region,
+        map_coefficient = map_coefficient
     )
     denominator_cells = _signomial_region_partition(
         denominators;
         mode = mode,
         workers = workers,
-        base_region = base_region
+        base_region = base_region,
+        map_coefficient = map_coefficient
     )
 
     # Record the supporting hyperplanes and selected sides for each dominance cell.

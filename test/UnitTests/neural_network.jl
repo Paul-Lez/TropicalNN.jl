@@ -1,4 +1,5 @@
 using Test, TropicalNN, Oscar
+import TropicalNumbers
 
 function _test_activation(exponents)
     numerator = Signomial(zeros(Int, length(exponents)), exponents; sorted = false)
@@ -171,15 +172,17 @@ end
             ActivationLayer(maxout(Float64, 2))
         )
         float_output = only(tropicalize(float_network))
-        @test TropicalNN.evaluate(float_output, [-2.0]) == tropical_semiring(max)(2)
+        TropicalFloat64 = TropicalNumbers.Tropical{Float64}
+        @test TropicalNN.evaluate(float_output, [-2.0]) == TropicalFloat64(2.0)
 
         float_leaky_network = NeuralNetwork(
             AffineLayer(reshape(Float32[1], 1, 1), Float32[0]),
             ActivationLayer(leaky_relu(0.125f0))
         )
         float_leaky_output = only(tropicalize(float_leaky_network))
+        TropicalFloat32 = TropicalNumbers.Tropical{Float32}
         @test TropicalNN.evaluate(float_leaky_output, Float32[-1]) ==
-              tropical_semiring(max)(-1 // 8)
+              TropicalFloat32(-0.125f0)
     end
 
     @testset "Network linear regions" begin
@@ -200,8 +203,81 @@ end
 
         cell_data(regions) = [(cell.A, cell.b, cell.matrix, cell.offset)
                               for region in regions for cell in region]
+        affine_maps(regions) = Set(
+            (Tuple(vec(cell.matrix)), Tuple(cell.offset))
+            for region in regions for cell in region
+        )
 
         @test length(network_regions) == 4
         @test cell_data(network_regions) == cell_data(layer_regions)
+
+        float_first_weight = Float64[0 1; 1 0]
+        float_first_bias = Float64[1, 1]
+        float_second_weight = Float64[1 -1]
+        float_second_bias = Float64[0]
+        float_network = NeuralNetwork(
+            AffineLayer(float_first_weight, float_first_bias),
+            ActivationLayer(relu(Float64), 2),
+            AffineLayer(float_second_weight, float_second_bias)
+        )
+        float_regions = linear_regions(float_network; mode = mode)
+        legacy_float_regions = linear_regions(
+            [float_first_weight, float_second_weight],
+            [float_first_bias, float_second_bias],
+            [Float64[0, 0]];
+            mode = mode
+        )
+        expected_float_maps = Set([
+            ((-1.0, 1.0), (0.0,)),
+            ((0.0, 1.0), (1.0,)),
+            ((-1.0, 0.0), (-1.0,)),
+            ((0.0, 0.0), (0.0,))
+        ])
+        for regions in (float_regions, legacy_float_regions)
+            @test affine_maps(regions) == expected_float_maps
+            @test all(
+                cell -> eltype(cell.matrix) === Float64 &&
+                        eltype(cell.offset) === Float64,
+                Iterators.flatten(regions)
+            )
+        end
+
+        float_oscar_regions = linear_regions(float_network; mode = OscarMode())
+        @test affine_maps(float_oscar_regions) == expected_float_maps
+        @test all(
+            cell -> eltype(cell.matrix) === Rational{BigInt} &&
+                    eltype(cell.offset) === Rational{BigInt},
+            Iterators.flatten(float_oscar_regions)
+        )
+
+        float32_layers = [
+            TropicalNN.affine_to_trop(
+                reshape(Float32[1], 1, 1),
+                Float32[0]
+            ),
+            RationalSignomial[relu(Float32)]
+        ]
+        float32_regions = linear_regions(float32_layers; mode = mode)
+        @test affine_maps(float32_regions) == Set([
+            ((0.0f0,), (0.0f0,)),
+            ((1.0f0,), (0.0f0,))
+        ])
+        @test all(
+            cell -> eltype(cell.matrix) === Float32 &&
+                    eltype(cell.offset) === Float32,
+            Iterators.flatten(float32_regions)
+        )
+
+        deep_weight = nextfloat(1.0)
+        deep_layer = TropicalNN.affine_to_trop(
+            reshape([deep_weight], 1, 1),
+            [0.0]
+        )
+        deep_regions = linear_regions(
+            fill(deep_layer, 8);
+            mode = OscarMode()
+        )
+        @test only(only(only(deep_regions)).matrix) ==
+              Rational{BigInt}(deep_weight)^8
     end
 end

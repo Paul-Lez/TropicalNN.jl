@@ -124,6 +124,26 @@ _coefficient_parent(::Type{C}) where {C <: _FLOAT_TROPICAL_COEFF} = C
 _coefficient_parent(c::_TROPICAL_COEFF) = parent(c)
 _coefficient_parent(c::_FLOAT_TROPICAL_COEFF) = typeof(c)
 
+function _coefficient_from_scalar(::Type{T}, value) where {T}
+    R = _coefficient_parent(_TROPICAL_COEFF)
+    return R(Rational{BigInt}(value))
+end
+
+function _coefficient_from_scalar(::Type{T}, value) where {T <: AbstractFloat}
+    return TropicalNumbers.Tropical{T}(T(value))
+end
+
+function _convert_coefficient(::Type{_TROPICAL_COEFF}, coefficient)
+    R = _coefficient_parent(_TROPICAL_COEFF)
+    iszero(coefficient) && return zero(R(0))
+    return R(Rational{BigInt}(_coefficient_value(coefficient)))
+end
+
+function _convert_coefficient(::Type{C}, coefficient) where {C <: _FLOAT_TROPICAL_COEFF}
+    iszero(coefficient) && return zero(C(0))
+    return C(_coefficient_value(coefficient))
+end
+
 function _coefficient_parent(f::Signomial{T, C}) where {T, C}
     return isempty(f.coeff) ? _coefficient_parent(C) : _coefficient_parent(first(f.coeff))
 end
@@ -437,6 +457,16 @@ function Base.convert(::Type{Signomial{T}}, f::Signomial) where {T}
     return Signomial{T}(Matrix{T}(f.exp), copy(f.coeff))
 end
 
+Base.convert(::Type{Signomial{T, C}}, f::Signomial{T, C}) where {T, C} = f
+
+function Base.convert(
+        ::Type{Signomial{T, C}},
+        f::Signomial
+) where {T, C <: _SUPPORTED_TROPICAL_COEFF}
+    coefficients = C[_convert_coefficient(C, coefficient) for coefficient in f.coeff]
+    return Signomial{T, C}(Matrix{T}(f.exp), coefficients)
+end
+
 """
     _embed_variables(f::Signomial, block, input_dimension)
 
@@ -653,6 +683,8 @@ _coeff_str(c) = "$(c)"
 
 _coefficient_data(coeff::_TROPICAL_COEFF) = Oscar.data(coeff)
 _coefficient_data(coeff::_FLOAT_TROPICAL_COEFF) = TropicalNumbers.content(coeff)
+_coefficient_value(coeff::_TROPICAL_COEFF) = Rational(coeff)
+_coefficient_value(coeff::_FLOAT_TROPICAL_COEFF) = TropicalNumbers.content(coeff)
 _coefficient_rational(coeff::_SUPPORTED_TROPICAL_COEFF) =
     Rational{BigInt}(_coefficient_data(coeff))
 

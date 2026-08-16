@@ -41,6 +41,32 @@ try
         scalar_local = linear_regions(max_x / constant; mode = HiGHSMode())
         scalar_distributed = linear_regions(max_x / constant; mode = HiGHSMode(), workers = pool)
         @test region_signature(scalar_distributed) == region_signature(scalar_local)
+
+        weights = [Float64[1 0; 0 1], Float64[1 -1], Float64[1;;]]
+        biases = [Float64[0, 0], Float64[0], Float64[0]]
+        thresholds = [Float64[0, 0], Float64[0]]
+        layerwise_distributed = linear_regions(
+            weights,
+            biases,
+            thresholds;
+            mode = HiGHSMode(),
+            workers = pool
+        )
+        affine_maps(regions) = Set(
+            (Tuple(vec(cell.matrix)), Tuple(cell.offset))
+            for region in regions for cell in region
+        )
+        @test affine_maps(layerwise_distributed) == Set([
+            ((0.0, 0.0), (0.0,)),
+            ((1.0, -1.0), (0.0,)),
+            ((1.0, 0.0), (0.0,))
+        ])
+        @test region_signature(layerwise_distributed) == (3, [1, 1, 3])
+        @test all(
+            cell -> eltype(cell.matrix) === Float64 &&
+                    eltype(cell.offset) === Float64,
+            Iterators.flatten(layerwise_distributed)
+        )
     end
 finally
     isempty(worker_ids) || rmprocs(worker_ids)
