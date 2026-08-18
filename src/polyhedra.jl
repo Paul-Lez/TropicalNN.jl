@@ -1,16 +1,24 @@
 # Backend infrastructure for polyhedral computations.
 
 const OSCAR_POLYHEDRON_COEFF_TYPE = Rational{BigInt}
+
+"""
+    HIGHS_DEFAULT_TOL
+
+`HIGHS_DEFAULT_TOL` is the default distance tolerance for HiGHS region checks,
+in input-space units.
+"""
 const HIGHS_DEFAULT_TOL = 1e-6
 const HIGHS_DEFAULT_SOLVER = "choose"
 
 """
     _validate_highs_tolerance(tol)
 
-Check that `tol` is greater than zero.
+Throw an `ArgumentError` if `tol` is not finite or if `tol ≤ 0`.
 """
 function _validate_highs_tolerance(tol)
-    tol > 0 || throw(ArgumentError("tol must be positive, got $tol"))
+    isfinite(tol) && tol > 0 ||
+        throw(ArgumentError("tol must be finite and positive, got $tol"))
     return nothing
 end
 
@@ -31,9 +39,7 @@ struct _Oscar <: LinearRegionsCalculationMode end
 """
     _HiGHS(; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
-Use HiGHS to check feasibility and full-dimensionality of linear regions.
-`tol` sets the full-dimensionality tolerance. `threads` sets the optional
-HiGHS thread count.
+Store the options for linear-region checks with HiGHS.
 """
 Base.@kwdef struct _HiGHS <: LinearRegionsCalculationMode
     tol::Float64 = HIGHS_DEFAULT_TOL
@@ -51,9 +57,10 @@ const OscarMode = _Oscar
 """
     HiGHSMode(; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
-Use JuMP and HiGHS with `Float64` constraints. `tol` sets the
-full-dimensionality tolerance, and `threads` sets the optional solver thread
-count.
+Use JuMP and HiGHS with `Float64` constraints. `tol` is the distance tolerance
+for region checks, in input-space units. A region is full dimensional only if
+its Chebyshev inradius is greater than `tol`. `threads` sets the optional HiGHS
+thread count.
 """
 const HiGHSMode = _HiGHS
 
@@ -159,10 +166,17 @@ function highs_is_empty(
 )
     _, n = size(A)
 
+    filtered = filter_lp(A, b)
+    filtered === nothing && return true
+    A_filtered, b_filtered = filtered
+    isempty(b_filtered) && return false
+
+    A_normalized, b_normalized = normalize_lp(A_filtered, b_filtered)
+
     model = create_highs_model(; solver = solver, threads = threads)
 
     @variable(model, x[1:n])
-    @constraint(model, A * x .<= b)
+    @constraint(model, A_normalized * x .<= b_normalized)
     # Stop when JuMP finds a feasible point.
     optimize!(model)
 
@@ -195,9 +209,20 @@ function filter_lp(A::AbstractMatrix{T}, b::AbstractVector{T}) where {T}
 end
 
 """
+    normalize_lp(A, b)
+
+Return an equivalent halfspace system with unit Euclidean row norms.
+"""
+function normalize_lp(A::AbstractMatrix{Float64}, b::AbstractVector{Float64})
+    scales = [LinearAlgebra.norm(row) for row in eachrow(A)]
+    return A ./ scales, b ./ scales
+end
+
+"""
     highs_is_full_dimensional(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
-Check if polyhedron `{x : Ax <= b}` is full dimensional by solving a linear program using HiGHS.
+Return `true` if `{x : Ax ≤ b}` has a Chebyshev inradius greater than `tol`.
+The tolerance is in input-space units.
 """
 function highs_is_full_dimensional(
         A::AbstractMatrix{Float64},
@@ -206,7 +231,7 @@ function highs_is_full_dimensional(
         solver = HIGHS_DEFAULT_SOLVER,
         threads = nothing
 )
-    tol > 0 || throw(ArgumentError("tol must be positive, got $tol"))
+    _validate_highs_tolerance(tol)
 
     m, n = size(A)
 
@@ -222,15 +247,13 @@ function highs_is_full_dimensional(
         return true
     end
 
+    A_normalized, b_normalized = normalize_lp(A_filtered, b_filtered)
+
     model = create_highs_model(; solver = solver, threads = threads)
 
     @variable(model, x[1:n])
     @variable(model, epsilon)
-    @constraints(model, begin
-        A_filtered * x .+ epsilon .<= b_filtered
-        # Bound the slack objective.
-        epsilon <= 1
-    end)
+    @constraint(model, A_normalized * x .+ epsilon .<= b_normalized)
     @objective(model, Max, epsilon)
 
     optimize!(model)
@@ -279,8 +302,8 @@ end
 """
     highs_check_implicit_equality(A, b, i; tol, solver, threads)
 
-Check whether the `i`th inequality of `{x : Ax ≤ b}` is an implicit equality,
-using a HiGHS linear program.
+Return `true` if the maximum slack of the `i`th inequality in `{x : Ax ≤ b}` is
+at most `tol`. The slack is in input-space units.
 """
 function highs_check_implicit_equality(
         A::AbstractMatrix{Float64}, b::AbstractVector{Float64}, i::Int;
@@ -291,13 +314,21 @@ function highs_check_implicit_equality(
     m, n = size(A)
     1 <= i <= m || throw(BoundsError("Row index $i out of bounds for matrix with $m rows"))
 
+    scale = LinearAlgebra.norm(@view A[i, :])
+    iszero(scale) && return iszero(b[i])
+
+    A_filtered, b_filtered = filter_lp(A, b)
+    A_normalized, b_normalized = normalize_lp(A_filtered, b_filtered)
+    target_row = @view(A[i, :]) ./ scale
+    target_rhs = b[i] / scale
+
     model = create_highs_model(; solver = solver, threads = threads)
 
     @variable(model, x[1:n])
     @variable(model, s)
     @constraints(model, begin
-        A * x .<= b
-        s == b[i] - LinearAlgebra.dot(A[i, :], x)
+        A_normalized * x .<= b_normalized
+        s == target_rhs - LinearAlgebra.dot(target_row, x)
     end)
     # Maximize the slack of row i. Zero maximum slack means an implicit equality.
     @objective(model, Max, s)
@@ -348,6 +379,7 @@ function _highs_codimension_le_one(A::AbstractMatrix{Float64},
     end
 
     m, n = size(A)
+    A_normalized, _ = normalize_lp(A_filtered, b_filtered)
 
     redundantIdx = []
 
@@ -359,7 +391,7 @@ function _highs_codimension_le_one(A::AbstractMatrix{Float64},
         end
         if length(redundantIdx) > 1
             # Test independence with the row rank.
-            A_redundant = A_filtered[redundantIdx, :]
+            A_redundant = A_normalized[redundantIdx, :]
             if LinearAlgebra.rank(A_redundant) > 1
                 return false
             end
@@ -409,9 +441,9 @@ function _highs_cells_share_facet(
     # Constrain the slack model to the candidate hyperplane.
     model = create_highs_model(; solver = mode.solver, threads = mode.threads)
     @variable(model, x[1:n])
-    @variable(model, epsilon)
+    @variable(model, excess)
     @constraint(model, LinearAlgebra.dot(normal, x) == rhs)
-    @constraint(model, epsilon <= 1)
+    @constraint(model, excess <= 1)
 
     # Require positive slack for every other nonconstant inequality.
     for (A, b) in ((left.A, left.b), (right.A, right.b))
@@ -424,14 +456,14 @@ function _highs_cells_share_facet(
             normalized_row = Float64.(row) ./ row_norm
             normalized_rhs = Float64(b[i]) / row_norm
             @constraint(model,
-                LinearAlgebra.dot(normalized_row, x) + epsilon <= normalized_rhs)
+                LinearAlgebra.dot(normalized_row, x) + mode.tol + excess <= normalized_rhs)
         end
     end
 
-    # A positive optimum confirms that the common face is a facet.
-    @objective(model, Max, epsilon)
+    # Positive excess over the tolerance confirms that the common face is a facet.
+    @objective(model, Max, excess)
     optimize!(model)
-    return value(epsilon) > mode.tol
+    return value(excess) > 0
 end
 
 """
