@@ -499,117 +499,6 @@ function _affine_map_key(matrix, offset)
 end
 
 """
-    _rational_region_intersections_chunk((numerator_cells_with_keys,
-                                          denominator_cells_with_keys,
-                                          candidate_pairs,
-                                          base_halfspace_keys,
-                                          mode))
-
-Test the requested numerator/denominator partition pairs for full-dimensional
-intersection. Each entry in `numerator_cells_with_keys` and
-`denominator_cells_with_keys` is `(cell, halfspace_keys)`. Return an internal
-cell for each accepted intersection. The input is a tuple so we can directly
-pass this to `pmap`.
-"""
-function _rational_region_intersections_chunk(args)
-    (
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        candidate_pairs,
-        base_halfspace_keys,
-        mode
-    ) = args
-    cells = _Cell[]
-
-    # Intersect each requested pair of numerator and denominator cells.
-    for (numerator_cell_index, denominator_cell_index) in candidate_pairs
-        numerator_cell, numerator_halfspace_keys =
-            numerator_cells_with_keys[numerator_cell_index]
-        denominator_cell, denominator_halfspace_keys =
-            denominator_cells_with_keys[denominator_cell_index]
-        intersection_matrix = vcat(numerator_cell.A, denominator_cell.A)
-        intersection_vector = vcat(numerator_cell.b, denominator_cell.b)
-        region = make_polyhedron(intersection_matrix, intersection_vector; mode = mode)
-
-        # Store each full-dimensional intersection and its halfspace keys.
-        if is_full_dimensional(region; mode = mode)
-            push!(
-                cells,
-                _Cell(
-                    intersection_matrix,
-                    intersection_vector,
-                    numerator_cell.matrix - denominator_cell.matrix,
-                    numerator_cell.offset - denominator_cell.offset,
-                    unique!(vcat(
-                        base_halfspace_keys,
-                        numerator_halfspace_keys,
-                        denominator_halfspace_keys
-                    ))
-                )
-            )
-        end
-    end
-
-    return cells
-end
-
-"""
-    _rational_region_intersections_parallel(numerator_cells_with_keys,
-                                            denominator_cells_with_keys,
-                                            base_halfspace_keys, mode, workers)
-
-Test every numerator/denominator partition pair for full-dimensional
-intersection. Each entry in the first two arguments is `(cell,
-halfspace_keys)`. Use `workers` to evaluate pair chunks in parallel when
-supplied.
-"""
-function _rational_region_intersections_parallel(
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        base_halfspace_keys,
-        mode,
-        workers::Union{Nothing, Distributed.AbstractWorkerPool}
-)
-    # Create all pairs of numerator and denominator cells.
-    candidate_pairs = Tuple{Int, Int}[]
-    for numerator_cell_index in Base.eachindex(numerator_cells_with_keys)
-        for denominator_cell_index in Base.eachindex(denominator_cells_with_keys)
-            push!(candidate_pairs, (numerator_cell_index, denominator_cell_index))
-        end
-    end
-
-    # Process the pairs locally if there is no worker pool or at most one pair.
-    if workers === nothing || length(candidate_pairs) <= 1
-        return _rational_region_intersections_chunk(
-            (
-                numerator_cells_with_keys,
-                denominator_cells_with_keys,
-                candidate_pairs,
-                base_halfspace_keys,
-                mode
-            )
-        )
-    end
-
-    # Divide the cell pairs among the available workers.
-    _assert_tropicalnn_loaded(workers)
-    chunks = _index_chunks(
-        length(candidate_pairs), length(Distributed.workers(workers)))
-    pair_chunks = [candidate_pairs[chunk] for chunk in chunks]
-    chunk_results = Distributed.pmap(
-        _rational_region_intersections_chunk,
-        workers,
-        [(numerator_cells_with_keys,
-             denominator_cells_with_keys,
-             pair_chunk,
-             base_halfspace_keys,
-             mode)
-         for pair_chunk in pair_chunks]
-    )
-    return Base.reduce(vcat, chunk_results)
-end
-
-"""
     _polyhedral_subdivision(rational_signomials; mode, workers=nothing,
                             base_region=nothing, base_halfspace_keys=[])
 
@@ -627,46 +516,39 @@ function _polyhedral_subdivision(
         base_halfspace_keys = Tuple{Any, Bool}[],
         map_coefficient = _coefficient_rational
 )
-    # Separate the numerator and denominator signomials.
     numerators = [rational_signomial.num
                   for rational_signomial in rational_signomials]
     denominators = [rational_signomial.den
                     for rational_signomial in rational_signomials]
+    # Process denominators first to preserve the existing cell order.
+    signomials = vcat(denominators, numerators)
 
-    # Compute the common subdivisions of the numerator and denominator signomials.
-    numerator_cells = _signomial_region_partition(
-        numerators;
+    # Subdivide by all numerator and denominator dominance regions.
+    signomial_cells = _signomial_region_partition(
+        signomials;
         mode = mode,
         workers = workers,
         base_region = base_region,
         map_coefficient = map_coefficient
     )
-    denominator_cells = _signomial_region_partition(
-        denominators;
-        mode = mode,
-        workers = workers,
-        base_region = base_region,
-        map_coefficient = map_coefficient
-    )
+    component_count = length(rational_signomials)
+    denominator_rows = 1:component_count
+    numerator_rows = (component_count + 1):(2 * component_count)
 
-    # Record the supporting hyperplanes and selected sides for each dominance cell.
-    numerator_cells_with_keys = [
-        (cell, _dominance_halfspace_keys(numerators, cell.data))
-        for cell in numerator_cells
-    ]
-    denominator_cells_with_keys = [
-        (cell, _dominance_halfspace_keys(denominators, cell.data))
-        for cell in denominator_cells
-    ]
-
-    # Intersect the numerator and denominator subdivisions.
-    return _rational_region_intersections_parallel(
-        numerator_cells_with_keys,
-        denominator_cells_with_keys,
-        base_halfspace_keys,
-        mode,
-        workers
-    )
+    # Convert each signomial cell to its rational affine map and facet data.
+    return map(signomial_cells) do cell
+        matrix = @views cell.matrix[numerator_rows, :] -
+                        cell.matrix[denominator_rows, :]
+        offset = @views cell.offset[numerator_rows] - cell.offset[denominator_rows]
+        denominator_indices = cell.data[denominator_rows]
+        numerator_indices = cell.data[numerator_rows]
+        halfspace_keys = unique!(vcat(
+            base_halfspace_keys,
+            _dominance_halfspace_keys(numerators, numerator_indices),
+            _dominance_halfspace_keys(denominators, denominator_indices)
+        ))
+        return _Cell(cell.A, cell.b, matrix, offset, halfspace_keys)
+    end
 end
 
 """
