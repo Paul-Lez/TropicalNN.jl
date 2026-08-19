@@ -274,15 +274,18 @@ function linear_regions(
 end
 
 """
-    _intersect_linear_region_partitions(partitions; mode, base_region=nothing)
+    _intersect_linear_region_all_partitions(partitions; mode, workers=nothing,
+                                            base_region=nothing)
 
 Intersect the region partitions in order. Discard an intersection as soon as
 it has no interior. If `base_region` is provided, start with that region. The
-result then contains only cells inside `base_region`.
+result then contains only cells inside `base_region`. Use `workers` to test
+intersection chunks in parallel when supplied.
 """
-function _intersect_linear_region_partitions(
+function _intersect_linear_region_all_partitions(
         partitions;
         mode::LinearRegionsCalculationMode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool} = nothing,
         base_region = nothing
 )
     # Select the initial regions to partition by and the partitions that remain.
@@ -302,24 +305,80 @@ function _intersect_linear_region_partitions(
 
     # Refine each candidate region with the next partition.
     for partition in remaining_partitions
-        next_regions = []
-        for (index, candidate_region) in partition
-            for (indices, partial_region) in regions
-                region = region_intersection(
-                    partial_region,
-                    candidate_region;
-                    mode = mode
-                )
-                if is_full_dimensional(region; mode = mode)
-                    push!(next_regions, ((indices..., index), region))
-                end
-            end
-        end
-        regions = next_regions
+        regions = _intersect_linear_region_partition(
+            regions, partition, mode, workers)
         isempty(regions) && break
     end
 
     return regions
+end
+
+"""
+    _intersect_linear_region_partition_chunk((region_data, partition_data,
+                                               pair_indices, mode,
+                                               return_regions))
+
+Test a chunk of region pairs and return their full-dimensional intersections.
+If `return_regions` is false, return serializable constraint data instead.
+"""
+function _intersect_linear_region_partition_chunk(args)
+    region_data, partition_data, pair_indices, mode, return_regions = args
+    intersections = []
+    region_count = length(region_data)
+    for pair_index in pair_indices
+        partition_index = div(pair_index - 1, region_count) + 1
+        region_index = mod(pair_index - 1, region_count) + 1
+        index, A_2, b_2 = partition_data[partition_index]
+        indices, A_1, b_1 = region_data[region_index]
+        A = vcat(A_1, A_2)
+        b = vcat(b_1, b_2)
+        region = make_polyhedron(A, b; mode = mode)
+        if is_full_dimensional(region; mode = mode)
+            intersection = if return_regions
+                ((indices..., index), region)
+            else
+                ((indices..., index), A, b)
+            end
+            push!(intersections, intersection)
+        end
+    end
+    return intersections
+end
+
+"""
+    _intersect_linear_region_partition(regions, partition, mode, workers)
+
+Refine `regions` with one partition. Use `workers` to test pair chunks in
+parallel when supplied.
+"""
+function _intersect_linear_region_partition(
+        regions,
+        partition,
+        mode,
+        workers::Union{Nothing, Distributed.AbstractWorkerPool}
+)
+    region_data = [(indices, _region_constraint_data(region; mode = mode)...)
+                   for (indices, region) in regions]
+    partition_data = [(index, _region_constraint_data(region; mode = mode)...)
+                      for (index, region) in partition]
+    pair_count = Base.Checked.checked_mul(length(partition_data), length(region_data))
+    pair_indices = 1:pair_count
+
+    if workers === nothing || pair_count <= 1
+        return _intersect_linear_region_partition_chunk(
+            (region_data, partition_data, pair_indices, mode, true))
+    end
+
+    _assert_tropicalnn_loaded(workers)
+    chunks = _index_chunks(pair_count, length(Distributed.workers(workers)))
+    chunk_results = Distributed.pmap(
+        _intersect_linear_region_partition_chunk,
+        workers,
+        [(region_data, partition_data, chunk, mode, false) for chunk in chunks]
+    )
+    intersection_data = Base.reduce(vcat, chunk_results)
+    return [(indices, make_polyhedron(A, b; mode = mode))
+            for (indices, A, b) in intersection_data]
 end
 
 """
@@ -359,9 +418,10 @@ function _signomial_region_partition(
     end
 
     # Intersect the partitions to obtain a common subdivision.
-    partition = _intersect_linear_region_partitions(
+    partition = _intersect_linear_region_all_partitions(
         dominance_partitions;
         mode = mode,
+        workers = workers,
         base_region = base_region
     )
 

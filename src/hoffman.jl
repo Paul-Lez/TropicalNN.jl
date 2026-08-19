@@ -119,7 +119,7 @@ function _hoffman_cell_matrices(
     )
     # eventually, this should use the same internals as the rational polyhedral subdivision
     # computation, but currently we can't because that code doesn't quite return what we need.
-    intersections = _intersect_linear_region_partitions(partitions; mode = mode)
+    intersections = _intersect_linear_region_all_partitions(partitions; mode = mode)
 
     transformed_matrices = _tilde_matrices(A)
     return [transformed_matrices[indices[2], indices[1]]

@@ -31,6 +31,16 @@ try
         max_y = Signomial([R(0), R(0)], [[0//1, 0//1], [0//1, 1//1]]; sorted = false)
         q = [max_x / constant, max_y / constant]
 
+        for mode in (OscarMode(), HiGHSMode())
+            local_partition = TropicalNN._signomial_region_partition(
+                [max_x, max_y]; mode = mode)
+            distributed_partition = TropicalNN._signomial_region_partition(
+                [max_x, max_y]; mode = mode, workers = pool)
+            @test sort([cell.data for cell in distributed_partition]) ==
+                  sort([cell.data for cell in local_partition]) ==
+                  [(1, 1), (1, 2), (2, 1), (2, 2)]
+        end
+
         local_regions = linear_regions(q; mode = HiGHSMode())
         distributed_regions = linear_regions(q; mode = HiGHSMode(), workers = pool)
         region_signature(regions) = (
