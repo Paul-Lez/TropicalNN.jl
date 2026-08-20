@@ -36,6 +36,47 @@ function random_mlp(dims::AbstractVector{<:Integer}; random_thresholds::Bool = f
     return (weights, biases, thresholds)
 end
 
+"""
+    random_maxout_network(dims, pieces, [T=Float64])
+
+Return a random maxout network with architecture `dims`. Each hidden width in
+`dims` specifies the number of maxout units in that layer. Each unit has
+`pieces` affine inputs. Sample each affine weight and bias from a normal
+distribution with standard deviation `sqrt(2 / fan-in)`. Store the samples
+with element type `T`.
+"""
+function random_maxout_network(
+        dims::AbstractVector{<:Integer},
+        pieces::Integer,
+        ::Type{T} = Float64
+) where {T}
+    length(dims) >= 2 || throw(ArgumentError("The architecture must have an input and output dimension"))
+    all(>(0), dims) || throw(ArgumentError("All network dimensions must be positive"))
+    pieces > 0 || throw(ArgumentError("The number of maxout pieces must be positive"))
+
+    layers = AbstractNeuralNetworkLayer{T}[]
+
+    # Add the hidden affine maps and their grouped maxout activations.
+    for layer_index in 1:(length(dims) - 2)
+        fan_in = dims[layer_index]
+        width = dims[layer_index + 1]
+        scale = sqrt(2 / fan_in)
+        push!(layers, AffineLayer(
+            T.(scale .* Random.randn(width * pieces, fan_in)),
+            T.(scale .* Random.randn(width * pieces))
+        ))
+        push!(layers, ActivationLayer(maxout(T, pieces), width))
+    end
+
+    # Add the final affine output map.
+    scale = sqrt(2 / dims[end - 1])
+    push!(layers, AffineLayer(
+        T.(scale .* Random.randn(dims[end], dims[end - 1])),
+        T.(scale .* Random.randn(dims[end]))
+    ))
+    return NeuralNetwork(layers)
+end
+
 @doc raw"""
     random_signomial(n_vars, n_mons)
 

@@ -104,6 +104,30 @@ end
         @test_throws MethodError NeuralNetwork(float_affine, exact_activation)
     end
 
+    @testset "Random maxout network" begin
+        network = random_maxout_network([2, 3, 5, 1], 4, Float32)
+
+        @test input_dimension(network) == 2
+        @test output_dimension(network) == 1
+        @test length(network) == 5
+        @test [
+            (input_dimension(layer), output_dimension(layer))
+            for layer in network
+        ] == [(2, 12), (12, 3), (3, 20), (20, 5), (5, 1)]
+        @test all(layer -> layer isa AbstractNeuralNetworkLayer{Float32}, network)
+        @test all(
+            activation -> nvars(activation) == 4,
+            network[2].activations
+        )
+        @test all(
+            activation -> nvars(activation) == 4,
+            network[4].activations
+        )
+        @test_throws ArgumentError random_maxout_network([2], 4)
+        @test_throws ArgumentError random_maxout_network([2, 0, 1], 4)
+        @test_throws ArgumentError random_maxout_network([2, 3, 1], 0)
+    end
+
     @testset "Layer tropicalization" begin
         R = tropical_semiring(max)
         affine_layer = AffineLayer([1 -1; 0 2], [2, -1])

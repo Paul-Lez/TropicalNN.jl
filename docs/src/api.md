@@ -42,6 +42,7 @@ single_to_trop
 tropicalize
 tropicalize_layers
 random_mlp
+random_maxout_network
 random_signomial
 prune
 ```

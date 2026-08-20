@@ -71,6 +71,7 @@ export
        tropicalize_layers,
        mlp_to_trop,
        random_mlp,
+       random_maxout_network,
        random_signomial,
        prune,
        OscarMode,
