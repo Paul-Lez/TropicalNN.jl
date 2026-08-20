@@ -186,7 +186,8 @@ end
 """
     highs_is_empty(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
-Check if polyhedron `{x : Ax <= b}` is empty by solving a linear program using HiGHS.
+Check if polyhedron `{x : Ax <= b}` is empty with HiGHS. Use GLPK if HiGHS
+returns an unclassified status.
 """
 function highs_is_empty(
         A::AbstractMatrix{Float64},
@@ -205,18 +206,25 @@ function highs_is_empty(
 
     model = create_highs_model(; solver = solver, threads = threads)
 
+    solve_lp = current_model -> _lp_is_empty(
+        current_model, A_normalized, b_normalized, n)
+    return _solve_with_glpk_fallback(solve_lp, model, "feasibility check")
+end
+
+"""Solve the feasibility LP and return its classified result and status."""
+function _lp_is_empty(model, A, b, n)
     @variable(model, x[1:n])
-    @constraint(model, A_normalized * x .<= b_normalized)
+    @constraint(model, A * x .<= b)
     # Stop when JuMP finds a feasible point.
     optimize!(model)
 
     status = termination_status(model)
     if status == MOI.OPTIMAL
-        return false
+        return false, status
     elseif status == MOI.INFEASIBLE || status == MOI.INFEASIBLE_OR_UNBOUNDED
-        return true
+        return true, status
     end
-    throw(ErrorException("HiGHS feasibility check ended with unexpected status $status"))
+    return nothing, status
 end
 
 """
@@ -252,7 +260,8 @@ end
     highs_is_full_dimensional(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Return `true` if `{x : Ax ≤ b}` has a Chebyshev inradius greater than `tol`.
-The tolerance is in input-space units.
+Use GLPK if HiGHS returns an unclassified status. The tolerance is in
+input-space units.
 """
 function highs_is_full_dimensional(
         A::AbstractMatrix{Float64},
@@ -281,9 +290,16 @@ function highs_is_full_dimensional(
 
     model = create_highs_model(; solver = solver, threads = threads)
 
+    solve_lp = current_model -> _lp_is_full_dimensional(
+        current_model, A_normalized, b_normalized, tol, n)
+    return _solve_with_glpk_fallback(solve_lp, model, "full-dimensionality check")
+end
+
+"""Solve the full-dimensionality LP and return its classified result and status."""
+function _lp_is_full_dimensional(model, A, b, tol, n)
     @variable(model, x[1:n])
     @variable(model, epsilon)
-    @constraint(model, A_normalized * x .+ epsilon .<= b_normalized)
+    @constraint(model, A * x .+ epsilon .<= b)
     # A cap above the tolerance preserves the result and keeps the LP bounded.
     @constraint(model, epsilon <= max(1.0, 2 * tol))
     @objective(model, Max, epsilon)
@@ -295,12 +311,12 @@ function highs_is_full_dimensional(
         epsilon_value = value(epsilon)
         isfinite(epsilon_value) ||
             throw(ErrorException("HiGHS returned non-finite inflation value $epsilon_value"))
-        return epsilon_value > tol
+        return epsilon_value > tol, status
     elseif status == MOI.INFEASIBLE || status == MOI.INFEASIBLE_OR_UNBOUNDED
         # The objective is bounded, so the ambiguous status means infeasible.
-        return false
+        return false, status
     end
-    throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
+    return nothing, status
 end
 
 """
@@ -373,10 +389,8 @@ function highs_check_implicit_equality(
     elseif status == MOI.INFEASIBLE_OR_UNBOUNDED || status == MOI.DUAL_INFEASIBLE
         # An unbounded slack means that row i is not an implicit equality.
         return false
-    else
-        # The constraint system was feasible before this check.
-        throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
     end
+    throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
 end
 
 """Solve the common-facet LP and return its classified result and status."""
