@@ -371,14 +371,18 @@ function _intersect_linear_region_partition(
 
     _assert_tropicalnn_loaded(workers)
     chunks = _index_chunks(pair_count, length(Distributed.workers(workers)))
-    chunk_results = Distributed.pmap(
-        _intersect_linear_region_partition_chunk,
-        workers,
-        [(region_data, partition_data, chunk, mode, false) for chunk in chunks]
-    )
-    intersection_data = Base.reduce(vcat, chunk_results)
-    return [(indices, make_polyhedron(A, b; mode = mode))
-            for (indices, A, b) in intersection_data]
+    caching_pool = Distributed.CachingPool(Distributed.workers(workers))
+    try
+        chunk_results = Distributed.pmap(caching_pool, chunks) do chunk
+            _intersect_linear_region_partition_chunk(
+                (region_data, partition_data, chunk, mode, false))
+        end
+        intersection_data = Base.reduce(vcat, chunk_results)
+        return [(indices, make_polyhedron(A, b; mode = mode))
+                for (indices, A, b) in intersection_data]
+    finally
+        Distributed.clear!(caching_pool)
+    end
 end
 
 """
