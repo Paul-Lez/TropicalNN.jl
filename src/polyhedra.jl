@@ -154,6 +154,36 @@ function create_highs_model(; solver = HIGHS_DEFAULT_SOLVER, threads = nothing)
 end
 
 """
+    create_glpk_model()
+
+Create a silent GLPK model for LP checks that HiGHS cannot resolve.
+"""
+function create_glpk_model()
+    model = Model(GLPK.Optimizer)
+    set_silent(model)
+    return model
+end
+
+"""
+    _solve_with_glpk_fallback(solve_lp, highs_model, check_name)
+
+Run an LP check with HiGHS. Retry it with GLPK when HiGHS returns a status
+that the check cannot classify.
+"""
+function _solve_with_glpk_fallback(solve_lp, highs_model, check_name)
+    result, highs_status = solve_lp(highs_model)
+    result !== nothing && return result
+
+    result, glpk_status = solve_lp(create_glpk_model())
+    result !== nothing && return result
+
+    throw(ErrorException(
+        "GLPK $check_name ended with unexpected status $glpk_status " *
+        "after HiGHS ended with unexpected status $highs_status"
+    ))
+end
+
+"""
     highs_is_empty(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Check if polyhedron `{x : Ax <= b}` is empty by solving a linear program using HiGHS.
@@ -254,6 +284,8 @@ function highs_is_full_dimensional(
     @variable(model, x[1:n])
     @variable(model, epsilon)
     @constraint(model, A_normalized * x .+ epsilon .<= b_normalized)
+    # A cap above the tolerance preserves the result and keeps the LP bounded.
+    @constraint(model, epsilon <= max(1.0, 2 * tol))
     @objective(model, Max, epsilon)
 
     optimize!(model)
@@ -264,9 +296,8 @@ function highs_is_full_dimensional(
         isfinite(epsilon_value) ||
             throw(ErrorException("HiGHS returned non-finite inflation value $epsilon_value"))
         return epsilon_value > tol
-    elseif status == MOI.DUAL_INFEASIBLE
-        return true
     elseif status == MOI.INFEASIBLE || status == MOI.INFEASIBLE_OR_UNBOUNDED
+        # The objective is bounded, so the ambiguous status means infeasible.
         return false
     end
     throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
@@ -346,6 +377,43 @@ function highs_check_implicit_equality(
         # The constraint system was feasible before this check.
         throw(ErrorException("HiGHS full-dimensionality check ended with unexpected status $status"))
     end
+end
+
+"""Solve the common-facet LP and return its classified result and status."""
+function _lp_cells_share_facet(model, left, right, hyperplane_key, mode)
+    # Get the equation of the candidate hyperplane.
+    n = size(left.A, 2)
+    normal = Float64.(collect(hyperplane_key[1:n]))
+    rhs = -Float64(hyperplane_key[n + 1])
+
+    # Constrain the slack model to the candidate hyperplane.
+    @variable(model, x[1:n])
+    @variable(model, excess)
+    @constraint(model, LinearAlgebra.dot(normal, x) == rhs)
+    @constraint(model, excess <= 1)
+
+    # Require positive slack for every other nonconstant inequality.
+    for (A, b) in ((left.A, left.b), (right.A, right.b))
+        for i in axes(A, 1)
+            row = @view A[i, :]
+            all(iszero, row) && continue
+            _inequality_has_supporting_hyperplane(
+                row, b[i], hyperplane_key) && continue
+            row_norm = LinearAlgebra.norm(Float64.(row))
+            normalized_row = Float64.(row) ./ row_norm
+            normalized_rhs = Float64(b[i]) / row_norm
+            @constraint(model,
+                LinearAlgebra.dot(normalized_row, x) + mode.tol + excess <= normalized_rhs)
+        end
+    end
+
+    # Positive excess over the tolerance confirms that the common face is a facet.
+    @objective(model, Max, excess)
+    optimize!(model)
+
+    status = termination_status(model)
+    status == MOI.OPTIMAL || return nothing, status
+    return value(excess) > 0, status
 end
 
 """
@@ -433,37 +501,10 @@ function _highs_cells_share_facet(
         hyperplane_key,
         mode::_HiGHS
 )
-    # Get the equation of the candidate hyperplane.
-    n = size(left.A, 2)
-    normal = Float64.(collect(hyperplane_key[1:n]))
-    rhs = -Float64(hyperplane_key[n + 1])
-
-    # Constrain the slack model to the candidate hyperplane.
     model = create_highs_model(; solver = mode.solver, threads = mode.threads)
-    @variable(model, x[1:n])
-    @variable(model, excess)
-    @constraint(model, LinearAlgebra.dot(normal, x) == rhs)
-    @constraint(model, excess <= 1)
-
-    # Require positive slack for every other nonconstant inequality.
-    for (A, b) in ((left.A, left.b), (right.A, right.b))
-        for i in axes(A, 1)
-            row = @view A[i, :]
-            all(iszero, row) && continue
-            _inequality_has_supporting_hyperplane(
-                row, b[i], hyperplane_key) && continue
-            row_norm = LinearAlgebra.norm(Float64.(row))
-            normalized_row = Float64.(row) ./ row_norm
-            normalized_rhs = Float64(b[i]) / row_norm
-            @constraint(model,
-                LinearAlgebra.dot(normalized_row, x) + mode.tol + excess <= normalized_rhs)
-        end
-    end
-
-    # Positive excess over the tolerance confirms that the common face is a facet.
-    @objective(model, Max, excess)
-    optimize!(model)
-    return value(excess) > 0
+    solve_lp = current_model -> _lp_cells_share_facet(
+        current_model, left, right, hyperplane_key, mode)
+    return _solve_with_glpk_fallback(solve_lp, model, "facet check")
 end
 
 """

@@ -16,6 +16,23 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
         @test_throws ArgumentError TropicalNN.create_highs_model(threads = 0)
     end
 
+    @testset verbose = true "GLPK fallback" begin
+        calls = 0
+        solve_lp = function (model)
+            calls += 1
+            if calls == 1
+                return nothing, TropicalNN.MOI.OTHER_ERROR
+            end
+            @test JuMP.solver_name(model) == "GLPK"
+            return true, TropicalNN.MOI.OPTIMAL
+        end
+
+        highs_model = TropicalNN.create_highs_model()
+        @test TropicalNN._solve_with_glpk_fallback(
+            solve_lp, highs_model, "test check")
+        @test calls == 2
+    end
+
     @testset verbose = true "Non-rationalizable Float64 constraints" begin
         coefficient = -0.0009592368123730325
         @test_throws InexactError Rational(coefficient)
@@ -81,6 +98,8 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
         b_interval = [2.0; 2.0]
         @test TropicalNN.highs_is_full_dimensional(
             A_interval, b_interval; tol = 1.5) == true
+
+        @test TropicalNN.highs_is_full_dimensional([1.0;;], [0.0])
     end
 
     @testset verbose = true "Row scaling invariance" begin
