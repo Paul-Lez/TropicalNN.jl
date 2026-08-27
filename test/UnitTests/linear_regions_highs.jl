@@ -66,6 +66,33 @@ using Test, TropicalNN, Oscar, JuMP, Graphs
         @test TropicalNN.highs_is_empty(zeros(Float64, 1, 1), [0.0]) == false
     end
 
+    @testset verbose = true "Boundedness check" begin
+        mode = HiGHSMode(solver = "simplex", threads = 1)
+        cases = (
+            ([1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0], ones(4), true),
+            ([1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0], [1.0, 0.0, 0.0, 0.0], true),
+            ([1.0 0.0; -1.0 0.0], ones(2), false),
+            ([-1.0 0.0; 0.0 1.0; 0.0 -1.0], [0.0, 1.0, 1.0], false),
+            ([1.0 0.0; -1.0 0.0; 0.0 -1.0], zeros(3), false),
+            (zeros(Float64, 0, 2), Float64[], false),
+            ([1.0 0.0; -1.0 0.0], [0.0, -1.0], true),
+            (zeros(Float64, 1, 2), [-1.0], true),
+            (zeros(Float64, 0, 0), Float64[], true),
+            (zeros(Float64, 1, 0), [-1.0], true)
+        )
+
+        for (A, b, expected) in cases
+            @test TropicalNN.highs_is_bounded(A, b) == expected
+            region = TropicalNN.make_polyhedron(A, b; mode = mode)
+            @test TropicalNN.is_bounded(region; mode = mode) == expected
+        end
+
+        A = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
+        b = ones(4)
+        row_scales = [1.0e-10, 1.0, 1.0e10, 1.0]
+        @test TropicalNN.highs_is_bounded(row_scales .* A, row_scales .* b)
+    end
+
     @testset verbose = true "Dimension mismatch" begin
         @test_throws DimensionMismatch TropicalNN.highs_intersect_is_full_dimensional(
             zeros(Float64, 0, 1),

@@ -257,6 +257,62 @@ function normalize_lp(A::AbstractMatrix{Float64}, b::AbstractVector{Float64})
 end
 
 """
+    highs_is_bounded(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
+
+Return whether the polyhedron `{x : Ax ≤ b}` is bounded. Reoptimize one
+HiGHS model in each coordinate direction and stop when an objective is
+unbounded. Use GLPK if HiGHS returns an unclassified status.
+"""
+function highs_is_bounded(
+        A::AbstractMatrix{Float64},
+        b::AbstractVector{Float64};
+        solver = HIGHS_DEFAULT_SOLVER,
+        threads = nothing
+)
+    _, n = size(A)
+    # Every subset of the zero-dimensional vector space is bounded.
+    iszero(n) && return true
+
+    filtered = filter_lp(A, b)
+    # An empty polyhedron is bounded.
+    filtered === nothing && return true
+    A_filtered, b_filtered = filtered
+    # With no nonconstant inequalities, the polyhedron is all of R^n.
+    isempty(b_filtered) && return false
+
+    A_normalized, b_normalized = normalize_lp(A_filtered, b_filtered)
+    model = create_highs_model(; solver = solver, threads = threads)
+
+    solve_lp = current_model -> _lp_is_bounded(
+        current_model, A_normalized, b_normalized, n)
+    return _solve_with_glpk_fallback(solve_lp, model, "boundedness check")
+end
+
+"""Solve the coordinate LPs and return their classified result and last status."""
+function _lp_is_bounded(model, A, b, n)
+    @variable(model, x[1:n])
+    @constraint(model, A * x .<= b)
+
+    # A polyhedron is bounded exactly when every coordinate has finite bounds.
+    for variable in x
+        for direction in (-1.0, 1.0)
+            @objective(model, Max, direction * variable)
+            optimize!(model)
+
+            status = termination_status(model)
+            if status == MOI.DUAL_INFEASIBLE
+                return false, status
+            elseif status == MOI.INFEASIBLE
+                return true, status
+            elseif status != MOI.OPTIMAL
+                return nothing, status
+            end
+        end
+    end
+    return true, MOI.OPTIMAL
+end
+
+"""
     highs_is_full_dimensional(A::AbstractMatrix{Float64}, b::AbstractVector{Float64}; tol=HIGHS_DEFAULT_TOL, solver=HIGHS_DEFAULT_SOLVER, threads=nothing)
 
 Return `true` if `{x : Ax ≤ b}` has a Chebyshev inradius greater than `tol`.
@@ -657,6 +713,20 @@ end
 
 function is_feasible(region::_Polyhedra; mode::_HiGHS)
     return !highs_is_empty(region.A, region.b; solver = mode.solver, threads = mode.threads)
+end
+
+"""
+    is_bounded(region::_Polyhedra; mode::_HiGHS)
+
+Return whether `region` is bounded with the HiGHS backend.
+"""
+function Oscar.is_bounded(region::_Polyhedra; mode::_HiGHS)
+    return highs_is_bounded(
+        region.A,
+        region.b;
+        solver = mode.solver,
+        threads = mode.threads
+    )
 end
 
 """
